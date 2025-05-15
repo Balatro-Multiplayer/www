@@ -205,8 +205,7 @@ export default function LogParser() {
             if (keysMatch?.[1]) {
               currentGame.logOwnerFinalJokers = keysMatch[1]
                 .split(';')
-
-                .filter(Boolean) // Remove empty strings
+                .filter(Boolean) // Remove empty strings if any
             }
           }
           continue
@@ -763,6 +762,7 @@ export default function LogParser() {
                               {game.logOwnerFinalJokers.length > 0 ? (
                                 <ul className='mt-3 ml-4 flex list-inside gap-3'>
                                   {game.logOwnerFinalJokers.map((joker, i) => {
+                                    joker = joker.split('-')[0] // Remove any suffix after the key
                                     const cleanName =
                                       jokers[joker]?.name ??
                                       cleanJokerKey(joker)
@@ -795,6 +795,7 @@ export default function LogParser() {
                               {game.opponentFinalJokers.length > 0 ? (
                                 <ul className='mt-3 ml-4 flex list-inside gap-3'>
                                   {game.opponentFinalJokers.map((joker, i) => {
+                                    joker = joker.split('-')[0] // Remove any suffix after the key
                                     const cleanName =
                                       jokers[joker]?.name ??
                                       cleanJokerKey(joker)
@@ -1158,6 +1159,7 @@ function parseLobbyInfoLine(line: string): ParsedLobbyInfo | null {
     isHost: isHostMatch,
   }
 }
+
 function cleanJokerKey(key: string): string {
   if (!key) return ''
   return key
