@@ -1454,8 +1454,8 @@ async function decodePackedString(encodedString: string): Promise<JsonValue> {
       bytes[i] = binaryString.charCodeAt(i)
     }
 
-    // Step 2: Decompress using raw inflate
-    const ds = new DecompressionStream('deflate-raw')
+    // Step 2: Decompress using gzip
+    const ds = new DecompressionStream('gzip')
     const decompressedStream = new Blob([bytes]).stream().pipeThrough(ds)
     const decompressedBlob = await new Response(decompressedStream).blob()
     const decompressedString = await decompressedBlob.text()
@@ -1477,9 +1477,10 @@ async function decodePackedString(encodedString: string): Promise<JsonValue> {
 }
 
 async function parseJokersFromString(str: string) {
-  if (str.toLowerCase().startsWith('7z')) {
+  // Check if the string starts with 'H4' indicating a packed string
+  // This is a common prefix for base64 encoded gzip strings
+  if (str.startsWith('H4')) {
     const decoded = await decodePackedString(str)
-    console.log(decoded)
     if (decoded && typeof decoded === 'object' && 'cards' in decoded) {
       return Object.values(decoded.cards as any).map(
         (c: any) => c.save_fields.center
