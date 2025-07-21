@@ -40,7 +40,7 @@ to **interact with your opponent** and will not show up in single player games.
 				<JokerCard name={'Skip-Off'} img={'/cards/j_mp_skip_off.png'}/>
 			</td>
 			<td>
-				<Hands>+1</Hands> Hands and <Hands>+1</Hands> Discards per additional blind skipped compared to your
+				<Hands>+1</Hands> Hands and <Hands>+1</Hands> Discards per additional <Hands>Blind</Hands> skipped compared to your
 				Nemesis.
 			</td>
 			<td></td>
@@ -53,7 +53,7 @@ to **interact with your opponent** and will not show up in single player games.
 			<td>
 				<div className={'flex flex-col gap-1'}>
 					<span><Chance>1 in 4</Chance> chance for <Xmult>X4</Xmult> Mult and <Money>$10</Money></span>
-					<span><Chance>1 in 8</Chance> chance to give your Nemesis <Money>$5</Money></span>
+					<span><Chance>1 in 4</Chance> chance to give your Nemesis <Money> $10</Money> in <Hands>PvP Blind</Hands></span>
 				</div>
 			</td>
 			<td>
@@ -81,9 +81,9 @@ to **interact with your opponent** and will not show up in single player games.
 			</td>
 			<td>
 				While in a <Hands>PvP Blind</Hands>, gain
-				<Xmult>X1</Xmult> Mult for every <Hands>Hand</Hands>
+				<Xmult>X0.5</Xmult> Mult for every <Hands>Hand</Hands>
 				your Nemesis has left
-				(Max <Xmult>X5</Xmult> Mult)
+				(Max <Xmult>X3</Xmult> Mult)
 			</td>
 			<td></td>
 		</tr>
@@ -94,7 +94,7 @@ to **interact with your opponent** and will not show up in single player games.
 			</td>
 			<td>
 				At start of shop, gain
-				<Money>$1</Money> for every <Money>$3</Money> your Nemesis spent last shop
+				<Money>$1</Money> for every <Money>$3</Money> your Nemesis spent in the corresponding shop <Hands>last ante</Hands>
 			</td>
 			<td></td>
 		</tr>
@@ -104,7 +104,8 @@ to **interact with your opponent** and will not show up in single player games.
 				<JokerCard name={'Taxes'} img={'/cards/j_mp_taxes.png'}/>
 			</td>
 			<td>
-				This Joker gains <Mult>+5</Mult> Mult each time your Nemesis sells a Joker
+				Gains <Mult>+4</Mult> Mult for every card your Nemesis <Hands>sold</Hands> since last <Hands>PvP Blind</Hands>,
+				updates when <Hands>PvP Blind</Hands> is selected
 			</td>
 			<td></td>
 		</tr>
@@ -115,9 +116,8 @@ to **interact with your opponent** and will not show up in single player games.
 			</td>
 			<td>
 				<div className={'flex flex-col gap-1'}>
-					<span><Mult>+6</Mult> Discards for all players</span>
-					<span><Mult>-1</Mult> Discard when any player selects a blind</span>
-					<span>Eaten when your Nemesis skips</span>
+					<span><Mult>+2</Mult> discards and <Mult>+1</Mult> discard for your Nemesis</span>
+					<span>Eaten after <Hands>PvP Blind</Hands></span>
 				</div>
 			</td>
 			<td></td>
