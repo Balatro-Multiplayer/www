@@ -113,7 +113,7 @@ Sandbox tests mechanical changes that reshape how you approach the game. Score p
 			</td>
 			<td>
 				<div className={'flex flex-col gap-1'}>
-					<span>Earn <Money>$7</Money> for each discarded card of rank</span>
+					<span>Earn <Money>$5</Money> for each discarded card of rank</span>
 					<span>Rank <Hands>never changes</Hands></span>
 				</div>
 			</td>
@@ -218,6 +218,25 @@ Sandbox tests mechanical changes that reshape how you approach the game. Score p
 			</td>
 			<td>
 			The change that broke the server. If you know, you know.
+			</td>
+		</tr>
+		<tr>
+			<td>
+				#### Golden Ticket [toc]
+				<JokerCard name={'Golden Ticket'} img={'/cards/j_ticket.png'}/>
+			</td>
+			<td>
+				<div className={'flex flex-col gap-1'}>
+					<span>Played <Hands>Gold</Hands> cards earn <Money>$4</Money> when played</span>
+				</div>
+			</td>
+			<td>
+				<div className={'flex flex-col gap-1'}>
+					<span>Now an <Hands>Uncommon</Hands> card. <Hands>1 in 2</Hands> chance for <Hands>Gold</Hands> cards to earn <Money>$5</Money> when played</span>
+				</div>
+			</td>
+			<td>
+			Risk-reward trade-off: Increases ceiling but adds variance.
 			</td>
 		</tr>
 		<tr>
@@ -362,7 +381,13 @@ All multiplayer jokers from the Standard ruleset are included and available in S
 
 Balatro's single-player balance creates optimization-heavy competitive play where players calculate through 5-second score previews. Sandbox rebalances around faster decisions and strategic variety.
 
-Score preview removal forces pattern recognition over arithmetic. Modified jokers create new constraints - Castle locks to one suit, Loyalty Card demands hand monogamy, Hit the Road permanently destroys Jacks. Spectral card changes remove permanent penalties that made cards like Ouija and Ectoplasm unplayable. Stakes progression separates sticker types across difficulties instead of stacking them on Gold Stake.
+Score preview removal forces pattern recognition over arithmetic. Spectral card changes remove permanent penalties that could make Ouija and Ectoplasm situationally unfun. Stakes progression separates sticker types across difficulties instead of stacking them on Gold Stake.
 </Callout>
 
 ---
+
+## Changelog
+
+### V3
+* Mail-in-rebate nerfed from $8 to $5
+* Golden ticket from $4 to 1/2 chance for $4
