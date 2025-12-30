@@ -337,6 +337,19 @@ export default function LogParser() {
         const timestamp = timeMatch?.[1] ? new Date(timeMatch[1]) : new Date()
         const lineLower = line.toLowerCase()
         lastProcessedTimestamp = timestamp
+
+          // check ServersideConnectionID first for blacklisted IDs
+          if (line.includes('serversideConnectionID')) {
+              const serversideConnectionIDMatch = line.match(/serversideConnectionID=([^ ;]+)/)
+              const serversideConnectionID = serversideConnectionIDMatch?.[1] ?? null
+              if (!serversideConnectionID) {
+                  // todo: flag this log for review under 'no id'
+              }
+              else if (serversideConnectionID in BLACKLISTED_LIST) {
+                  // todo: get a list of blacklisted IDs from the database and flag this log for review under 'blacklisted id'
+              }
+          }
+
         // --- Game Lifecycle ---
         if (line.includes('Client got receiveEndGameJokers message')) {
           if (currentGame) {
