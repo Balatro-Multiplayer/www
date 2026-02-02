@@ -1,5 +1,6 @@
 import { api } from '@/trpc/server'
 import type { Metadata } from 'next'
+import type {ReactNode} from "react";
 
 type Props = {
   params: Promise<{
@@ -14,14 +15,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+// todo: access botlatro api for transcript content
 export default async function TranscriptPage({ params }: Props) {
   const gameNumber = Number.parseInt((await params).gameNumber, 10)
 
   try {
-    // Fetch transcript data server-side
-    const transcriptContent = await api.history.getTranscript({
-      gameNumber,
-    })
+    const transcriptContent: ReactNode = ''
 
     if (!transcriptContent) {
       return (
@@ -31,13 +30,11 @@ export default async function TranscriptPage({ params }: Props) {
       )
     }
 
-    // Return the transcript content directly as HTML
+    // Return the transcript content *escaped*
     return (
       <div
         className='transcript-container'
-        dangerouslySetInnerHTML={{
-          __html: transcriptContent.replace('calc(100% - 126px)', 'auto'),
-        }}
+        content={transcriptContent.toString()}
       />
     )
   } catch (error) {
