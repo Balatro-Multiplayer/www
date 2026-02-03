@@ -141,6 +141,19 @@ export const protectedProcedure = t.procedure
     })
   })
 
+export const transcriptProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(({ ctx, next }) => {
+    if (!ctx.session?.user || ctx.session.user.role === 'user') {
+      throw new TRPCError({ code: 'FORBIDDEN' })
+    }
+    return next({
+      ctx: {
+        session: { ...ctx.session, user: ctx.session.user },
+      },
+    })
+  })
+
 export const adminProcedure = t.procedure
   .use(timingMiddleware)
   .use(({ ctx, next }) => {

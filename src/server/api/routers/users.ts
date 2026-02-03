@@ -24,7 +24,7 @@ export const usersRouter = createTRPCRouter({
     .input(
       z.object({
         userId: z.string(),
-        role: z.enum(['user', 'admin', 'owner']),
+        role: z.enum(['user', 'helper', 'admin', 'owner']),
       })
     )
     .mutation(async ({ input }) => {

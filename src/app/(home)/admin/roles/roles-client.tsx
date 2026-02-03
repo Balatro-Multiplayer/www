@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input'
 import { api } from '@/trpc/react'
 import { useCallback, useMemo, useState } from 'react'
 
-const roles: Array<'user' | 'admin' | 'owner'> = ['user', 'admin', 'owner']
+const roles: Array<'user' | 'helper' | 'admin' | 'owner'> = ['user', 'helper', 'admin', 'owner']
 
 type UserRow = {
   id: string
   name: string | null
   email: string | null
-  role: 'user' | 'admin' | 'owner'
+  role: 'user' | 'helper' | 'admin' | 'owner'
   discord_id: string | null
 }
 
@@ -30,11 +30,11 @@ export function RolesClient() {
     },
   })
 
-  type Role = 'user' | 'admin' | 'owner'
+  type Role = 'user' | 'helper' | 'admin' | 'owner'
   const isRole = useCallback(
     (r: unknown): r is Role =>
       typeof r === 'string' &&
-      (['user', 'admin', 'owner'] as const).includes(r as Role),
+      (['user', 'helper', 'admin', 'owner'] as const).includes(r as Role),
     []
   )
 
@@ -137,6 +137,7 @@ export function RolesClient() {
                       onChange={(e) => {
                         const newRole = e.target.value as
                           | 'user'
+                          | 'helper'
                           | 'admin'
                           | 'owner'
                         updateRole.mutate({ userId: u.id, role: newRole })

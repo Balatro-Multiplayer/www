@@ -9,7 +9,7 @@ import {
   users,
   verificationTokens,
 } from '@/server/db/schema'
-type UserRole = 'user' | 'admin' | 'owner'
+type UserRole = 'user' | 'helper' | 'admin' | 'owner'
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
  * object and keep type safety.

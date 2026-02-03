@@ -1,4 +1,4 @@
-import { createTRPCRouter, publicProcedure } from '@/server/api/trpc'
+import { createTRPCRouter, publicProcedure, transcriptProcedure } from '@/server/api/trpc'
 import { db } from '@/server/db'
 import { metadata, player_games, raw_history } from '@/server/db/schema'
 import type { SelectGames } from '@/server/db/types'
@@ -48,7 +48,7 @@ async function pLimit<T>(
 }
 
 export const history_router = createTRPCRouter({
-  getTranscript: publicProcedure
+  getTranscript: transcriptProcedure
     .input(
       z.object({
         gameNumber: z.number(),

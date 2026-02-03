@@ -167,7 +167,7 @@ const useColumns = (openTranscriptFn?: (gameNumber: number) => void) => {
   const format = useFormatter()
   const timeZone = useTimeZone()
   const session = useSession()
-  const isAdmin = ['admin', 'owner'].includes(session.data?.user.role ?? '')
+  const canViewTranscript = session.data?.user.role && session.data.user.role !== 'user'
   return useMemo(
     () => [
       columnHelper.accessor('opponentName', {
@@ -297,7 +297,7 @@ const useColumns = (openTranscriptFn?: (gameNumber: number) => void) => {
         ),
         id: 'time',
       }),
-      ...(isAdmin
+      ...(canViewTranscript
         ? [
             columnHelper.accessor('gameNum', {
               header: 'Transcript',
@@ -319,7 +319,7 @@ const useColumns = (openTranscriptFn?: (gameNumber: number) => void) => {
           ]
         : []),
     ],
-    [isAdmin, timeZone]
+    [canViewTranscript, timeZone]
   )
 }
 
