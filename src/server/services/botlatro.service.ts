@@ -83,11 +83,24 @@ export const botlatro_service = {
 
     console.log(`Fetching transcript #${gameNumber} from neatqueue`)
     try {
-      const response = await fetch(`${BOTLATRO_URL}transcript/${gameNumber}`)
+      const response = await fetch(
+        `${BOTLATRO_URL}api/transcripts/view/${gameNumber}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.API_TOKEN}`,
+          },
+        }
+      )
       if (!response.ok) {
         throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
       }
-      const data = (await response.json()) as string
+      const res = (await response.json()) as { success: boolean; transcript: string }
+
+      if (!res.success || !res.transcript) {
+        return null
+      }
+
+      const data = res.transcript
 
       await db
         .insert(transcripts)

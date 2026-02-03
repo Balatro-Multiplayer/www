@@ -167,7 +167,8 @@ const useColumns = (openTranscriptFn?: (gameNumber: number) => void) => {
   const format = useFormatter()
   const timeZone = useTimeZone()
   const session = useSession()
-  const canViewTranscript = session.data?.user.role && session.data.user.role !== 'user'
+  const canViewTranscript =
+    session.data?.user.role && session.data.user.role !== 'user'
   return useMemo(
     () => [
       columnHelper.accessor('opponentName', {
@@ -457,20 +458,17 @@ export function GamesTable({ games }: { games: SelectGames[] }) {
             {isLoading ? (
               <div className='flex h-full w-full items-center justify-center'>
                 <div className='text-center'>
-                  <div className='mb-2 h-6 w-6 animate-spin rounded-full border-gray-900 border-t-2 border-b-2 dark:border-gray-100'></div>
+                  <div className='mb-2 h-6 w-6 animate-spin rounded-full border-gray-900 border-t-2 border-b-2 dark:border-gray-100' />
                   <p>Loading transcript...</p>
                 </div>
               </div>
             ) : transcriptContent ? (
-              <iframe
-                srcDoc={transcriptContent}
-                title={`Game Transcript #${transcriptGameNumber || ''}`}
-                className='h-full w-full border-0'
-                sandbox='allow-same-origin'
-              />
+              <div className='h-full w-full whitespace-pre-line border-0'>
+                {transcriptContent}
+              </div>
             ) : (
               <div className='flex h-full w-full items-center justify-center'>
-                <p>Failed to load transcript. Please try again.</p>
+                <p>Transcript not found for game #{transcriptGameNumber}.</p>
               </div>
             )}
           </div>
