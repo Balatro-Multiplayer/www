@@ -17,15 +17,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-// todo: access botlatro api for transcript content
 export default async function TranscriptPage({ params }: Props) {
   const gameNumber = Number.parseInt((await params).gameNumber, 10)
 
   try {
+      const token = process.env.API_TOKEN
       const res: Promise<Transcript> = (await fetch(`http://balatro.virtualized.dev:4931/api/transcripts/view/${gameNumber}`, {
           method: 'GET',
           headers: {
-              'Authorization': `Bearer ${'token'}`, //todo: I dont think this token is in the env? it needs to be
+              'Authorization': `Bearer ${token}`,
               'Accept': 'application/json',
           },
       })).json()
