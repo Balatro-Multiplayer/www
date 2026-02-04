@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { SelectGames } from '@/server/db/types'
-import { api } from '@/trpc/react'
 import {
   type SortingState,
   createColumnHelper,
@@ -331,18 +330,6 @@ export function GamesTable({ games }: { games: SelectGames[] }) {
     number | null
   >(null)
 
-  // Use the tRPC useQuery hook to fetch the transcript
-  const { data: transcriptContent, isLoading } =
-    api.history.getTranscript.useQuery(
-      { gameNumber: transcriptGameNumber ?? 0 },
-      {
-        // Only fetch when we have a game number and the dialog is open
-        enabled: transcriptGameNumber !== null && isDialogOpen,
-        // Don't refetch on window focus
-        refetchOnWindowFocus: false,
-      }
-    )
-
   // New openTranscript function that sets state instead of opening a new window
   const openTranscript = (gameNumber: number): void => {
     setTranscriptGameNumber(gameNumber)
@@ -453,23 +440,14 @@ export function GamesTable({ games }: { games: SelectGames[] }) {
               )}
             </div>
           </DialogHeader>
-          {/* Use iframe to isolate the transcript content and prevent style leakage */}
-          <div className='!h-[60vh] mt-4 w-full'>
-            {isLoading ? (
-              <div className='flex h-full w-full items-center justify-center'>
-                <div className='text-center'>
-                  <div className='mb-2 h-6 w-6 animate-spin rounded-full border-gray-900 border-t-2 border-b-2 dark:border-gray-100' />
-                  <p>Loading transcript...</p>
-                </div>
-              </div>
-            ) : transcriptContent ? (
-              <div className='h-full w-full whitespace-pre-line border-0'>
-                {transcriptContent}
-              </div>
-            ) : (
-              <div className='flex h-full w-full items-center justify-center'>
-                <p>Transcript not found for game #{transcriptGameNumber}.</p>
-              </div>
+          {/* Use iframe to isolate the transcript content and render HTML properly */}
+          <div className='mt-4 h-[60vh] w-full'>
+            {transcriptGameNumber && (
+              <iframe
+                src={`/api/transcript/${transcriptGameNumber}`}
+                className='h-full w-full rounded border-0'
+                title={`Game Transcript #${transcriptGameNumber}`}
+              />
             )}
           </div>
         </DialogContent>
