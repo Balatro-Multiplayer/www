@@ -661,6 +661,22 @@ function PaginationControls({
   total,
   onPageChange,
 }: PaginationControlsProps) {
+  const [jumpToPage, setJumpToPage] = useState('')
+
+  const handleJumpToPage = () => {
+    const pageNum = Number.parseInt(jumpToPage, 10)
+    if (!Number.isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+      onPageChange(pageNum)
+      setJumpToPage('')
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleJumpToPage()
+    }
+  }
+
   const getPageNumbers = () => {
     const pages: (number | 'ellipsis')[] = []
     const showEllipsis = totalPages > 7
@@ -706,26 +722,49 @@ function PaginationControls({
 
   return (
     <div className='flex items-center justify-between rounded-b-lg border border-gray-200 border-t-0 bg-white px-4 py-3 sm:px-6 dark:border-zinc-800 dark:bg-zinc-900'>
-      <div className='flex flex-1 justify-between sm:hidden'>
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          Previous
-        </Button>
-        <span className='text-gray-700 text-sm dark:text-zinc-300'>
-          Page {currentPage} of {totalPages}
-        </span>
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          Next
-        </Button>
+      <div className='flex flex-1 flex-col gap-2 sm:hidden'>
+        <div className='flex justify-between'>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <span className='text-gray-700 text-sm dark:text-zinc-300'>
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+        <div className='flex items-center justify-center gap-2'>
+          <span className='text-gray-700 text-sm dark:text-zinc-300'>Go to:</span>
+          <Input
+            type='number'
+            min={1}
+            max={totalPages}
+            value={jumpToPage}
+            onChange={(e) => setJumpToPage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder='Page'
+            className='w-20 h-8 text-sm'
+          />
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={handleJumpToPage}
+            disabled={!jumpToPage || Number.parseInt(jumpToPage, 10) < 1 || Number.parseInt(jumpToPage, 10) > totalPages}
+          >
+            Go
+          </Button>
+        </div>
       </div>
       <div className='hidden sm:flex sm:flex-1 sm:items-center sm:justify-between'>
         <div>
@@ -738,43 +777,65 @@ function PaginationControls({
             of <span className='font-medium'>{total}</span> players
           </p>
         </div>
-        <div className='flex gap-1'>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className='h-4 w-4' />
-          </Button>
-          {pages.map((page, index) =>
-            page === 'ellipsis' ? (
-              <span
-                key={`ellipsis-${index}`}
-                className='px-3 py-2 text-gray-400'
-              >
-                ...
-              </span>
-            ) : (
-              <Button
-                key={page}
-                variant={currentPage === page ? 'default' : 'outline'}
-                size='sm'
-                onClick={() => onPageChange(page)}
-                className='min-w-[2.5rem]'
-              >
-                {page}
-              </Button>
-            )
-          )}
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRight className='h-4 w-4' />
-          </Button>
+        <div className='flex items-center gap-4'>
+          <div className='flex gap-1'>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className='h-4 w-4' />
+            </Button>
+            {pages.map((page, index) =>
+              page === 'ellipsis' ? (
+                <span
+                  key={`ellipsis-${index}`}
+                  className='px-3 py-2 text-gray-400'
+                >
+                  ...
+                </span>
+              ) : (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? 'default' : 'outline'}
+                  size='sm'
+                  onClick={() => onPageChange(page)}
+                  className='min-w-[2.5rem]'
+                >
+                  {page}
+                </Button>
+              )
+            )}
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className='h-4 w-4' />
+            </Button>
+          </div>
+          <div className='flex items-center gap-2'>
+            <Input
+              type='number'
+              min={1}
+              max={totalPages}
+              value={jumpToPage}
+              onChange={(e) => setJumpToPage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder='Page'
+              className='w-20 h-8 text-sm'
+            />
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={handleJumpToPage}
+              disabled={!jumpToPage || Number.parseInt(jumpToPage, 10) < 1 || Number.parseInt(jumpToPage, 10) > totalPages}
+            >
+              Go
+            </Button>
+          </div>
         </div>
       </div>
     </div>
