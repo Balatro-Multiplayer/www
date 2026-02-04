@@ -778,7 +778,7 @@ function PaginationControls({
           </p>
         </div>
         <div className='flex items-center gap-4'>
-          <div className='flex gap-1'>
+          <div className='flex items-center gap-1'>
             <Button
               variant='outline'
               size='sm'
