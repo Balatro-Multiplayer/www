@@ -2,6 +2,7 @@ import type { LinkItemType } from 'fumadocs-ui/layouts/links'
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared'
 import {
   BarChart3,
+  Bell,
   BookOpen,
   CircleDollarSign,
   Rss,
@@ -27,6 +28,25 @@ const links = [
     icon: <CircleDollarSign />,
   },
   {
+    text: 'Stats',
+    type: 'menu',
+    icon: <BarChart3 />,
+    items: [
+      {
+        text: 'Games Per Hour',
+        url: '/games-per-hour',
+        icon: <BarChart3 />,
+        description: 'Games played over time',
+      },
+      {
+        text: 'Rating Distribution',
+        url: '/rating-distribution',
+        icon: <Bell />,
+        description: 'Player rating bell curve by season',
+      },
+    ],
+  },
+  {
     text: 'Tools',
     type: 'menu',
     items: [
@@ -39,11 +59,6 @@ const links = [
         text: 'Log Parser',
         url: '/log-parser',
         icon: <Upload />,
-      },
-      {
-        text: 'Games Per Hour',
-        url: '/games-per-hour',
-        icon: <BarChart3 />,
       },
     ],
   },

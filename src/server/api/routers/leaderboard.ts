@@ -171,6 +171,32 @@ export const leaderboard_router = createTRPCRouter({
         input.limit
       )
     }),
+  rating_distribution: publicProcedure
+    .input(
+      z.object({
+        channel_id: z.string(),
+        season: SeasonSchema.optional().default('season5'),
+      })
+    )
+    .query(async ({ input }) => {
+      let entries: LeaderboardEntry[]
+
+      if (input.season === 'season1') {
+        entries = await service.getSeason1Leaderboard(input.channel_id)
+      } else if (input.season === 'season2') {
+        entries = await service.getSeason2Leaderboard(input.channel_id)
+      } else if (input.season === 'season3') {
+        entries = await service.getSeason3Leaderboard(input.channel_id)
+      } else if (input.season === 'season4') {
+        entries = await service.getSeason4Leaderboard(input.channel_id)
+      } else {
+        const result = await service.getLeaderboard(input.channel_id)
+        entries = result.data
+      }
+
+      // Return just the MMR values for the distribution chart
+      return entries.map((e) => e.mmr)
+    }),
   get_user_rank: publicProcedure
     .input(
       z.object({
