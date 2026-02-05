@@ -170,7 +170,10 @@ export function RatingDistributionChart() {
                 content={
                   <ChartTooltipContent
                     formatter={(value) => `${value} players`}
-                    labelFormatter={(label) => `Rating: ${label} - ${Number(label) + 50}`}
+                    labelFormatter={(_label, payload) => {
+                      const rating = payload?.[0]?.payload?.rating
+                      return `Rating: ${rating} - ${Number(rating) + 50}`
+                    }}
                   />
                 }
               />
