@@ -33,6 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
   OLD_RANKED_CHANNEL,
+  OLD_SMALLWORLD_CHANNEL,
+  OLD_VANILLA_CHANNEL,
   RANKED_QUEUE_ID,
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
@@ -81,6 +83,22 @@ function unescapeName(str: string) {
   return str.replaceAll('\\', '')
 }
 
+function getChannelIdForSeason(
+  queueType: 'ranked' | 'vanilla' | 'smallworld',
+  season: Season
+) {
+  const isOldSeason =
+    season === 'season1' || season === 'season2' || season === 'season3'
+
+  if (queueType === 'vanilla') {
+    return isOldSeason ? OLD_VANILLA_CHANNEL : VANILLA_QUEUE_ID
+  }
+  if (queueType === 'smallworld') {
+    return isOldSeason ? OLD_SMALLWORLD_CHANNEL : SMALLWORLD_QUEUE_ID
+  }
+  return isOldSeason ? OLD_RANKED_CHANNEL : RANKED_QUEUE_ID
+}
+
 function rankIconComponent(mmr: number, queue: string) {
   const rankData = getRankData(
       mmr,
@@ -115,6 +133,9 @@ function UserInfoComponent() {
   const format = useFormatter()
   const timeZone = useTimeZone()
   const [season, setSeason] = useState<Season>('season5')
+  const rankedChannelId = getChannelIdForSeason('ranked', season)
+  const vanillaChannelId = getChannelIdForSeason('vanilla', season)
+  const smallworldChannelId = getChannelIdForSeason('smallworld', season)
 
   const [leaderboardFilter, setLeaderboardFilter] = useState('all')
   const { id } = useParams()
@@ -129,36 +150,36 @@ function UserInfoComponent() {
 
   // Fetch current season data
   const [rankedLeaderboard] = api.leaderboard.get_leaderboard.useSuspenseQuery({
-    channel_id: RANKED_QUEUE_ID,
+    channel_id: rankedChannelId,
     season,
   })
 
   const [vanillaLeaderboard] = api.leaderboard.get_leaderboard.useSuspenseQuery(
     {
-      channel_id: VANILLA_QUEUE_ID,
+      channel_id: vanillaChannelId,
       season,
     }
   )
 
   const [smallworldLeaderboard] =
     api.leaderboard.get_leaderboard.useSuspenseQuery({
-      channel_id: SMALLWORLD_QUEUE_ID,
+      channel_id: smallworldChannelId,
       season,
     })
 
   // Fetch current season user rank
   const [vanillaUserRankQ] = api.leaderboard.get_user_rank.useSuspenseQuery({
-    channel_id: VANILLA_QUEUE_ID,
+    channel_id: vanillaChannelId,
     user_id: id,
     season,
   })
   const [smallWorldUserRankQ] = api.leaderboard.get_user_rank.useSuspenseQuery({
-    channel_id: SMALLWORLD_QUEUE_ID,
+    channel_id: smallworldChannelId,
     user_id: id,
     season,
   })
   const [rankedUserRankQ] = api.leaderboard.get_user_rank.useSuspenseQuery({
-    channel_id: RANKED_QUEUE_ID,
+    channel_id: rankedChannelId,
     user_id: id,
     season,
   })
