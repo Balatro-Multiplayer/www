@@ -88,16 +88,15 @@ export function RatingDistributionChart() {
 
   const channelId = getChannelId(queueType, season)
 
-  const { data: mmrValues, isLoading } = api.leaderboard.rating_distribution.useQuery({
+  const [mmrValues] = api.leaderboard.rating_distribution.useSuspenseQuery({
     channel_id: channelId,
     season,
   })
 
-  const safeValues = mmrValues ?? []
-  const chartData = computeBellCurve(safeValues)
-  const totalPlayers = safeValues.length
-  const avgMmr = totalPlayers > 0 ? Math.round(safeValues.reduce((a, b) => a + b, 0) / totalPlayers) : 0
-  const medianMmr = totalPlayers > 0 ? Math.round([...safeValues].sort((a, b) => a - b)[Math.floor(totalPlayers / 2)]!) : 0
+  const chartData = computeBellCurve(mmrValues)
+  const totalPlayers = mmrValues.length
+  const avgMmr = totalPlayers > 0 ? Math.round(mmrValues.reduce((a, b) => a + b, 0) / totalPlayers) : 0
+  const medianMmr = totalPlayers > 0 ? Math.round([...mmrValues].sort((a, b) => a - b)[Math.floor(totalPlayers / 2)]!) : 0
 
   return (
     <Card className='w-full'>
@@ -137,11 +136,7 @@ export function RatingDistributionChart() {
         </div>
       </CardHeader>
       <CardContent className='h-[500px] w-full p-2'>
-        {isLoading ? (
-          <div className='flex h-full items-center justify-center text-fd-muted-foreground'>
-            Loading...
-          </div>
-        ) : chartData.length === 0 ? (
+        {chartData.length === 0 ? (
           <div className='flex h-full items-center justify-center text-fd-muted-foreground'>
             No data available for this season and queue type.
           </div>
