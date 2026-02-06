@@ -44,7 +44,7 @@ const chartConfig = {
 type GroupByOption = 'hour' | 'day' | 'week' | 'month'
 
 export function GameActivityChart() {
-  const [groupBy, setGroupBy] = useState<GroupByOption>('hour')
+  const [groupBy, setGroupBy] = useState<GroupByOption>('week')
   const [dateRange, setDateRange] = useState<
     | {
         from?: Date | undefined
