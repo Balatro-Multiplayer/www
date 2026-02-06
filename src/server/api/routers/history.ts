@@ -13,8 +13,8 @@ import {
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
-import { SEASON_5_START_DATE } from '@/shared/seasons'
-import { and, gt, lt } from 'drizzle-orm'
+import { SEASON_5_START_DATE, getSeasonForDate } from '@/shared/seasons'
+import { and, desc, eq, gt, lt } from 'drizzle-orm'
 import { z } from 'zod'
 
 function formatTimeKey(date: Date, groupBy: string): string {
@@ -125,16 +125,30 @@ export const history_router = createTRPCRouter({
         queue_id: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      // Seasons 1-4: read from DB (backfilled data)
+      const dbGames = await ctx.db
+        .select()
+        .from(player_games)
+        .where(
+          and(
+            eq(player_games.playerId, input.user_id),
+            lt(player_games.gameTime, SEASON_5_START_DATE)
+          )
+        )
+        .orderBy(desc(player_games.gameTime))
+
+      // Season 5+: read from Botlatro API
       const matches = await botlatro_service.get_player_matches({
         userId: input.user_id,
       })
-      return normalizeBotlatroMatchHistory(matches)
+      const apiGames = normalizeBotlatroMatchHistory(matches)
+
+      return [...dbGames, ...apiGames]
     }),
 })
 
 function normalizeBotlatroMatchHistory(matches: PlayerMatch[]): SelectGames[] {
-  console.log(matches.filter((m) => m.opponents.length === 0))
   return matches
     .filter((m) => m.opponents.length > 0)
     .map((match) => ({
@@ -153,7 +167,7 @@ function normalizeBotlatroMatchHistory(matches: PlayerMatch[]): SelectGames[] {
       deck: match.deck,
       stake: match.stake,
       result: match.won ? 'win' : 'loss',
-      season: 'season5',
+      season: getSeasonForDate(new Date(match.created_at)),
     }))
 }
 

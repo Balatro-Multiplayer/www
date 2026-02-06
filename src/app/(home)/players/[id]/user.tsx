@@ -803,6 +803,9 @@ function UserInfoComponent() {
                     <SelectItem value='season5'>
                       {getSeasonDisplayName('season5')}
                     </SelectItem>
+                    <SelectItem value='season4'>
+                      {getSeasonDisplayName('season4')}
+                    </SelectItem>
                     <SelectItem value='season3'>
                       {getSeasonDisplayName('season3')}
                     </SelectItem>
