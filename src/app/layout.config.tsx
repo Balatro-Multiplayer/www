@@ -2,13 +2,8 @@ import type { LinkItemType } from 'fumadocs-ui/layouts/links'
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared'
 import {
   BarChart3,
-  Bell,
   BookOpen,
-  CalendarRange,
   CircleDollarSign,
-  Layers,
-  Rss,
-  Target,
   Trophy,
   Upload,
 } from 'lucide-react'
@@ -32,40 +27,8 @@ const links = [
   },
   {
     text: 'Stats',
-    type: 'menu',
+    url: '/stats',
     icon: <BarChart3 />,
-    items: [
-      {
-        text: 'Games Per Hour',
-        url: '/games-per-hour',
-        icon: <BarChart3 />,
-        description: 'Games played over time',
-      },
-      {
-        text: 'Rating Distribution',
-        url: '/rating-distribution',
-        icon: <Bell />,
-        description: 'Player rating bell curve by season',
-      },
-      {
-        text: 'Deck Popularity',
-        url: '/deck-popularity',
-        icon: <Layers />,
-        description: 'Most played decks by season',
-      },
-      {
-        text: 'Stake Popularity',
-        url: '/stake-popularity',
-        icon: <Target />,
-        description: 'Most played stakes by season',
-      },
-      {
-        text: 'Season Overview',
-        url: '/season-overview',
-        icon: <CalendarRange />,
-        description: 'Season-by-season stats comparison',
-      },
-    ],
   },
   {
     text: 'Tools',

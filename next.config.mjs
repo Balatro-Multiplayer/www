@@ -16,6 +16,15 @@ const config = {
     // Set minimumCacheTTL to a high value to ensure Next.js doesn't invalidate the cache too early
     minimumCacheTTL: 60 * 60 * 24 * 365, // 1 year in seconds
   },
+  async redirects() {
+    return [
+      { source: '/games-per-hour', destination: '/stats?tab=games-per-hour', permanent: true },
+      { source: '/rating-distribution', destination: '/stats?tab=rating-distribution', permanent: true },
+      { source: '/deck-popularity', destination: '/stats?tab=deck-popularity', permanent: true },
+      { source: '/stake-popularity', destination: '/stats?tab=stake-popularity', permanent: true },
+      { source: '/season-overview', destination: '/stats?tab=season-overview', permanent: true },
+    ]
+  },
   // Generate a unique build ID for each build if not provided by the environment
   // This will be used for cache invalidation in the image loader
   generateBuildId: async () => {
