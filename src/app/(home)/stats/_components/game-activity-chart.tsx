@@ -43,7 +43,7 @@ const chartConfig = {
 
 type GroupByOption = 'hour' | 'day' | 'week' | 'month'
 
-export function GamesPerHourChart() {
+export function GameActivityChart() {
   const [groupBy, setGroupBy] = useState<GroupByOption>('hour')
   const [dateRange, setDateRange] = useState<
     | {
@@ -67,15 +67,15 @@ export function GamesPerHourChart() {
   const getTitleText = () => {
     switch (groupBy) {
       case 'hour':
-        return 'Games Played Per Hour'
+        return 'Game Activity (Hourly)'
       case 'day':
-        return 'Games Played Per Day'
+        return 'Game Activity (Daily)'
       case 'week':
-        return 'Games Played Per Week'
+        return 'Game Activity (Weekly)'
       case 'month':
-        return 'Games Played Per Month'
+        return 'Game Activity (Monthly)'
       default:
-        return 'Games Played'
+        return 'Game Activity'
     }
   }
 

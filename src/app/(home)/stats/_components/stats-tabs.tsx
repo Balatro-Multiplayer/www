@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { parseAsString, useQueryState } from 'nuqs'
 import { Suspense } from 'react'
 import { DeckPopularityChart } from './deck-popularity-chart'
-import { GamesPerHourChart } from './games-per-hour-chart'
+import { GameActivityChart } from './game-activity-chart'
 import { RatingDistributionChart } from './rating-distribution-chart'
 import { SeasonOverviewChart } from './season-overview-chart'
 import { StakePopularityChart } from './stake-popularity-chart'
@@ -14,7 +14,7 @@ const TABS = [
   { value: 'deck-popularity', label: 'Deck Popularity' },
   { value: 'stake-popularity', label: 'Stake Popularity' },
   { value: 'season-overview', label: 'Season Overview' },
-  { value: 'games-per-hour', label: 'Games Per Hour' },
+  { value: 'game-activity', label: 'Game Activity' },
 ] as const
 
 export function StatsTabs() {
@@ -32,9 +32,9 @@ export function StatsTabs() {
           </TabsTrigger>
         ))}
       </TabsList>
-      <TabsContent value='games-per-hour'>
+      <TabsContent value='game-activity'>
         <Suspense>
-          <GamesPerHourChart />
+          <GameActivityChart />
         </Suspense>
       </TabsContent>
       <TabsContent value='rating-distribution'>

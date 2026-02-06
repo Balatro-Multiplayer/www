@@ -1,11 +1,11 @@
 import { createTRPCRouter, publicProcedure, transcriptProcedure } from '@/server/api/trpc'
-import { db } from '@/server/db'
-import { metadata, player_games, raw_history } from '@/server/db/schema'
+import { player_games } from '@/server/db/schema'
 import type { SelectGames } from '@/server/db/types'
 import {
   type PlayerMatch,
   botlatro_service,
 } from '@/server/services/botlatro.service'
+import { fetchMatches, QUEUE_IDS } from '@/server/services/match-fetcher'
 import {
   CASUAL_QUEUE_ID,
   RANKED_QUEUE_ID,
@@ -13,38 +13,26 @@ import {
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
-import { and, desc, eq, gt, lt } from 'drizzle-orm'
-import { chunk } from 'remeda'
+import { SEASON_5_START_DATE } from '@/shared/seasons'
+import { and, gt, lt } from 'drizzle-orm'
 import { z } from 'zod'
 
-async function pLimit<T>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<any>
-): Promise<any[]> {
-  const results: any[] = []
-  const executing: Promise<void>[] = []
-
-  for (const item of items) {
-    const p = Promise.resolve()
-      .then(() => fn(item))
-      .then((result) => {
-        results.push(result)
-      })
-
-    executing.push(p)
-
-    if (executing.length >= concurrency) {
-      await Promise.race(executing)
-      executing.splice(
-        executing.findIndex((e) => e === p),
-        1
-      )
+function formatTimeKey(date: Date, groupBy: string): string {
+  switch (groupBy) {
+    case 'hour':
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`
+    case 'day':
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    case 'week': {
+      const firstDayOfWeek = new Date(date)
+      firstDayOfWeek.setDate(date.getDate() - date.getDay())
+      return `Week of ${firstDayOfWeek.getFullYear()}-${String(firstDayOfWeek.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfWeek.getDate()).padStart(2, '0')}`
     }
+    case 'month':
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    default:
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`
   }
-
-  await Promise.all(executing)
-  return results
 }
 
 export const history_router = createTRPCRouter({
@@ -73,73 +61,62 @@ export const history_router = createTRPCRouter({
       const endDate = input?.endDate ? new Date(input.endDate) : undefined
       const nextDay = endDate ? new Date(endDate) : undefined
       if (nextDay) nextDay.setDate(nextDay.getDate() + 1)
-      const games = await ctx.db
-        .select({
-          gameTime: player_games.gameTime,
-          gameNum: player_games.gameNum,
-        })
-        .from(player_games)
-        .where(
-          and(
-            startDate ? gt(player_games.gameTime, startDate) : undefined,
-            nextDay ? lt(player_games.gameTime, nextDay) : undefined
+
+      const effectiveEnd = nextDay ?? new Date()
+      const needsDb = !startDate || startDate < SEASON_5_START_DATE
+      const needsApi = !nextDay || effectiveEnd > SEASON_5_START_DATE
+
+      const gamesByTimeUnit: Record<string, number> = {}
+
+      // Old data (seasons 1-4) from DB
+      if (needsDb) {
+        const dbEnd = nextDay && nextDay < SEASON_5_START_DATE ? nextDay : SEASON_5_START_DATE
+        const games = await ctx.db
+          .select({
+            gameTime: player_games.gameTime,
+            gameNum: player_games.gameNum,
+          })
+          .from(player_games)
+          .where(
+            and(
+              startDate ? gt(player_games.gameTime, startDate) : undefined,
+              lt(player_games.gameTime, dbEnd)
+            )
           )
-        )
-        .orderBy(player_games.gameTime)
+          .orderBy(player_games.gameTime)
 
-      // Track unique game numbers to avoid counting the same game twice
-      const processedGameNums = new Set<number>()
+        const seen = new Set<number>()
+        for (const game of games) {
+          if (!game.gameTime || !game.gameNum || seen.has(game.gameNum)) continue
+          seen.add(game.gameNum)
+          const key = formatTimeKey(new Date(game.gameTime), groupBy)
+          gamesByTimeUnit[key] = (gamesByTimeUnit[key] || 0) + 1
+        }
+      }
 
-      // Group games by the selected time unit
-      const gamesByTimeUnit = games.reduce<Record<string, number>>(
-        (acc, game) => {
-          if (!game.gameTime || !game.gameNum) return acc
+      // Season 5+ data from Botlatro API
+      if (needsApi) {
+        const allMatches = (
+          await Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season5')))
+        ).flat()
 
-          // Skip if we've already processed this game number
-          if (processedGameNums.has(game.gameNum)) return acc
+        const apiStart = startDate && startDate > SEASON_5_START_DATE ? startDate : SEASON_5_START_DATE
 
-          // Mark this game as processed
-          processedGameNums.add(game.gameNum)
+        const seen = new Set<number>()
+        for (const m of allMatches) {
+          if (seen.has(m.match_id)) continue
+          seen.add(m.match_id)
+          const date = new Date(m.created_at)
+          if (date < apiStart) continue
+          if (nextDay && date >= nextDay) continue
+          const key = formatTimeKey(date, groupBy)
+          gamesByTimeUnit[key] = (gamesByTimeUnit[key] || 0) + 1
+        }
+      }
 
-          const date = new Date(game.gameTime)
-          let timeKey: string
-
-          switch (groupBy) {
-            case 'hour':
-              // Format: YYYY-MM-DD HH:00
-              timeKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`
-              break
-            case 'day':
-              // Format: YYYY-MM-DD
-              timeKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-              break
-            case 'week':
-              // Get the first day of the week (Sunday)
-              const firstDayOfWeek = new Date(date)
-              const day = date.getDay() // 0 = Sunday, 1 = Monday, etc.
-              firstDayOfWeek.setDate(date.getDate() - day)
-              timeKey = `Week of ${firstDayOfWeek.getFullYear()}-${String(firstDayOfWeek.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfWeek.getDate()).padStart(2, '0')}`
-              break
-            case 'month':
-              // Format: YYYY-MM
-              timeKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-              break
-            default:
-              timeKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`
-          }
-
-          acc[timeKey] = (acc[timeKey] || 0) + 1
-          return acc
-        },
-        {}
-      )
-
-      // Convert to array format for chart
-      return Object.entries(gamesByTimeUnit).map(([timeUnit, count]) => ({
-        timeUnit,
-        count,
-        groupBy,
-      }))
+      return Object.entries(gamesByTimeUnit)
+        .map(([timeUnit, count]) => ({ timeUnit, count, groupBy }))
+        .sort((a, b) => a.timeUnit.localeCompare(b.timeUnit))
     }),
   user_games: publicProcedure
     .input(

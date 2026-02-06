@@ -1,69 +1,14 @@
 import { createTRPCRouter, publicProcedure } from '@/server/api/trpc'
 import { player_games } from '@/server/db/schema'
-import { redis } from '@/server/redis'
 import {
-  RANKED_QUEUE_ID,
-  SMALLWORLD_QUEUE_ID,
-  VANILLA_QUEUE_ID,
-  CASUAL_QUEUE_ID,
-} from '@/shared/constants'
-import {
-  SEASON_2_START_DATE,
-  SEASON_3_START_DATE,
-  SEASON_4_START_DATE,
-  SEASON_5_START_DATE,
-  SeasonSchema,
-  type Season,
-} from '@/shared/seasons'
+  fetchMatches,
+  getSeasonDateRange,
+  QUEUE_IDS,
+  type OverallMatch,
+} from '@/server/services/match-fetcher'
+import { SeasonSchema, type Season } from '@/shared/seasons'
 import { and, gte, lt, sql } from 'drizzle-orm'
 import { z } from 'zod'
-
-const BOTLATRO_URL = 'http://balatro.virtualized.dev:4931/'
-
-function getSeasonDateRange(season: Season): { start: Date; end: Date } {
-  switch (season) {
-    case 'season1':
-      return { start: new Date('2000-01-01'), end: SEASON_2_START_DATE }
-    case 'season2':
-      return { start: SEASON_2_START_DATE, end: SEASON_3_START_DATE }
-    case 'season3':
-      return { start: SEASON_3_START_DATE, end: SEASON_4_START_DATE }
-    case 'season4':
-      return { start: SEASON_4_START_DATE, end: SEASON_5_START_DATE }
-    case 'season5':
-      return { start: SEASON_5_START_DATE, end: new Date('2099-01-01') }
-  }
-}
-
-type OverallMatch = {
-  match_id: number
-  winning_team: number | null
-  deck: string | null
-  stake: string | null
-  created_at: string
-  players: Array<{ user_id: string; team: number | null; elo_change: number | null }>
-}
-
-const QUEUE_IDS = [RANKED_QUEUE_ID, SMALLWORLD_QUEUE_ID, VANILLA_QUEUE_ID, CASUAL_QUEUE_ID]
-
-async function fetchMatches(queueId: string, season: Season): Promise<OverallMatch[]> {
-  const cacheKey = `stats:matches:${queueId}:${season}`
-  const cached = await redis.get(cacheKey)
-  if (cached) return JSON.parse(cached)
-
-  const { start, end } = getSeasonDateRange(season)
-  const params = new URLSearchParams({
-    limit: '200000',
-    start_date: start.toISOString(),
-    end_date: end.toISOString(),
-  })
-  const res = await fetch(`${BOTLATRO_URL}api/stats/overall-history/${queueId}?${params}`)
-  if (!res.ok) throw new Error(`Botlatro API error: ${res.status}`)
-  const data = (await res.json()) as { matches: OverallMatch[] }
-
-  await redis.set(cacheKey, JSON.stringify(data.matches), { EX: 300 })
-  return data.matches
-}
 
 function aggregateDeckStats(matches: OverallMatch[]) {
   const counts: Record<string, number> = {}

@@ -18,7 +18,8 @@ const config = {
   },
   async redirects() {
     return [
-      { source: '/games-per-hour', destination: '/stats?tab=games-per-hour', permanent: true },
+      { source: '/games-per-hour', destination: '/stats?tab=game-activity', permanent: true },
+      { source: '/game-activity', destination: '/stats?tab=game-activity', permanent: true },
       { source: '/rating-distribution', destination: '/stats?tab=rating-distribution', permanent: true },
       { source: '/deck-popularity', destination: '/stats?tab=deck-popularity', permanent: true },
       { source: '/stake-popularity', destination: '/stats?tab=stake-popularity', permanent: true },

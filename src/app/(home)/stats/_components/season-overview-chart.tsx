@@ -74,7 +74,7 @@ export function SeasonOverviewChart() {
               </p>
             </CardHeader>
             <CardContent className='space-y-1'>
-              <p className='text-2xl font-bold'>{d.totalGames.toLocaleString()}</p>
+              <p className='text-2xl font-bold'>{d.totalGames.toLocaleString()} matches</p>
               <p className='text-xs text-muted-foreground'>
                 {d.uniquePlayers.toLocaleString()} players · {d.avgMmrChange} avg MMR Δ
               </p>
@@ -100,7 +100,7 @@ export function SeasonOverviewChart() {
                 content={
                   <ChartTooltipContent
                     formatter={(value, name) => {
-                      const label = name === 'totalGames' ? 'Games' : 'Players'
+                      const label = name === 'Total Games' ? 'matches' : 'players'
                       return `${Number(value).toLocaleString()} ${label}`
                     }}
                   />
