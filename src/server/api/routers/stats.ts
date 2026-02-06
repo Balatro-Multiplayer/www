@@ -10,7 +10,7 @@ import { SeasonSchema, type Season } from '@/shared/seasons'
 import { and, gte, lt, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-function aggregateDeckStats(matches: OverallMatch[]) {
+function aggregateDeckStats(matches: { deck: string | null }[]) {
   const counts: Record<string, number> = {}
   let total = 0
   for (const m of matches) {
@@ -29,7 +29,7 @@ function aggregateDeckStats(matches: OverallMatch[]) {
     .sort((a, b) => b.games - a.games)
 }
 
-function aggregateStakeStats(matches: OverallMatch[]) {
+function aggregateStakeStats(matches: { stake: string | null }[]) {
   const counts: Record<string, number> = {}
   let total = 0
   for (const m of matches) {
@@ -81,10 +81,21 @@ export const stats_router = createTRPCRouter({
         })
         .optional()
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const season = input?.season ?? 'season5'
-      const queueIds = input?.queueId ? [input.queueId] : QUEUE_IDS
 
+      if (DB_SEASONS.includes(season)) {
+        const { start, end } = getSeasonDateRange(season)
+        const conditions = [gte(player_games.gameTime, start), lt(player_games.gameTime, end)]
+        if (input?.queueId) conditions.push(sql`${player_games.queueId} = ${input.queueId}`)
+        const rows = await ctx.db
+          .select({ deck: player_games.deck })
+          .from(player_games)
+          .where(and(...conditions))
+        return aggregateDeckStats(rows)
+      }
+
+      const queueIds = input?.queueId ? [input.queueId] : QUEUE_IDS
       const allMatches = (await Promise.all(queueIds.map((q) => fetchMatches(q, season)))).flat()
       return aggregateDeckStats(allMatches)
     }),
@@ -98,10 +109,21 @@ export const stats_router = createTRPCRouter({
         })
         .optional()
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const season = input?.season ?? 'season5'
-      const queueIds = input?.queueId ? [input.queueId] : QUEUE_IDS
 
+      if (DB_SEASONS.includes(season)) {
+        const { start, end } = getSeasonDateRange(season)
+        const conditions = [gte(player_games.gameTime, start), lt(player_games.gameTime, end)]
+        if (input?.queueId) conditions.push(sql`${player_games.queueId} = ${input.queueId}`)
+        const rows = await ctx.db
+          .select({ stake: player_games.stake })
+          .from(player_games)
+          .where(and(...conditions))
+        return aggregateStakeStats(rows)
+      }
+
+      const queueIds = input?.queueId ? [input.queueId] : QUEUE_IDS
       const allMatches = (await Promise.all(queueIds.map((q) => fetchMatches(q, season)))).flat()
       return aggregateStakeStats(allMatches)
     }),
