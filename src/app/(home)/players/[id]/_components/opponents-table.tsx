@@ -1,6 +1,8 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
+import { PaginationControls } from '@/app/_components/pagination-controls'
+import { SortableHeader } from '@/app/_components/sortable-header'
+import { TableShell } from '@/app/_components/table-shell'
 import {
   Table,
   TableBody,
@@ -10,259 +12,251 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import type { SelectGames } from '@/server/db/types'
-import {
-  type SortingState,
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
-import {
-  ArrowDownCircle,
-  ArrowUp,
-  ArrowUpCircle,
-  MinusCircle,
-} from 'lucide-react'
+import type { Season } from '@/shared/seasons'
+import { api } from '@/trpc/react'
+import { ArrowDownCircle, ArrowUpCircle, MinusCircle } from 'lucide-react'
 import Link from 'next/link'
-import { memo, useMemo, useState } from 'react'
-import { groupBy } from 'remeda'
+import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
+import { memo, useCallback } from 'react'
 
 const numberFormatter = new Intl.NumberFormat('en-US', {
   signDisplay: 'exceptZero',
 })
 
-const columnHelper = createColumnHelper<Stats>()
+type SortBy =
+  | 'opponentName'
+  | 'totalGames'
+  | 'wins'
+  | 'losses'
+  | 'winRate'
+  | 'totalMMRChange'
 
-const useColumns = () => {
-  return useMemo(
-    () => [
-      columnHelper.accessor('opponentName', {
-        meta: { className: 'pl-4' },
-        header: 'Opponent',
-        cell: (info) => (
-          <Link
-            href={`/players/${info.row.original.opponentId}`}
-            className='pl-4 font-medium hover:underline'
-          >
-            {info.getValue()}
-          </Link>
-        ),
-      }),
-      columnHelper.accessor('totalGames', {
-        header: 'Games Played',
-        meta: { className: 'justify-end' },
-        cell: (info) => {
-          const totalGames = info.getValue()
-          return (
-            <span className='flex w-full justify-end font-mono'>
-              {totalGames}
-            </span>
-          )
-        },
-      }),
-
-      columnHelper.accessor('wins', {
-        header: 'Wins',
-        meta: { className: 'justify-end' },
-        cell: (info) => {
-          const wins = info.getValue()
-          return (
-            <span className='flex w-full justify-end font-mono'>{wins}</span>
-          )
-        },
-      }),
-      columnHelper.accessor('losses', {
-        header: 'Losses',
-        meta: { className: 'justify-end' },
-        cell: (info) => {
-          const losses = info.getValue()
-          return (
-            <span className='flex w-full justify-end font-mono'>{losses}</span>
-          )
-        },
-      }),
-      columnHelper.accessor('winRate', {
-        header: 'Win rate',
-        meta: { className: 'justify-end' },
-        cell: (info) => {
-          const winRate = info.getValue()
-          return (
-            <span
-              className={cn(
-                'flex items-center justify-end font-medium font-mono',
-                winRate !== null
-                  ? winRate === 50
-                    ? 'text-zink-800 dark:text-zink-200'
-                    : winRate > 50
-                      ? 'text-emerald-500'
-                      : 'text-rose-500'
-                  : null
-              )}
-            >
-              {winRate !== null ? `${Math.round(winRate)}%` : 'N/A'}
-            </span>
-          )
-        },
-      }),
-      columnHelper.accessor('totalMMRChange', {
-        header: 'Total MMR change',
-        meta: { className: 'justify-end' },
-        cell: (info) => {
-          const mmrChange = info.getValue()
-          return (
-            <span
-              className={cn(
-                'flex items-center justify-end font-medium font-mono',
-                mmrChange === 0
-                  ? 'text-zink-800 dark:text-zink-200'
-                  : mmrChange > 0
-                    ? 'text-emerald-500'
-                    : 'text-rose-500'
-              )}
-            >
-              {numberFormatter.format(Math.trunc(mmrChange))}
-              {mmrChange === 0 ? (
-                <MinusCircle className='ml-1 h-4 w-4' />
-              ) : mmrChange > 0 ? (
-                <ArrowUpCircle className='ml-1 h-4 w-4' />
-              ) : (
-                <ArrowDownCircle className='ml-1 h-4 w-4' />
-              )}
-            </span>
-          )
-        },
-      }),
-    ],
-    []
-  )
-}
-type Stats = {
+type OpponentRow = {
+  opponentId: string
+  opponentName: string
   totalGames: number
   wins: number
   losses: number
-  opponentName: string
-  opponentId: string
-  totalMMRChange: number
   winRate: number | null
+  totalMMRChange: number
 }
 
-function RawOpponentsTable({ games }: { games: SelectGames[] }) {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'totalGames', desc: true },
-  ])
-  const grouped = useMemo(
-    () => groupBy(games, (game) => game.opponentId),
-    [games]
-  )
-  const tableData: Stats[] = useMemo(
-    () =>
-      Object.values(grouped).map((gamesAgainstOpponent) => {
-        const totalGames = gamesAgainstOpponent.filter(
-          (x) => x.result !== 'tie'
-        ).length
-        let wins = 0
-        let losses = 0
-        let totalMMRChange = 0
-        for (const game of gamesAgainstOpponent) {
-          totalMMRChange += game.mmrChange
-
-          if (game.mmrChange > 0) wins++
-          else if (game.mmrChange < 0) losses++
-        }
-        const stats: Stats = {
-          totalGames,
-          wins,
-          losses,
-          opponentName: gamesAgainstOpponent[0].opponentName,
-          opponentId: gamesAgainstOpponent[0].opponentId,
-          totalMMRChange,
-          winRate: totalGames ? (wins / totalGames) * 100 : null,
-        }
-        return stats
-      }),
-    [grouped]
-  )
-
-  const columns = useColumns()
-
-  const table = useReactTable({
-    data: tableData,
-    columns,
-    state: {
-      sorting,
+function RawOpponentsTable({
+  userId,
+  season,
+  gameType,
+  result,
+}: {
+  userId: string
+  season: Season
+  gameType?: 'ranked' | 'smallworld' | 'vanilla' | 'sandbox' | 'casual'
+  result?: 'win' | 'loss'
+}) {
+  const pageSize = 50
+  const [queryParams, setQueryParams] = useQueryStates(
+    {
+      page: parseAsInteger.withDefault(1),
+      sortBy: parseAsString.withDefault('totalGames'),
+      sortOrder: parseAsString.withDefault('desc'),
     },
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getRowId: (originalRow) => originalRow.opponentId,
-  })
+    { history: 'push' }
+  )
+
+  const { page } = queryParams
+  const sortBy = (
+    [
+      'opponentName',
+      'totalGames',
+      'wins',
+      'losses',
+      'winRate',
+      'totalMMRChange',
+    ] as const
+  ).includes(queryParams.sortBy as SortBy)
+    ? (queryParams.sortBy as SortBy)
+    : 'totalGames'
+  const sortOrder = (queryParams.sortOrder === 'asc' ? 'asc' : 'desc') as
+    | 'asc'
+    | 'desc'
+
+  const opponentsQ = api.history.user_opponents_stats_page.useQuery(
+    {
+      user_id: userId,
+      season,
+      gameType,
+      result,
+      page,
+      pageSize,
+      sortBy,
+      sortOrder,
+    },
+    { refetchOnWindowFocus: false }
+  )
+
+  const rows: OpponentRow[] = opponentsQ.data?.data ?? []
+
+  const handleSort = useCallback(
+    (column: string) => {
+      const nextOrder =
+        sortBy === column && sortOrder === 'asc' ? 'desc' : 'asc'
+      setQueryParams({ sortBy: column, sortOrder: nextOrder, page: 1 })
+    },
+    [setQueryParams, sortBy, sortOrder]
+  )
 
   return (
-    <div className='rounded-md border'>
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                const sortDirection = header.column.getIsSorted()
-                return (
-                  <TableHead key={header.id} className={'px-0'}>
+    <TableShell className='overflow-hidden'>
+      <div className='overflow-x-auto'>
+        <Table>
+          <TableHeader className='sticky top-0 z-10 bg-background'>
+            <TableRow className='bg-muted/50'>
+              <TableHead>
+                <SortableHeader
+                  column='opponentName'
+                  label='Opponent'
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className='text-right'>
+                <SortableHeader
+                  className='w-full justify-end'
+                  column='totalGames'
+                  label='Games Played'
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className='text-right'>
+                <SortableHeader
+                  className='w-full justify-end'
+                  column='wins'
+                  label='Wins'
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className='text-right'>
+                <SortableHeader
+                  className='w-full justify-end'
+                  column='losses'
+                  label='Losses'
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className='text-right'>
+                <SortableHeader
+                  className='w-full justify-end'
+                  column='winRate'
+                  label='Win rate'
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className='text-right'>
+                <SortableHeader
+                  className='w-full justify-end'
+                  column='totalMMRChange'
+                  label='Total MMR change'
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={handleSort}
+                />
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {opponentsQ.isLoading ? (
+              <TableRow>
+                <TableCell colSpan={6}>Loading...</TableCell>
+              </TableRow>
+            ) : rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6}>No opponents</TableCell>
+              </TableRow>
+            ) : (
+              rows.map((row) => (
+                <TableRow key={row.opponentId}>
+                  <TableCell>
+                    <Link
+                      href={`/players/${row.opponentId}`}
+                      className='font-medium hover:underline'
+                    >
+                      {row.opponentName}
+                    </Link>
+                  </TableCell>
+                  <TableCell className='text-right font-mono'>
+                    {row.totalGames}
+                  </TableCell>
+                  <TableCell className='text-right font-mono text-emerald-600 dark:text-emerald-400'>
+                    {row.wins}
+                  </TableCell>
+                  <TableCell className='text-right font-mono text-rose-600 dark:text-rose-400'>
+                    {row.losses}
+                  </TableCell>
+                  <TableCell className='text-right font-mono'>
                     <span
                       className={cn(
-                        'flex w-full items-center',
-                        (header.column.columnDef.meta as any)?.className
+                        row.winRate === null
+                          ? 'text-muted-foreground'
+                          : row.winRate === 50
+                            ? 'text-zink-800 dark:text-zink-200'
+                            : row.winRate > 50
+                              ? 'text-emerald-500'
+                              : 'text-rose-500'
                       )}
                     >
-                      <Button
-                        className={cn(
-                          header.column.getCanSort() &&
-                            'cursor-pointer select-none',
-                          (
-                            header.column.columnDef.meta as any
-                          )?.className?.includes('justify-end') &&
-                            'flex-row-reverse'
-                        )}
-                        size={'table'}
-                        variant='ghost'
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        {sortDirection ? (
-                          <ArrowUp
-                            className={cn(
-                              'transition-transform',
-                              sortDirection === 'desc' ? 'rotate-180' : ''
-                            )}
-                          />
-                        ) : (
-                          <div className={'h-4 w-4'} />
-                        )}
-                      </Button>
+                      {row.winRate !== null
+                        ? `${Math.round(row.winRate)}%`
+                        : 'N/A'}
                     </span>
-                  </TableHead>
-                )
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
-              {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+                  </TableCell>
+                  <TableCell className='text-right font-mono'>
+                    <span
+                      className={cn(
+                        'inline-flex items-center justify-end font-medium font-mono',
+                        row.totalMMRChange === 0
+                          ? 'text-zink-800 dark:text-zink-200'
+                          : row.totalMMRChange > 0
+                            ? 'text-emerald-500'
+                            : 'text-rose-500'
+                      )}
+                    >
+                      {numberFormatter.format(Math.trunc(row.totalMMRChange))}
+                      {row.totalMMRChange === 0 ? (
+                        <MinusCircle className='ml-1 h-4 w-4' />
+                      ) : row.totalMMRChange > 0 ? (
+                        <ArrowUpCircle className='ml-1 h-4 w-4' />
+                      ) : (
+                        <ArrowDownCircle className='ml-1 h-4 w-4' />
+                      )}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {!opponentsQ.isLoading && (
+        <PaginationControls
+          currentPage={page}
+          totalPages={opponentsQ.data?.totalPages ?? 1}
+          total={opponentsQ.data?.total ?? 0}
+          pageSize={pageSize}
+          itemLabel='opponents'
+          onPageChange={(p) => setQueryParams({ page: p })}
+          className='rounded-none border-0 border-t bg-background'
+        />
+      )}
+    </TableShell>
   )
 }
 

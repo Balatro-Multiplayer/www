@@ -1,16 +1,10 @@
 'use client'
 
 import { PaginationControls } from '@/app/_components/pagination-controls'
+import { SortableHeader } from '@/app/_components/sortable-header'
+import { TableShell } from '@/app/_components/table-shell'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -35,6 +29,8 @@ type LogFile = {
   userEmail: string | null
 }
 
+type SortBy = 'createdAt' | 'fileName' | 'userName'
+
 export function LogsClient() {
   const pageSize = 50
   const [logs, setLogs] = useState<LogFile[]>([])
@@ -47,11 +43,21 @@ export function LogsClient() {
     {
       page: parseAsInteger.withDefault(1),
       search: parseAsString,
+      sortBy: parseAsString.withDefault('createdAt'),
+      sortOrder: parseAsString.withDefault('desc'),
     },
     { history: 'push' }
   )
 
   const { page, search } = queryParams
+  const sortBy = (['createdAt', 'fileName', 'userName'] as const).includes(
+    queryParams.sortBy as SortBy
+  )
+    ? (queryParams.sortBy as SortBy)
+    : 'createdAt'
+  const sortOrder = (queryParams.sortOrder === 'asc' ? 'asc' : 'desc') as
+    | 'asc'
+    | 'desc'
 
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
@@ -76,6 +82,8 @@ export function LogsClient() {
       params.set('page', String(page))
       params.set('pageSize', String(pageSize))
       if (search) params.set('search', search)
+      if (sortBy) params.set('sortBy', sortBy)
+      if (sortOrder) params.set('sortOrder', sortOrder)
 
       const response = await fetch(`/api/logs?${params.toString()}`)
       if (!response.ok) {
@@ -102,11 +110,20 @@ export function LogsClient() {
     } finally {
       setIsLoading(false)
     }
-  }, [page, search, setQueryParams])
+  }, [page, search, sortBy, sortOrder, setQueryParams])
 
   useEffect(() => {
     fetchLogs()
   }, [fetchLogs])
+
+  const handleSort = useCallback(
+    (column: string) => {
+      const nextOrder =
+        sortBy === column && sortOrder === 'asc' ? 'desc' : 'asc'
+      setQueryParams({ sortBy: column, sortOrder: nextOrder, page: 1 })
+    },
+    [setQueryParams, sortBy, sortOrder]
+  )
 
   const handleViewInParser = (id: number) => {
     // Navigate to the log parser page with the log ID as a query parameter
@@ -114,114 +131,135 @@ export function LogsClient() {
   }
 
   const handleDelete = async (id: number) => {
-    if (confirm('Are you sure you want to delete this log file?')) {
-      setIsDeleting(true)
-      try {
-        const response = await fetch(`/api/logs?id=${id}`, {
-          method: 'DELETE',
-        })
+    if (!confirm('Are you sure you want to delete this log file?')) return
 
-        if (!response.ok) {
-          throw new Error('Failed to delete log file')
-        }
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/logs?id=${id}`, {
+        method: 'DELETE',
+      })
 
-        // Refresh the logs list
-        await fetchLogs()
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'An error occurred while deleting'
-        )
-      } finally {
-        setIsDeleting(false)
+      if (!response.ok) {
+        throw new Error('Failed to delete log file')
       }
+
+      // Refresh the logs list
+      await fetchLogs()
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'An error occurred while deleting'
+      )
+    } finally {
+      setIsDeleting(false)
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
-          <div>
-            <CardTitle>Log Files</CardTitle>
-            <CardDescription>
-              View and manage uploaded log files
-            </CardDescription>
-          </div>
-          <div className='flex w-full flex-col gap-1 sm:w-[320px]'>
-            <Label>Search</Label>
-            <Input
-              placeholder='File/user...'
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <p>Loading logs...</p>
-        ) : error ? (
-          <p className='text-red-500'>{error}</p>
-        ) : logs.length === 0 ? (
-          <p>No logs found</p>
-        ) : (
+    <div className='flex w-full flex-col gap-4'>
+      <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+        <Input
+          placeholder='Search by file or user'
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          className='w-full sm:max-w-sm'
+        />
+      </div>
+
+      <TableShell className='overflow-hidden'>
+        <div className='overflow-x-auto'>
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>File Name</TableHead>
-                <TableHead>Uploaded By</TableHead>
-                <TableHead>Date</TableHead>
+            <TableHeader className='sticky top-0 z-10 bg-background'>
+              <TableRow className='bg-muted/50'>
+                <TableHead>
+                  <SortableHeader
+                    column='fileName'
+                    label='File Name'
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead>
+                  <SortableHeader
+                    column='userName'
+                    label='Uploaded By'
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead>
+                  <SortableHeader
+                    column='createdAt'
+                    label='Date'
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.map((log) => (
-                <TableRow key={log.id}>
-                  <TableCell>{log.fileName}</TableCell>
-                  <TableCell>
-                    {log.userName || log.userEmail || 'Anonymous'}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(log.createdAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell className='flex gap-2'>
-                    <Button
-                      variant='outline'
-                      onClick={() => handleViewInParser(log.id)}
-                    >
-                      View in Parser
-                    </Button>
-                    <Button
-                      variant='destructive'
-                      size='icon'
-                      onClick={() => handleDelete(log.id)}
-                      disabled={isDeleting}
-                    >
-                      <Trash2 className='h-4 w-4' />
-                    </Button>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4}>Loading logs...</TableCell>
+                </TableRow>
+              ) : error ? (
+                <TableRow>
+                  <TableCell colSpan={4} className='text-red-500'>
+                    {error}
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : logs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4}>No logs found</TableCell>
+                </TableRow>
+              ) : (
+                logs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell>{log.fileName}</TableCell>
+                    <TableCell>
+                      {log.userName || log.userEmail || 'Anonymous'}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(log.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell className='flex gap-2'>
+                      <Button
+                        variant='outline'
+                        onClick={() => handleViewInParser(log.id)}
+                      >
+                        View in Parser
+                      </Button>
+                      <Button
+                        variant='destructive'
+                        size='icon'
+                        onClick={() => handleDelete(log.id)}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className='h-4 w-4' />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
-        )}
+        </div>
 
         {!isLoading && !error && (
-          <div className='pt-4'>
-            <PaginationControls
-              currentPage={page}
-              totalPages={totalPages}
-              total={total}
-              pageSize={pageSize}
-              itemLabel='logs'
-              onPageChange={(p) => setQueryParams({ page: p })}
-              className='rounded-lg'
-            />
-          </div>
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            itemLabel='logs'
+            onPageChange={(p) => setQueryParams({ page: p })}
+            className='rounded-none border-0 border-t bg-background'
+          />
         )}
-      </CardContent>
-    </Card>
+      </TableShell>
+    </div>
   )
 }

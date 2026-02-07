@@ -1,5 +1,8 @@
 'use client'
 
+import { PaginationControls } from '@/app/_components/pagination-controls'
+import { SortableHeader } from '@/app/_components/sortable-header'
+import { TableShell } from '@/app/_components/table-shell'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,13 +51,56 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/trpc/react'
 import { Pencil, Trash2 } from 'lucide-react'
+import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
+import { useDebounceValue } from 'usehooks-ts'
+
+type SortBy = 'createdAt' | 'name' | 'version' | 'branchName'
 
 export function ReleasesClient() {
   const utils = api.useUtils()
-  const [releases] = api.releases.getReleases.useSuspenseQuery()
+  const pageSize = 50
+  const [queryParams, setQueryParams] = useQueryStates(
+    {
+      page: parseAsInteger.withDefault(1),
+      search: parseAsString,
+      sortBy: parseAsString.withDefault('createdAt'),
+      sortOrder: parseAsString.withDefault('desc'),
+    },
+    { history: 'push' }
+  )
+
+  const { page, search } = queryParams
+  const sortBy = (
+    ['createdAt', 'name', 'version', 'branchName'] as const
+  ).includes(queryParams.sortBy as SortBy)
+    ? (queryParams.sortBy as SortBy)
+    : 'createdAt'
+  const sortOrder = (queryParams.sortOrder === 'asc' ? 'asc' : 'desc') as
+    | 'asc'
+    | 'desc'
+
+  const [searchInput, setSearchInput] = useState(search || '')
+  const [debouncedSearch] = useDebounceValue(searchInput, 400)
+
+  useEffect(() => {
+    setSearchInput(search || '')
+  }, [search])
+
+  useEffect(() => {
+    setQueryParams({ search: debouncedSearch || null, page: 1 })
+  }, [debouncedSearch, setQueryParams])
+
+  const [releasesRes] = api.releases.getReleases.useSuspenseQuery({
+    page,
+    pageSize,
+    search: search || undefined,
+    sortBy,
+    sortOrder,
+  })
+  const releases = releasesRes.data
   const addRelease = api.releases.addRelease.useMutation({
     onSuccess: () => {
       utils.releases.getReleases.invalidate()
@@ -197,7 +243,7 @@ export function ReleasesClient() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [branchManagementOpen, setBranchManagementOpen] = useState(false)
   const [selectedRelease, setSelectedRelease] = useState<
-    (typeof releases)[0] | null
+    (typeof releases)[number] | null
   >(null)
 
   const SMODS_RELEASES_URL =
@@ -210,7 +256,9 @@ export function ReleasesClient() {
     fetch(SMODS_RELEASES_URL)
       .then((response) => response.json())
       .then((data) => {
-        const versions = data.map((release: any) => release.tag_name)
+        const versions = (data as Array<{ tag_name?: string }>).flatMap((r) =>
+          typeof r.tag_name === 'string' ? [r.tag_name] : []
+        )
         setSmodsVersions(['latest', ...versions])
       })
       .catch((error) => {
@@ -224,7 +272,9 @@ export function ReleasesClient() {
     )
       .then((response) => response.json())
       .then((data) => {
-        const versions = data.map((release: any) => release.tag_name)
+        const versions = (data as Array<{ tag_name?: string }>).flatMap((r) =>
+          typeof r.tag_name === 'string' ? [r.tag_name] : []
+        )
         setLovelyVersions(['latest', ...versions])
       })
       .catch((error) => {
@@ -276,72 +326,133 @@ export function ReleasesClient() {
     setSelectedRelease(release)
     setDeleteDialogOpen(true)
   }
+
+  const handleSort = (column: string) => {
+    const nextOrder = sortBy === column && sortOrder === 'asc' ? 'desc' : 'asc'
+    setQueryParams({ sortBy: column, sortOrder: nextOrder, page: 1 })
+  }
   return (
     <div className='space-y-8'>
-      <h1 className='font-bold text-3xl'>Releases</h1>
-      <div className='overflow-hidden rounded-md border shadow-sm'>
-        <Table className='w-full table-auto'>
-          <TableHeader>
-            <TableRow className='bg-muted/50'>
-              <TableHead>Name</TableHead>
-              <TableHead>Version</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>URL</TableHead>
-              <TableHead>Branch</TableHead>
-              <TableHead>Steamodded Version</TableHead>
-              <TableHead>Lovely Injector Version</TableHead>
-              <TableHead className='text-right'>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {releases.map((release) => (
-              <TableRow key={release.id} className='hover:bg-muted/50'>
-                <TableCell className='font-medium'>{release.name}</TableCell>
-                <TableCell>{release.version}</TableCell>
-                <TableCell className='max-w-xs'>
-                  <div className='truncate' title={release.description || ''}>
-                    {release.description}
-                  </div>
-                </TableCell>
-                <TableCell className='max-w-xs'>
-                  <a
-                    href={release.url}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    className='text-blue-500 hover:underline'
-                    title={release.url}
-                  >
-                    <div className='truncate'>{release.url}</div>
-                  </a>
-                </TableCell>
-                <TableCell>{release.branchName || 'main'}</TableCell>
-                <TableCell>{release.smods_version || 'latest'}</TableCell>
-                <TableCell>{release.lovely_version || 'latest'}</TableCell>
-                <TableCell className='space-x-2 text-right'>
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handleEditRelease(release)}
-                    className='inline-flex items-center'
-                  >
-                    <Pencil className='mr-1 h-4 w-4' />
-                    Edit
-                  </Button>
-                  <Button
-                    variant='destructive'
-                    size='sm'
-                    onClick={() => handleDeleteRelease(release)}
-                    className='inline-flex items-center text-white'
-                  >
-                    <Trash2 className='mr-1 h-4 w-4' />
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
+        <h1 className='font-bold text-3xl'>Releases</h1>
+        <Input
+          placeholder='Search releases...'
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          className='w-full sm:max-w-sm'
+        />
       </div>
+
+      <TableShell className='overflow-hidden shadow-sm'>
+        <div className='overflow-x-auto'>
+          <Table className='w-full table-auto'>
+            <TableHeader className='sticky top-0 z-10 bg-background'>
+              <TableRow className='bg-muted/50'>
+                <TableHead>
+                  <SortableHeader
+                    column='name'
+                    label='Name'
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead>
+                  <SortableHeader
+                    column='version'
+                    label='Version'
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>URL</TableHead>
+                <TableHead>
+                  <SortableHeader
+                    column='branchName'
+                    label='Branch'
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                  />
+                </TableHead>
+                <TableHead>Steamodded Version</TableHead>
+                <TableHead>Lovely Injector Version</TableHead>
+                <TableHead className='text-right'>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {releases.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8}>No releases</TableCell>
+                </TableRow>
+              ) : (
+                releases.map((release) => (
+                  <TableRow key={release.id}>
+                    <TableCell className='font-medium'>
+                      {release.name}
+                    </TableCell>
+                    <TableCell>{release.version}</TableCell>
+                    <TableCell className='max-w-xs'>
+                      <div
+                        className='truncate'
+                        title={release.description || ''}
+                      >
+                        {release.description}
+                      </div>
+                    </TableCell>
+                    <TableCell className='max-w-xs'>
+                      <a
+                        href={release.url}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='text-blue-500 hover:underline'
+                        title={release.url}
+                      >
+                        <div className='truncate'>{release.url}</div>
+                      </a>
+                    </TableCell>
+                    <TableCell>{release.branchName || 'main'}</TableCell>
+                    <TableCell>{release.smods_version || 'latest'}</TableCell>
+                    <TableCell>{release.lovely_version || 'latest'}</TableCell>
+                    <TableCell className='space-x-2 text-right'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => handleEditRelease(release)}
+                        className='inline-flex items-center'
+                      >
+                        <Pencil className='mr-1 h-4 w-4' />
+                        Edit
+                      </Button>
+                      <Button
+                        variant='destructive'
+                        size='sm'
+                        onClick={() => handleDeleteRelease(release)}
+                        className='inline-flex items-center text-white'
+                      >
+                        <Trash2 className='mr-1 h-4 w-4' />
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <PaginationControls
+          currentPage={page}
+          totalPages={releasesRes.totalPages ?? 1}
+          total={releasesRes.total ?? 0}
+          pageSize={pageSize}
+          itemLabel='releases'
+          onPageChange={(p) => setQueryParams({ page: p })}
+          className='rounded-none border-0 border-t bg-background'
+        />
+      </TableShell>
 
       <div className='mt-8 overflow-hidden rounded-md border bg-card shadow-sm'>
         <div className='p-6'>

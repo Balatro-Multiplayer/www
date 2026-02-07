@@ -5,29 +5,121 @@ import {
 } from '@/server/api/trpc'
 import { db } from '@/server/db'
 import { branches, releases } from '@/server/db/schema'
-import { eq } from 'drizzle-orm'
+import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 export const releasesRouter = createTRPCRouter({
-  getReleases: publicProcedure.query(async () => {
-    const res = await db
-      .select({
-        id: releases.id,
-        name: releases.name,
-        description: releases.description,
-        version: releases.version,
-        url: releases.url,
-        smods_version: releases.smods_version,
-        lovely_version: releases.lovely_version,
-        branchId: releases.branchId,
-        branchName: branches.name,
-        createdAt: releases.createdAt,
-        updatedAt: releases.updatedAt,
+  getReleases: publicProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(50),
+        search: z.string().trim().optional(),
+        sortBy: z
+          .enum(['createdAt', 'name', 'version', 'branchName'])
+          .default('createdAt'),
+        sortOrder: z.enum(['asc', 'desc']).default('desc'),
       })
-      .from(releases)
-      .leftJoin(branches, eq(releases.branchId, branches.id))
-    return res
-  }),
+    )
+    .query(async ({ input }) => {
+      const page = input.page
+      const pageSize = input.pageSize
+      const offset = (page - 1) * pageSize
+      const search = input.search?.trim()
+
+      const where = search
+        ? or(
+            ilike(releases.name, `%${search}%`),
+            ilike(releases.version, `%${search}%`),
+            ilike(releases.description, `%${search}%`),
+            ilike(branches.name, `%${search}%`)
+          )
+        : undefined
+
+      const dir = input.sortOrder === 'asc' ? asc : desc
+      const orderBy =
+        input.sortBy === 'name'
+          ? [dir(releases.name), desc(releases.createdAt), desc(releases.id)]
+          : input.sortBy === 'version'
+            ? [
+                dir(releases.version),
+                desc(releases.createdAt),
+                desc(releases.id),
+              ]
+            : input.sortBy === 'branchName'
+              ? [
+                  dir(branches.name),
+                  desc(releases.createdAt),
+                  desc(releases.id),
+                ]
+              : [dir(releases.createdAt), desc(releases.id)]
+
+      const [{ total } = { total: 0 }] = await (where
+        ? db
+            .select({ total: sql<string>`count(*)::int` })
+            .from(releases)
+            .leftJoin(branches, eq(releases.branchId, branches.id))
+            .where(where)
+        : db
+            .select({ total: sql<string>`count(*)::int` })
+            .from(releases)
+            .leftJoin(branches, eq(releases.branchId, branches.id)))
+
+      const res = await (where
+        ? db
+            .select({
+              id: releases.id,
+              name: releases.name,
+              description: releases.description,
+              version: releases.version,
+              url: releases.url,
+              smods_version: releases.smods_version,
+              lovely_version: releases.lovely_version,
+              branchId: releases.branchId,
+              branchName: branches.name,
+              createdAt: releases.createdAt,
+              updatedAt: releases.updatedAt,
+            })
+            .from(releases)
+            .leftJoin(branches, eq(releases.branchId, branches.id))
+            .where(where)
+            .orderBy(...orderBy)
+            .limit(pageSize)
+            .offset(offset)
+        : db
+            .select({
+              id: releases.id,
+              name: releases.name,
+              description: releases.description,
+              version: releases.version,
+              url: releases.url,
+              smods_version: releases.smods_version,
+              lovely_version: releases.lovely_version,
+              branchId: releases.branchId,
+              branchName: branches.name,
+              createdAt: releases.createdAt,
+              updatedAt: releases.updatedAt,
+            })
+            .from(releases)
+            .leftJoin(branches, eq(releases.branchId, branches.id))
+            .orderBy(...orderBy)
+            .limit(pageSize)
+            .offset(offset))
+
+      const totalNum = Number(total ?? 0)
+      const totalPages = Math.max(1, Math.ceil(totalNum / pageSize))
+
+      return {
+        data: res,
+        page,
+        pageSize,
+        total: totalNum,
+        totalPages,
+        search: search || null,
+        sortBy: input.sortBy,
+        sortOrder: input.sortOrder,
+      }
+    }),
   addRelease: adminProcedure
     .input(
       z.object({

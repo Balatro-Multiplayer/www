@@ -8,7 +8,7 @@ export default async function LogsPage() {
 
   if (!isAdmin) {
     return (
-      <div className={'container mx-auto pt-8'}>
+      <div className={'container mx-auto px-4 py-10'}>
         <div className={'prose'}>
           <h1>Forbidden</h1>
         </div>
@@ -20,9 +20,10 @@ export default async function LogsPage() {
     <Suspense>
       <div
         className={
-          'mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-4 pt-16'
+          'mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-4 pt-8'
         }
       >
+        <h1 className='font-bold text-3xl'>Log Files</h1>
         <LogsClient />
       </div>
     </Suspense>

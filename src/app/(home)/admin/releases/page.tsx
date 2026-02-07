@@ -18,7 +18,12 @@ export default async function ReleasesPage() {
   }
 
   await Promise.all([
-    api.releases.getReleases.prefetch(),
+    api.releases.getReleases.prefetch({
+      page: 1,
+      pageSize: 50,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    }),
     api.branches.getBranches.prefetch(),
   ])
 

@@ -1,24 +1,92 @@
 import { createTRPCRouter, ownerProcedure } from '@/server/api/trpc'
 import { db } from '@/server/db'
 import { users } from '@/server/db/schema'
-import { asc, eq } from 'drizzle-orm'
+import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 export const usersRouter = createTRPCRouter({
-  listUsers: ownerProcedure.query(async () => {
-    const res = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        role: users.role,
-        discord_id: users.discord_id,
+  listUsers: ownerProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(50),
+        search: z.string().trim().optional(),
+        sortBy: z.enum(['name', 'email', 'role', 'discord_id']).default('name'),
+        sortOrder: z.enum(['asc', 'desc']).default('asc'),
       })
-      .from(users)
-      .orderBy(asc(users.name))
+    )
+    .query(async ({ input }) => {
+      const page = input.page
+      const pageSize = input.pageSize
+      const offset = (page - 1) * pageSize
+      const search = input.search?.trim()
 
-    return res
-  }),
+      const where = search
+        ? or(
+            ilike(users.name, `%${search}%`),
+            ilike(users.email, `%${search}%`),
+            ilike(users.discord_id, `%${search}%`)
+          )
+        : undefined
+
+      const dir = input.sortOrder === 'asc' ? asc : desc
+      const orderBy =
+        input.sortBy === 'email'
+          ? [dir(users.email), asc(users.name), asc(users.id)]
+          : input.sortBy === 'role'
+            ? [dir(users.role), asc(users.name), asc(users.id)]
+            : input.sortBy === 'discord_id'
+              ? [dir(users.discord_id), asc(users.name), asc(users.id)]
+              : [dir(users.name), asc(users.id)]
+
+      const [{ total } = { total: 0 }] = await (where
+        ? db
+            .select({ total: sql<string>`count(*)::int` })
+            .from(users)
+            .where(where)
+        : db.select({ total: sql<string>`count(*)::int` }).from(users))
+
+      const res = await (where
+        ? db
+            .select({
+              id: users.id,
+              name: users.name,
+              email: users.email,
+              role: users.role,
+              discord_id: users.discord_id,
+            })
+            .from(users)
+            .where(where)
+            .orderBy(...orderBy)
+            .limit(pageSize)
+            .offset(offset)
+        : db
+            .select({
+              id: users.id,
+              name: users.name,
+              email: users.email,
+              role: users.role,
+              discord_id: users.discord_id,
+            })
+            .from(users)
+            .orderBy(...orderBy)
+            .limit(pageSize)
+            .offset(offset))
+
+      const totalNum = Number(total ?? 0)
+      const totalPages = Math.max(1, Math.ceil(totalNum / pageSize))
+
+      return {
+        data: res,
+        page,
+        pageSize,
+        total: totalNum,
+        totalPages,
+        search: search || null,
+        sortBy: input.sortBy,
+        sortOrder: input.sortOrder,
+      }
+    }),
 
   updateUserRole: ownerProcedure
     .input(

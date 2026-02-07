@@ -6,19 +6,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/mobile-tooltip'
-import React, { useMemo, useState } from 'react'
+import type React from 'react'
+import { useMemo, useState } from 'react'
 
+import {
+  DECK_IMAGES,
+  DeckImage,
+  DeckStakeStatsChart,
+  STAKE_IMAGES,
+  StakeImage,
+} from '@/app/(home)/players/[id]/_components/deck-stake-stats-chart'
 import { GamesTable } from '@/app/(home)/players/[id]/_components/games-table'
 import { MmrTrendChart } from '@/app/(home)/players/[id]/_components/mmr-trend-chart'
 import { OpponentsTable } from '@/app/(home)/players/[id]/_components/opponents-table'
 import { WinrateTrendChart } from '@/app/(home)/players/[id]/_components/winrate-trend-chart'
-import {
-  DeckStakeStatsChart,
-  DECK_IMAGES,
-  STAKE_IMAGES,
-  DeckImage,
-  StakeImage,
-} from '@/app/(home)/players/[id]/_components/deck-stake-stats-chart'
 import { TimeZoneProvider } from '@/components/timezone-provider'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -39,13 +40,13 @@ import {
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
+import { getRankData } from '@/shared/ranks'
 import {
   type Season,
   filterGamesBySeason,
   getSeasonDisplayName,
 } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import { getRankData } from '@/shared/ranks'
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -66,7 +67,7 @@ import {
 import { useFormatter, useTimeZone } from 'next-intl'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
-import {capitalize, isNonNullish} from 'remeda'
+import { capitalize, isNonNullish } from 'remeda'
 
 const numberFormatter = new Intl.NumberFormat('en-US', {
   signDisplay: 'exceptZero',
@@ -100,33 +101,27 @@ function getChannelIdForSeason(
 }
 
 function rankIconComponent(mmr: number, queue: string) {
-  const rankData = getRankData(
-      mmr,
-      queue
-  )
+  const rankData = getRankData(mmr, queue)
   if (rankData) {
     return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <img
-                  src={rankData.enhancement}
-                  alt={rankData.tooltip}
-                  className='h-5'
-              />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{rankData.tooltip}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <img
+              src={rankData.enhancement}
+              alt={rankData.tooltip}
+              className='h-5'
+            />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{rankData.tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     )
   }
-  return (
-      <GlobeIcon className='h-4 w-4 text-zink-800 dark:text-zink-200' />
-  )
+  return <GlobeIcon className='h-4 w-4 text-zink-800 dark:text-zink-200' />
 }
-
 
 function UserInfoComponent() {
   const [filter, setFilter] = useState('all')
@@ -326,18 +321,20 @@ function UserInfoComponent() {
       }
     }
 
-    const mostPlayedDeck = Object.entries(deckCounts).sort(
-      (a, b) => b[1] - a[1]
-    )[0]?.[0] ?? 'unknown'
-    const mostPlayedStake = Object.entries(stakeCounts).sort(
-      (a, b) => b[1] - a[1]
-    )[0]?.[0] ?? 'unknown'
+    const mostPlayedDeck =
+      Object.entries(deckCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+      'unknown'
+    const mostPlayedStake =
+      Object.entries(stakeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+      'unknown'
 
     return { deck: mostPlayedDeck, stake: mostPlayedStake }
   }, [games])
 
   const mostPlayedSmallworld = useMemo(() => {
-    const swGames = games.filter((g) => g.gameType.toLowerCase() === 'smallworld')
+    const swGames = games.filter(
+      (g) => g.gameType.toLowerCase() === 'smallworld'
+    )
     const deckCounts: Record<string, number> = {}
     const stakeCounts: Record<string, number> = {}
 
@@ -356,18 +353,20 @@ function UserInfoComponent() {
       }
     }
 
-    const mostPlayedDeck = Object.entries(deckCounts).sort(
-      (a, b) => b[1] - a[1]
-    )[0]?.[0] ?? 'unknown'
-    const mostPlayedStake = Object.entries(stakeCounts).sort(
-      (a, b) => b[1] - a[1]
-    )[0]?.[0] ?? 'unknown'
+    const mostPlayedDeck =
+      Object.entries(deckCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+      'unknown'
+    const mostPlayedStake =
+      Object.entries(stakeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+      'unknown'
 
     return { deck: mostPlayedDeck, stake: mostPlayedStake }
   }, [games])
 
   const mostPlayedVanilla = useMemo(() => {
-    const vanillaGames = games.filter((g) => g.gameType.toLowerCase() === 'vanilla')
+    const vanillaGames = games.filter(
+      (g) => g.gameType.toLowerCase() === 'vanilla'
+    )
     const deckCounts: Record<string, number> = {}
     const stakeCounts: Record<string, number> = {}
 
@@ -386,12 +385,12 @@ function UserInfoComponent() {
       }
     }
 
-    const mostPlayedDeck = Object.entries(deckCounts).sort(
-      (a, b) => b[1] - a[1]
-    )[0]?.[0] ?? 'unknown'
-    const mostPlayedStake = Object.entries(stakeCounts).sort(
-      (a, b) => b[1] - a[1]
-    )[0]?.[0] ?? 'unknown'
+    const mostPlayedDeck =
+      Object.entries(deckCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+      'unknown'
+    const mostPlayedStake =
+      Object.entries(stakeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+      'unknown'
 
     return { deck: mostPlayedDeck, stake: mostPlayedStake }
   }, [games])
@@ -574,7 +573,7 @@ function UserInfoComponent() {
               />
 
               {isNonNullish(rankedUserRank?.mmr) &&
-                !Number.isNaN(rankedUserRank?.mmr) ? (
+              !Number.isNaN(rankedUserRank?.mmr) ? (
                 <StatsCard
                   title='Ranked MMR'
                   value={Math.round(rankedUserRank.mmr)}
@@ -620,97 +619,97 @@ function UserInfoComponent() {
                 />
               )}
               {isNonNullish(vanillaUserRank?.mmr) &&
-                !Number.isNaN(vanillaUserRank?.mmr) ? (
-                  <StatsCard
-                    title='Vanilla MMR'
-                    value={Math.round(vanillaUserRank.mmr)}
-                    icon={rankIconComponent(vanillaUserRank.mmr, 'vanilla')}
-                    accentColor='text-zink-800 dark:text-zink-200'
-                    description={
-                      lastVanillaGame ? (
-                        <span
-                          className={cn(
-                            'flex items-center',
-                            lastVanillaGame.mmrChange === 0
-                              ? 'text-zink-800 dark:text-zink-200'
-                              : lastVanillaGame.mmrChange > 0
-                                ? 'text-emerald-500'
-                                : 'text-rose-500'
-                          )}
-                        >
-                          {lastVanillaGame.mmrChange === 0 ? (
-                            'Tied'
-                          ) : lastVanillaGame.mmrChange > 0 ? (
-                            <ChevronUp className='h-3 w-3' />
-                          ) : (
-                            <ChevronDown className='h-3 w-3' />
-                          )}
-                          {lastVanillaGame.mmrChange !== 0
-                            ? numberFormatter.format(
-                                Math.trunc(lastVanillaGame.mmrChange)
-                              )
-                            : null}{' '}
-                          last match
-                        </span>
-                      ) : null
-                    }
-                  />
-                ) : (
-                  <StatsCard
-                    title='Vanilla MMR'
-                    value={0}
-                    customValue='N/A'
-                    icon={rankIconComponent(0, 'vanilla')}
-                    accentColor='text-zink-800 dark:text-zink-200'
-                    description='No data'
-                  />
-                )}
+              !Number.isNaN(vanillaUserRank?.mmr) ? (
+                <StatsCard
+                  title='Vanilla MMR'
+                  value={Math.round(vanillaUserRank.mmr)}
+                  icon={rankIconComponent(vanillaUserRank.mmr, 'vanilla')}
+                  accentColor='text-zink-800 dark:text-zink-200'
+                  description={
+                    lastVanillaGame ? (
+                      <span
+                        className={cn(
+                          'flex items-center',
+                          lastVanillaGame.mmrChange === 0
+                            ? 'text-zink-800 dark:text-zink-200'
+                            : lastVanillaGame.mmrChange > 0
+                              ? 'text-emerald-500'
+                              : 'text-rose-500'
+                        )}
+                      >
+                        {lastVanillaGame.mmrChange === 0 ? (
+                          'Tied'
+                        ) : lastVanillaGame.mmrChange > 0 ? (
+                          <ChevronUp className='h-3 w-3' />
+                        ) : (
+                          <ChevronDown className='h-3 w-3' />
+                        )}
+                        {lastVanillaGame.mmrChange !== 0
+                          ? numberFormatter.format(
+                              Math.trunc(lastVanillaGame.mmrChange)
+                            )
+                          : null}{' '}
+                        last match
+                      </span>
+                    ) : null
+                  }
+                />
+              ) : (
+                <StatsCard
+                  title='Vanilla MMR'
+                  value={0}
+                  customValue='N/A'
+                  icon={rankIconComponent(0, 'vanilla')}
+                  accentColor='text-zink-800 dark:text-zink-200'
+                  description='No data'
+                />
+              )}
               {isNonNullish(smallWorldUserRank?.mmr) &&
-                !Number.isNaN(smallWorldUserRank?.mmr) ? (
-                  <StatsCard
-                    title='Smallworld MMR'
-                    value={Math.round(smallWorldUserRank.mmr)}
-                    icon={rankIconComponent(smallWorldUserRank.mmr, 'smallworld')}
-                    accentColor='text-zink-800 dark:text-zink-200'
-                    description={
-                      lastSmallworldGame ? (
-                        <span
-                          className={cn(
-                            'flex items-center',
-                            lastSmallworldGame.mmrChange === 0
-                              ? 'text-zink-800 dark:text-zink-200'
-                              : lastSmallworldGame.mmrChange > 0
-                                ? 'text-emerald-500'
-                                : 'text-rose-500'
-                          )}
-                        >
-                          {lastSmallworldGame.mmrChange === 0 ? (
-                            'Tied'
-                          ) : lastSmallworldGame.mmrChange > 0 ? (
-                            <ChevronUp className='h-3 w-3' />
-                          ) : (
-                            <ChevronDown className='h-3 w-3' />
-                          )}
-                          {lastSmallworldGame.mmrChange !== 0
-                            ? numberFormatter.format(
-                                Math.trunc(lastSmallworldGame.mmrChange)
-                              )
-                            : null}{' '}
-                          last match
-                        </span>
-                      ) : null
-                    }
-                  />
-                ) : (
-                  <StatsCard
-                    title='Smallworld MMR'
-                    value={0}
-                    customValue='N/A'
-                    icon={rankIconComponent(0, 'smallworld')}
-                    accentColor='text-zink-800 dark:text-zink-200'
-                    description='No data'
-                  />
-                )}
+              !Number.isNaN(smallWorldUserRank?.mmr) ? (
+                <StatsCard
+                  title='Smallworld MMR'
+                  value={Math.round(smallWorldUserRank.mmr)}
+                  icon={rankIconComponent(smallWorldUserRank.mmr, 'smallworld')}
+                  accentColor='text-zink-800 dark:text-zink-200'
+                  description={
+                    lastSmallworldGame ? (
+                      <span
+                        className={cn(
+                          'flex items-center',
+                          lastSmallworldGame.mmrChange === 0
+                            ? 'text-zink-800 dark:text-zink-200'
+                            : lastSmallworldGame.mmrChange > 0
+                              ? 'text-emerald-500'
+                              : 'text-rose-500'
+                        )}
+                      >
+                        {lastSmallworldGame.mmrChange === 0 ? (
+                          'Tied'
+                        ) : lastSmallworldGame.mmrChange > 0 ? (
+                          <ChevronUp className='h-3 w-3' />
+                        ) : (
+                          <ChevronDown className='h-3 w-3' />
+                        )}
+                        {lastSmallworldGame.mmrChange !== 0
+                          ? numberFormatter.format(
+                              Math.trunc(lastSmallworldGame.mmrChange)
+                            )
+                          : null}{' '}
+                        last match
+                      </span>
+                    ) : null
+                  }
+                />
+              ) : (
+                <StatsCard
+                  title='Smallworld MMR'
+                  value={0}
+                  customValue='N/A'
+                  icon={rankIconComponent(0, 'smallworld')}
+                  accentColor='text-zink-800 dark:text-zink-200'
+                  description='No data'
+                />
+              )}
               <StatsCard
                 title='Top Ranked'
                 value={0}
@@ -852,18 +851,35 @@ function UserInfoComponent() {
           </div>
 
           <TabsContent value='matches' className='m-0'>
-            <div className='overflow-hidden rounded-lg border'>
-              <div className='overflow-x-auto'>
-                <GamesTable games={filteredGames} />
-              </div>
-            </div>
+            <GamesTable
+              userId={id}
+              season={season}
+              leaderboardFilter={leaderboardFilter}
+              resultFilter={filter}
+            />
           </TabsContent>
           <TabsContent value='opponents' className='m-0'>
-            <div className='overflow-hidden rounded-lg border'>
-              <div className='overflow-x-auto'>
-                <OpponentsTable games={filteredGames} />
-              </div>
-            </div>
+            <OpponentsTable
+              userId={id}
+              season={season}
+              gameType={
+                leaderboardFilter === 'all'
+                  ? undefined
+                  : (leaderboardFilter as
+                      | 'ranked'
+                      | 'smallworld'
+                      | 'vanilla'
+                      | 'sandbox'
+                      | 'casual')
+              }
+              result={
+                filter === 'wins'
+                  ? 'win'
+                  : filter === 'losses'
+                    ? 'loss'
+                    : undefined
+              }
+            />
           </TabsContent>
           <TabsContent value='mmr-trends' className='m-0'>
             <div className='overflow-hidden rounded-lg border'>
@@ -921,7 +937,9 @@ function StatsCard({
       <div className={'flex items-center gap-2'}>
         <div className='flex items-center justify-center'>{icon}</div>
         {customValue ? (
-          <div className={cn('font-bold text-3xl', accentColor)}>{customValue}</div>
+          <div className={cn('font-bold text-3xl', accentColor)}>
+            {customValue}
+          </div>
         ) : (
           <p className={cn('font-bold text-3xl', accentColor)}>{value}</p>
         )}

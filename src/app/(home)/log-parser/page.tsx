@@ -1246,7 +1246,6 @@ export default function LogParser() {
                           game={game}
                           ownerLabel={ownerLabel}
                           opponentLabel={opponentLabel}
-                          formatter={formatter}
                         />
 
                         <Card>
@@ -1510,85 +1509,87 @@ function ShopSpendingTable({
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className='w-[60px] text-right font-mono'>Shop</TableHead>
-          <TableHead className='text-right font-mono'>
-            {ownerLabel}
-            {game.winner === 'logOwner' ? ' 🏆' : ''}
-          </TableHead>
-          <TableHead className='text-right font-mono'>
-            {opponentLabel}
-            {game.winner === 'opponent' ? ' 🏆' : ''}
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {Array.from({ length: maxShops }).map((_, j) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: Simple table rendering
-          <TableRow key={j}>
-            <TableCell className='text-right font-mono'>{j + 1}</TableCell>
-            {/* Log Owner Data */}
-            <TableCell className='text-right font-mono'>
-              {game.moneySpentPerShop[j] === null
-                ? 'Skipped'
-                : game.moneySpentPerShop[j] !== undefined
-                  ? `$${game.moneySpentPerShop[j]}`
-                  : '-'}
-            </TableCell>
-            {/* Opponent Data */}
-            <TableCell className='text-right font-mono'>
-              {game.moneySpentPerShopOpponent[j] === null
-                ? 'Skipped'
-                : game.moneySpentPerShopOpponent[j] !== undefined
-                  ? `$${game.moneySpentPerShopOpponent[j]}`
-                  : '-'}
-            </TableCell>
-          </TableRow>
-        ))}
-        <TableRow className='font-bold'>
-          <TableCell>Total Reported</TableCell>
-          <TableCell className='text-right font-mono'>
-            $
-            {game.moneySpentPerShop
-              .filter((v): v is number => v !== null)
-              .reduce((a, b) => a + b, 0)}
-          </TableCell>
-          <TableCell className='text-right font-mono'>
-            $
-            {game.moneySpentPerShopOpponent
-              .filter((v): v is number => v !== null)
-              .reduce((a, b) => a + b, 0)}
-          </TableCell>
-        </TableRow>
-        <TableRow className='border-t-2 font-bold'>
-          <TableCell>Total Actual</TableCell>
-          <TableCell className='text-right font-mono'>
-            <Tooltip>
-              <TooltipTrigger className='cursor-help border-gray-500 border-b border-dashed'>
-                ${game.moneySpent}
-              </TooltipTrigger>
-              <TooltipContent>
-                Sum of money {ownerLabel} spent via buy/reroll actions detected
-                in this log.
-              </TooltipContent>
-            </Tooltip>
-          </TableCell>
-          <TableCell className='text-right font-mono'>
-            <Tooltip>
-              <TooltipTrigger className='cursor-help border-gray-500 border-b border-dashed'>
-                ${game.opponentMoneySpent}
-              </TooltipTrigger>
-              <TooltipContent>
-                Sum of money {opponentLabel} reported spending via network
-                messages received by {ownerLabel}.
-              </TooltipContent>
-            </Tooltip>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <div className='overflow-hidden rounded-lg border bg-background'>
+      <div className='overflow-x-auto'>
+        <Table>
+          <TableHeader className='sticky top-0 z-10 bg-background'>
+            <TableRow className='bg-muted/50'>
+              <TableHead className='w-[60px] text-right font-mono'>Shop</TableHead>
+              <TableHead className='text-right font-mono'>
+                {ownerLabel}
+                {game.winner === 'logOwner' ? ' 🏆' : ''}
+              </TableHead>
+              <TableHead className='text-right font-mono'>
+                {opponentLabel}
+                {game.winner === 'opponent' ? ' 🏆' : ''}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: maxShops }).map((_, j) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: Simple table rendering
+              <TableRow key={j}>
+                <TableCell className='text-right font-mono'>{j + 1}</TableCell>
+                <TableCell className='text-right font-mono'>
+                  {game.moneySpentPerShop[j] === null
+                    ? 'Skipped'
+                    : game.moneySpentPerShop[j] !== undefined
+                      ? `$${game.moneySpentPerShop[j]}`
+                      : '-'}
+                </TableCell>
+                <TableCell className='text-right font-mono'>
+                  {game.moneySpentPerShopOpponent[j] === null
+                    ? 'Skipped'
+                    : game.moneySpentPerShopOpponent[j] !== undefined
+                      ? `$${game.moneySpentPerShopOpponent[j]}`
+                      : '-'}
+                </TableCell>
+              </TableRow>
+            ))}
+            <TableRow className='font-bold'>
+              <TableCell>Total Reported</TableCell>
+              <TableCell className='text-right font-mono'>
+                $
+                {game.moneySpentPerShop
+                  .filter((v): v is number => v !== null)
+                  .reduce((a, b) => a + b, 0)}
+              </TableCell>
+              <TableCell className='text-right font-mono'>
+                $
+                {game.moneySpentPerShopOpponent
+                  .filter((v): v is number => v !== null)
+                  .reduce((a, b) => a + b, 0)}
+              </TableCell>
+            </TableRow>
+            <TableRow className='border-t-2 font-bold'>
+              <TableCell>Total Actual</TableCell>
+              <TableCell className='text-right font-mono'>
+                <Tooltip>
+                  <TooltipTrigger className='cursor-help border-gray-500 border-b border-dashed'>
+                    ${game.moneySpent}
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Sum of money {ownerLabel} spent via buy/reroll actions detected
+                    in this log.
+                  </TooltipContent>
+                </Tooltip>
+              </TableCell>
+              <TableCell className='text-right font-mono'>
+                <Tooltip>
+                  <TooltipTrigger className='cursor-help border-gray-500 border-b border-dashed'>
+                    ${game.opponentMoneySpent}
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Sum of money {opponentLabel} reported spending via network
+                    messages received by {ownerLabel}.
+                  </TooltipContent>
+                </Tooltip>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   )
 }
 

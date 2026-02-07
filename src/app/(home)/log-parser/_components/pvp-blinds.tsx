@@ -1,5 +1,6 @@
 'use client'
 
+import { TableShell } from '@/app/_components/table-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -99,48 +100,53 @@ function PvpBlindsTable({
         : null
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className='w-[60px] text-right font-mono'>Blind</TableHead>
-          <TableHead className='text-right font-mono'>{ownerLabel}</TableHead>
-          <TableHead className='text-right font-mono'>
-            {opponentLabel}
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {validPvpBlinds.map((blind) => (
-          <TableRow key={blind.blindNumber}>
-            <TableCell className='text-right font-mono'>
-              {blind.blindNumber}
-              {blind.winner === 'logOwner' ? ' 🏆' : ''}
-              {blind.winner === 'opponent' ? ' 💀' : ''}
-            </TableCell>
-            {/* Log Owner Score */}
-            <TableCell className='text-right font-mono'>
-              {formatNumber(blind.logOwnerScore)}
-            </TableCell>
-            {/* Opponent Score */}
-            <TableCell className='text-right font-mono'>
-              {formatNumber(blind.opponentScore)}
-            </TableCell>
-          </TableRow>
-        ))}
-        {/* Totals row */}
-        <TableRow className='border-t-2 font-bold'>
-          <TableCell className='text-right font-mono'>Total</TableCell>
-          <TableCell className='text-right font-mono'>
-            {formatNumber(totalLogOwnerScore)}
-            {overallWinner === 'logOwner' ? ' 🏆' : ''}
-          </TableCell>
-          <TableCell className='text-right font-mono'>
-            {formatNumber(totalOpponentScore)}
-            {overallWinner === 'opponent' ? ' 🏆' : ''}
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <TableShell className='overflow-hidden'>
+      <div className='overflow-x-auto'>
+        <Table>
+          <TableHeader className='sticky top-0 z-10 bg-background'>
+            <TableRow className='bg-muted/50'>
+              <TableHead className='w-[60px] text-right font-mono'>
+                Blind
+              </TableHead>
+              <TableHead className='text-right font-mono'>
+                {ownerLabel}
+              </TableHead>
+              <TableHead className='text-right font-mono'>
+                {opponentLabel}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {validPvpBlinds.map((blind) => (
+              <TableRow key={blind.blindNumber}>
+                <TableCell className='text-right font-mono'>
+                  {blind.blindNumber}
+                  {blind.winner === 'logOwner' ? ' 🏆' : ''}
+                  {blind.winner === 'opponent' ? ' 💀' : ''}
+                </TableCell>
+                <TableCell className='text-right font-mono'>
+                  {formatNumber(blind.logOwnerScore)}
+                </TableCell>
+                <TableCell className='text-right font-mono'>
+                  {formatNumber(blind.opponentScore)}
+                </TableCell>
+              </TableRow>
+            ))}
+            <TableRow className='border-t-2 font-bold'>
+              <TableCell className='text-right font-mono'>Total</TableCell>
+              <TableCell className='text-right font-mono'>
+                {formatNumber(totalLogOwnerScore)}
+                {overallWinner === 'logOwner' ? ' 🏆' : ''}
+              </TableCell>
+              <TableCell className='text-right font-mono'>
+                {formatNumber(totalOpponentScore)}
+                {overallWinner === 'opponent' ? ' 🏆' : ''}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </TableShell>
   )
 }
 
@@ -148,12 +154,10 @@ function PvpHandScoresTable({
   blind,
   ownerLabel,
   opponentLabel,
-  formatter,
 }: {
   blind: PvpBlind
   ownerLabel: string
   opponentLabel: string
-  formatter: any
 }) {
   const { handScores } = blind
 
@@ -201,47 +205,54 @@ function PvpHandScoresTable({
   )
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className='w-[60px] text-right font-mono'>
-            Hand #
-          </TableHead>
-          <TableHead className='text-right font-mono'>{ownerLabel}</TableHead>
-          <TableHead className='text-right font-mono'>
-            {opponentLabel}
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {handNumbers.map((handNumber, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: Simple table rendering
-          <TableRow key={index}>
-            <TableCell className='text-right font-mono'>{handNumber}</TableCell>
-            <TableCell className='text-right font-mono'>
-              {index < logOwnerScores.length
-                ? formatNumber(logOwnerScores[index]?.gainedScore)
-                : '-'}
-            </TableCell>
-            <TableCell className='text-right font-mono'>
-              {index < opponentScores.length
-                ? formatNumber(opponentScores[index]?.gainedScore)
-                : '-'}
-            </TableCell>
-          </TableRow>
-        ))}
-        {/* Total score row */}
-        <TableRow className='font-bold'>
-          <TableCell className='text-right font-mono'>Total</TableCell>
-          <TableCell className='text-right font-mono'>
-            {formatNumber(totalLogOwnerScore)}
-          </TableCell>
-          <TableCell className='text-right font-mono'>
-            {formatNumber(totalOpponentScore)}
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
+    <TableShell className='overflow-hidden'>
+      <div className='overflow-x-auto'>
+        <Table>
+          <TableHeader className='sticky top-0 z-10 bg-background'>
+            <TableRow className='bg-muted/50'>
+              <TableHead className='w-[60px] text-right font-mono'>
+                Hand #
+              </TableHead>
+              <TableHead className='text-right font-mono'>
+                {ownerLabel}
+              </TableHead>
+              <TableHead className='text-right font-mono'>
+                {opponentLabel}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {handNumbers.map((handNumber, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: Simple table rendering
+              <TableRow key={index}>
+                <TableCell className='text-right font-mono'>
+                  {handNumber}
+                </TableCell>
+                <TableCell className='text-right font-mono'>
+                  {index < logOwnerScores.length
+                    ? formatNumber(logOwnerScores[index]?.gainedScore)
+                    : '-'}
+                </TableCell>
+                <TableCell className='text-right font-mono'>
+                  {index < opponentScores.length
+                    ? formatNumber(opponentScores[index]?.gainedScore)
+                    : '-'}
+                </TableCell>
+              </TableRow>
+            ))}
+            <TableRow className='font-bold'>
+              <TableCell className='text-right font-mono'>Total</TableCell>
+              <TableCell className='text-right font-mono'>
+                {formatNumber(totalLogOwnerScore)}
+              </TableCell>
+              <TableCell className='text-right font-mono'>
+                {formatNumber(totalOpponentScore)}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </TableShell>
   )
 }
 
@@ -249,12 +260,10 @@ export function PvpBlindsCard({
   game,
   ownerLabel,
   opponentLabel,
-  formatter,
 }: {
   game: Game
   ownerLabel: string
   opponentLabel: string
-  formatter: any
 }) {
   const validPvpBlinds = getValidPvpBlinds(game.pvpBlinds)
 
@@ -297,7 +306,6 @@ export function PvpBlindsCard({
               blind={blind}
               ownerLabel={ownerLabel}
               opponentLabel={opponentLabel}
-              formatter={formatter}
             />
           </div>
         ))}

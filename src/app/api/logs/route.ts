@@ -1,7 +1,7 @@
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 import { logFiles, users } from '@/server/db/schema'
-import { desc, eq, ilike, or, sql } from 'drizzle-orm'
+import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -11,6 +11,10 @@ export async function GET(req: NextRequest) {
     const id = searchParams.get('id')
     const pageParam = searchParams.get('page')
     const pageSizeParam = searchParams.get('pageSize')
+    const sortBy = (searchParams.get('sortBy') ?? 'createdAt').trim()
+    const sortOrder = (searchParams.get('sortOrder') ?? 'desc').trim() as
+      | 'asc'
+      | 'desc'
     const search = (
       searchParams.get('search') ??
       searchParams.get('q') ??
@@ -75,6 +79,19 @@ export async function GET(req: NextRequest) {
     )
     const offset = (page - 1) * pageSize
 
+    const dir = sortOrder === 'asc' ? asc : desc
+    const orderBy =
+      sortBy === 'fileName'
+        ? [dir(logFiles.fileName), desc(logFiles.createdAt), desc(logFiles.id)]
+        : sortBy === 'userName'
+          ? [
+              dir(users.name),
+              dir(users.email),
+              desc(logFiles.createdAt),
+              desc(logFiles.id),
+            ]
+          : [dir(logFiles.createdAt), desc(logFiles.id)]
+
     const where = search
       ? or(
           ilike(logFiles.fileName, `%${search}%`),
@@ -109,7 +126,7 @@ export async function GET(req: NextRequest) {
           .from(logFiles)
           .leftJoin(users, eq(logFiles.userId, users.id))
           .where(where)
-          .orderBy(desc(logFiles.createdAt))
+          .orderBy(...orderBy)
           .limit(pageSize)
           .offset(offset)
       : db
@@ -124,7 +141,7 @@ export async function GET(req: NextRequest) {
           })
           .from(logFiles)
           .leftJoin(users, eq(logFiles.userId, users.id))
-          .orderBy(desc(logFiles.createdAt))
+          .orderBy(...orderBy)
           .limit(pageSize)
           .offset(offset))
 

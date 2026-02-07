@@ -1,5 +1,8 @@
 'use client'
 
+import { PaginationControls } from '@/app/_components/pagination-controls'
+import { SortableHeader } from '@/app/_components/sortable-header'
+import { TableShell } from '@/app/_components/table-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,25 +27,28 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import type { SelectGames } from '@/server/db/types'
+import type { Season } from '@/shared/seasons'
+import { api } from '@/trpc/react'
+import { keepPreviousData } from '@tanstack/react-query'
 import {
-  type SortingState,
   createColumnHelper,
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import {
   ArrowDownCircle,
   ArrowUp,
   ArrowUpCircle,
+  Loader2,
   MinusCircle,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useFormatter, useTimeZone } from 'next-intl'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
+import { useCallback, useMemo, useState } from 'react'
 
 const numberFormatter = new Intl.NumberFormat('en-US', {
   signDisplay: 'exceptZero',
@@ -319,12 +325,31 @@ const useColumns = (openTranscriptFn?: (gameNumber: number) => void) => {
           ]
         : []),
     ],
-    [canViewTranscript, timeZone]
+    [canViewTranscript, format.dateTime, openTranscriptFn, timeZone]
   )
 }
 
-export function GamesTable({ games }: { games: SelectGames[] }) {
-  const [sorting, setSorting] = useState<SortingState>([])
+type SortBy =
+  | 'gameTime'
+  | 'opponentName'
+  | 'gameType'
+  | 'deck'
+  | 'stake'
+  | 'opponentMmr'
+  | 'playerMmr'
+  | 'mmrChange'
+
+export function GamesTable({
+  userId,
+  season,
+  leaderboardFilter,
+  resultFilter,
+}: {
+  userId: string
+  season: Season
+  leaderboardFilter: string
+  resultFilter: string
+}) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [transcriptGameNumber, setTranscriptGameNumber] = useState<
     number | null
@@ -339,83 +364,187 @@ export function GamesTable({ games }: { games: SelectGames[] }) {
   // Pass the openTranscript function to useColumns
   const columns = useColumns(openTranscript)
 
+  const pageSize = 50
+  const [queryParams, setQueryParams] = useQueryStates(
+    {
+      page: parseAsInteger.withDefault(1),
+      sortBy: parseAsString.withDefault('gameTime'),
+      sortOrder: parseAsString.withDefault('desc'),
+    },
+    { history: 'push' }
+  )
+
+  const { page } = queryParams
+  const sortBy = (
+    [
+      'gameTime',
+      'opponentName',
+      'gameType',
+      'deck',
+      'stake',
+      'opponentMmr',
+      'playerMmr',
+      'mmrChange',
+    ] as const
+  ).includes(queryParams.sortBy as SortBy)
+    ? (queryParams.sortBy as SortBy)
+    : 'gameTime'
+  const sortOrder = (queryParams.sortOrder === 'asc' ? 'asc' : 'desc') as
+    | 'asc'
+    | 'desc'
+
+  const gameType =
+    leaderboardFilter === 'all'
+      ? undefined
+      : (leaderboardFilter as
+          | 'ranked'
+          | 'smallworld'
+          | 'vanilla'
+          | 'sandbox'
+          | 'casual')
+
+  const result =
+    resultFilter === 'wins'
+      ? 'win'
+      : resultFilter === 'losses'
+        ? 'loss'
+        : undefined
+
+  const gamesQ = api.history.user_games_page.useQuery(
+    {
+      user_id: userId,
+      season,
+      gameType,
+      result,
+      page,
+      pageSize,
+      sortBy,
+      sortOrder,
+    },
+    {
+      refetchOnWindowFocus: false,
+      placeholderData: keepPreviousData,
+      staleTime: 30_000,
+    }
+  )
+  const games = gamesQ.data?.data ?? []
+
+  const handleSort = useCallback(
+    (column: string) => {
+      const nextOrder =
+        sortBy === column && sortOrder === 'asc' ? 'desc' : 'asc'
+      setQueryParams({ sortBy: column, sortOrder: nextOrder, page: 1 })
+    },
+    [setQueryParams, sortBy, sortOrder]
+  )
+
   const table = useReactTable({
     data: games,
     columns,
-    state: {
-      sorting,
-    },
-    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getRowId: (originalRow) => originalRow.gameNum.toString(),
   })
 
   return (
     <TooltipProvider>
-      <div className='rounded-md border'>
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const sortDirection = header.column.getIsSorted()
-                  return (
-                    <TableHead key={header.id} className={'px-0'}>
-                      <span
-                        className={cn(
-                          'flex w-full items-center',
-                          (header.column.columnDef.meta as any)?.className
-                        )}
-                      >
-                        <Button
-                          className={cn(
-                            header.column.getCanSort() &&
-                              'cursor-pointer select-none',
-                            (
-                              header.column.columnDef.meta as any
-                            )?.className?.includes('justify-end') &&
-                              'flex-row-reverse'
-                          )}
-                          size={'table'}
-                          variant='ghost'
-                          onClick={header.column.getToggleSortingHandler()}
+      <TableShell className='relative overflow-hidden'>
+        <div className='overflow-x-auto'>
+          <Table>
+            <TableHeader className='sticky top-0 z-10 bg-background'>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className='bg-muted/50'>
+                  {headerGroup.headers.map((header) => {
+                    const meta = header.column.columnDef.meta as
+                      | { className?: string }
+                      | undefined
+                    const metaClass = meta?.className
+                    const isRight = metaClass?.includes('justify-end')
+                    const colId = header.column.id
+                    const label = flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )
+
+                    return (
+                      <TableHead key={header.id} className='px-0'>
+                        <span
+                          className={cn('flex w-full items-center', metaClass)}
                         >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {sortDirection ? (
-                            <ArrowUp
+                          {colId === 'transcript' ||
+                          typeof label !== 'string' ? (
+                            <span
                               className={cn(
-                                'transition-transform',
-                                sortDirection === 'asc' ? 'rotate-180' : ''
+                                'px-4 py-2 text-sm',
+                                isRight && 'ml-auto'
                               )}
-                            />
+                            >
+                              {label}
+                            </span>
                           ) : (
-                            <div className={'h-4 w-4'} />
+                            <SortableHeader
+                              className={cn(
+                                'px-4 py-2 text-sm',
+                                isRight && 'ml-auto justify-end'
+                              )}
+                              column={colId}
+                              label={label}
+                              sortBy={sortBy}
+                              sortOrder={sortOrder}
+                              onSort={handleSort}
+                            />
                           )}
-                        </Button>
-                      </span>
-                    </TableHead>
-                  )
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </span>
+                      </TableHead>
+                    )
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={table.getAllColumns().length}>
+                    No games
                   </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                </TableRow>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <span
+          className={cn(
+            'pointer-events-none absolute top-3 right-3 inline-flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-muted-foreground text-xs transition-opacity',
+            gamesQ.isFetching ? 'opacity-100' : 'opacity-0'
+          )}
+        >
+          <Loader2 className='h-3 w-3 animate-spin' />
+          Updating
+        </span>
+
+        <PaginationControls
+          currentPage={page}
+          totalPages={gamesQ.data?.totalPages ?? 1}
+          total={gamesQ.data?.total ?? 0}
+          pageSize={pageSize}
+          itemLabel='games'
+          onPageChange={(p) => setQueryParams({ page: p })}
+          className='rounded-none border-0 border-t bg-background'
+        />
+      </TableShell>
 
       {/* Transcript Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
