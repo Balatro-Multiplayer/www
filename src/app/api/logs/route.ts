@@ -1,7 +1,7 @@
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 import { logFiles, users } from '@/server/db/schema'
-import { eq } from 'drizzle-orm'
+import { desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
@@ -9,11 +9,26 @@ export async function GET(req: NextRequest) {
     // Get the log file ID from the request
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
+    const pageParam = searchParams.get('page')
+    const pageSizeParam = searchParams.get('pageSize')
+    const search = (
+      searchParams.get('search') ??
+      searchParams.get('q') ??
+      ''
+    ).trim()
 
     // Check if user is authenticated
     const session = await auth()
 
     if (id) {
+      const idNum = Number.parseInt(id, 10)
+      if (Number.isNaN(idNum)) {
+        return NextResponse.json(
+          { error: 'Invalid log file id' },
+          { status: 400 }
+        )
+      }
+
       // Fetching a specific log file by ID
       // For specific log files, we allow access to the owner or admins
       const logFile = await db
@@ -26,7 +41,7 @@ export async function GET(req: NextRequest) {
           userId: logFiles.userId,
         })
         .from(logFiles)
-        .where(eq(logFiles.id, Number.parseInt(id)))
+        .where(eq(logFiles.id, idNum))
         .limit(1)
 
       if (logFile.length === 0) {
@@ -53,22 +68,77 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all log files with user information
-    const logs = await db
-      .select({
-        id: logFiles.id,
-        fileName: logFiles.fileName,
-        fileUrl: logFiles.fileUrl,
-        createdAt: logFiles.createdAt,
-        userId: logFiles.userId,
-        userName: users.name,
-        userEmail: users.email,
-      })
-      .from(logFiles)
-      .leftJoin(users, eq(logFiles.userId, users.id))
-      .orderBy(logFiles.createdAt)
+    const page = Math.max(1, Number.parseInt(pageParam ?? '1', 10) || 1)
+    const pageSize = Math.min(
+      100,
+      Math.max(1, Number.parseInt(pageSizeParam ?? '50', 10) || 50)
+    )
+    const offset = (page - 1) * pageSize
 
-    return NextResponse.json(logs)
+    const where = search
+      ? or(
+          ilike(logFiles.fileName, `%${search}%`),
+          ilike(users.name, `%${search}%`),
+          ilike(users.email, `%${search}%`)
+        )
+      : undefined
+
+    const [{ total } = { total: 0 }] = await (where
+      ? db
+          .select({ total: sql<string>`count(*)::int` })
+          .from(logFiles)
+          .leftJoin(users, eq(logFiles.userId, users.id))
+          .where(where)
+      : db
+          .select({ total: sql<string>`count(*)::int` })
+          .from(logFiles)
+          .leftJoin(users, eq(logFiles.userId, users.id)))
+
+    // Get paginated log files with user info
+    const logs = await (where
+      ? db
+          .select({
+            id: logFiles.id,
+            fileName: logFiles.fileName,
+            fileUrl: logFiles.fileUrl,
+            createdAt: logFiles.createdAt,
+            userId: logFiles.userId,
+            userName: users.name,
+            userEmail: users.email,
+          })
+          .from(logFiles)
+          .leftJoin(users, eq(logFiles.userId, users.id))
+          .where(where)
+          .orderBy(desc(logFiles.createdAt))
+          .limit(pageSize)
+          .offset(offset)
+      : db
+          .select({
+            id: logFiles.id,
+            fileName: logFiles.fileName,
+            fileUrl: logFiles.fileUrl,
+            createdAt: logFiles.createdAt,
+            userId: logFiles.userId,
+            userName: users.name,
+            userEmail: users.email,
+          })
+          .from(logFiles)
+          .leftJoin(users, eq(logFiles.userId, users.id))
+          .orderBy(desc(logFiles.createdAt))
+          .limit(pageSize)
+          .offset(offset))
+
+    const totalNum = Number(total ?? 0)
+    const totalPages = Math.max(1, Math.ceil(totalNum / pageSize))
+
+    return NextResponse.json({
+      data: logs,
+      page,
+      pageSize,
+      total: totalNum,
+      totalPages,
+      search: search || null,
+    })
   } catch (error) {
     console.error('Error fetching log files:', error)
     return NextResponse.json(

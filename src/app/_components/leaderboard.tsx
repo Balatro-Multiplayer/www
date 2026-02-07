@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { useDebounceValue } from 'usehooks-ts'
 
+import { PaginationControls } from '@/app/_components/pagination-controls'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -50,19 +51,17 @@ import {
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
+import { getRankData } from '@/shared/ranks'
 import {
   type Season,
   SeasonSchema,
   getSeasonDisplayName,
 } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import { getRankData } from '@/shared/ranks'
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
   Flame,
   Search,
   TrendingUp,
@@ -70,11 +69,7 @@ import {
 import Link from 'next/link'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 
-const getMedal = (
-  rank: number,
-  mmr: number,
-  queueType?: string
-) => {
+const getMedal = (rank: number, mmr: number, queueType?: string) => {
   const rankData = getRankData(mmr, queueType)
   if (!rankData) {
     return null
@@ -142,10 +137,15 @@ export function LeaderboardPage() {
 
   // Derive sort column and direction from query params with defaults
   const sortColumn =
-    sortBy || (['season1', 'season2', 'season3', 'season4', 'season5'].includes(season) ? 'mmr' : 'rank')
+    sortBy ||
+    (['season1', 'season2', 'season3', 'season4', 'season5'].includes(season)
+      ? 'mmr'
+      : 'rank')
   const sortDirection =
     (sortOrder as 'asc' | 'desc') ||
-    (['season1', 'season2', 'season3', 'season4', 'season5'].includes(season) ? 'desc' : 'asc')
+    (['season1', 'season2', 'season3', 'season4', 'season5'].includes(season)
+      ? 'desc'
+      : 'asc')
 
   // Track previous season to only reset sort when season actually changes
   const prevSeasonRef = useRef(season)
@@ -156,7 +156,9 @@ export function LeaderboardPage() {
 
     // Only reset sort if season actually changed AND user hasn't explicitly set a sort
     if (seasonChanged && !sortBy) {
-      if (['season1', 'season2', 'season3', 'season4', 'season5'].includes(season)) {
+      if (
+        ['season1', 'season2', 'season3', 'season4', 'season5'].includes(season)
+      ) {
         setQueryParams({ sortBy: 'mmr', sortOrder: 'desc' })
       } else {
         setQueryParams({ sortBy: 'rank', sortOrder: 'asc' })
@@ -166,7 +168,8 @@ export function LeaderboardPage() {
 
   // Determine channel ID based on leaderboard type and season
   const channelId = useMemo(() => {
-    const isOldSeason = season === 'season1' || season === 'season2' || season === 'season3'
+    const isOldSeason =
+      season === 'season1' || season === 'season2' || season === 'season3'
     if (leaderboardType === 'vanilla') {
       return isOldSeason ? OLD_VANILLA_CHANNEL : VANILLA_QUEUE_ID
     }
@@ -253,14 +256,28 @@ export function LeaderboardPage() {
       // Read current sort values directly from queryParams to avoid stale closure
       const currentSortBy =
         queryParams.sortBy ||
-        (['season1', 'season2', 'season3', 'season4'].includes(season) ? 'mmr' : 'rank')
+        (['season1', 'season2', 'season3', 'season4'].includes(season)
+          ? 'mmr'
+          : 'rank')
       const currentSortOrder =
         (queryParams.sortOrder as 'asc' | 'desc') ||
-        (['season1', 'season2', 'season3', 'season4'].includes(season) ? 'desc' : 'asc')
-      const defaultColumn = ['season1', 'season2', 'season3', 'season4'].includes(season)
+        (['season1', 'season2', 'season3', 'season4'].includes(season)
+          ? 'desc'
+          : 'asc')
+      const defaultColumn = [
+        'season1',
+        'season2',
+        'season3',
+        'season4',
+      ].includes(season)
         ? 'mmr'
         : 'rank'
-      const defaultDirection = ['season1', 'season2', 'season3', 'season4'].includes(season)
+      const defaultDirection = [
+        'season1',
+        'season2',
+        'season3',
+        'season4',
+      ].includes(season)
         ? 'desc'
         : 'asc'
 
@@ -401,6 +418,9 @@ export function LeaderboardPage() {
                 currentPage={page}
                 totalPages={currentLeaderboardResult.totalPages ?? 1}
                 total={currentLeaderboardResult.total ?? 0}
+                pageSize={50}
+                itemLabel='players'
+                noTopBorder
                 onPageChange={handlePageChange}
               />
             </div>
@@ -643,200 +663,6 @@ function RawLeaderboardTable({
             )}
           </TableBody>
         </Table>
-      </div>
-    </div>
-  )
-}
-
-interface PaginationControlsProps {
-  currentPage: number
-  totalPages: number
-  total: number
-  onPageChange: (page: number) => void
-}
-
-function PaginationControls({
-  currentPage,
-  totalPages,
-  total,
-  onPageChange,
-}: PaginationControlsProps) {
-  const [jumpToPage, setJumpToPage] = useState('')
-
-  const handleJumpToPage = () => {
-    const pageNum = Number.parseInt(jumpToPage, 10)
-    if (!Number.isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
-      onPageChange(pageNum)
-      setJumpToPage('')
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleJumpToPage()
-    }
-  }
-
-  const getPageNumbers = () => {
-    const pages: (number | 'ellipsis')[] = []
-    const showEllipsis = totalPages > 7
-
-    if (!showEllipsis) {
-      // Show all pages
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i)
-      }
-    } else {
-      // Always show first page
-      pages.push(1)
-
-      if (currentPage <= 3) {
-        // Near start
-        pages.push(2, 3, 4, 'ellipsis', totalPages)
-      } else if (currentPage >= totalPages - 2) {
-        // Near end
-        pages.push(
-          'ellipsis',
-          totalPages - 3,
-          totalPages - 2,
-          totalPages - 1,
-          totalPages
-        )
-      } else {
-        // Middle
-        pages.push(
-          'ellipsis',
-          currentPage - 1,
-          currentPage,
-          currentPage + 1,
-          'ellipsis',
-          totalPages
-        )
-      }
-    }
-
-    return pages
-  }
-
-  const pages = getPageNumbers()
-
-  return (
-    <div className='flex items-center justify-between rounded-b-lg border border-gray-200 border-t-0 bg-white px-4 py-3 sm:px-6 dark:border-zinc-800 dark:bg-zinc-900'>
-      <div className='flex flex-1 flex-col gap-2 sm:hidden'>
-        <div className='flex justify-between'>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-          <span className='text-gray-700 text-sm dark:text-zinc-300'>
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
-        </div>
-        <div className='flex items-center justify-center gap-2'>
-          <span className='text-gray-700 text-sm dark:text-zinc-300'>Go to:</span>
-          <Input
-            type='number'
-            min={1}
-            max={totalPages}
-            value={jumpToPage}
-            onChange={(e) => setJumpToPage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder='Page'
-            className='w-20 h-8 text-sm'
-          />
-          <Button
-            variant='outline'
-            size='sm'
-            onClick={handleJumpToPage}
-            disabled={!jumpToPage || Number.parseInt(jumpToPage, 10) < 1 || Number.parseInt(jumpToPage, 10) > totalPages}
-          >
-            Go
-          </Button>
-        </div>
-      </div>
-      <div className='hidden sm:flex sm:flex-1 sm:items-center sm:justify-between'>
-        <div>
-          <p className='text-gray-700 text-sm dark:text-zinc-300'>
-            Showing{' '}
-            <span className='font-medium'>{(currentPage - 1) * 50 + 1}</span> to{' '}
-            <span className='font-medium'>
-              {Math.min(currentPage * 50, total)}
-            </span>{' '}
-            of <span className='font-medium'>{total}</span> players
-          </p>
-        </div>
-        <div className='flex items-center gap-4'>
-          <div className='flex items-center gap-1'>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className='h-4 w-4' />
-            </Button>
-            {pages.map((page, index) =>
-              page === 'ellipsis' ? (
-                <span
-                  key={`ellipsis-${index}`}
-                  className='px-3 py-2 text-gray-400'
-                >
-                  ...
-                </span>
-              ) : (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? 'default' : 'outline'}
-                  size='sm'
-                  onClick={() => onPageChange(page)}
-                  className='min-w-[2.5rem]'
-                >
-                  {page}
-                </Button>
-              )
-            )}
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className='h-4 w-4' />
-            </Button>
-          </div>
-          <div className='flex items-center gap-2'>
-            <Input
-              type='number'
-              min={1}
-              max={totalPages}
-              value={jumpToPage}
-              onChange={(e) => setJumpToPage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder='Page'
-              className='w-20 h-8 text-sm'
-            />
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={handleJumpToPage}
-              disabled={!jumpToPage || Number.parseInt(jumpToPage, 10) < 1 || Number.parseInt(jumpToPage, 10) > totalPages}
-            >
-              Go
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   )
