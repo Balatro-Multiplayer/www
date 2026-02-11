@@ -299,7 +299,6 @@ export default function LogParser() {
     let logFileId = null
 
     try {
-      // Create a FormData object to send the file
       const formData = new FormData()
       formData.append('file', file)
 
@@ -317,21 +316,54 @@ export default function LogParser() {
         const responseData = await response.json()
         logFileId = responseData.id
       }
-      // Upload the file to the server
 
-      // Get the file content
       const content = await file.text()
-      const logLines = content.split('\n')
+      await parseLogContent(content, { logFileId, skipUpload })
+    } catch (err) {
+      console.error('Error parsing log:', err)
+      setError(
+        `Failed to parse log file. ${err instanceof Error ? err.message : 'Unknown error'}`
+      )
+      setParsedGames([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-      const games: Game[] = []
-      let currentGame: Game | null = null
-      let lastSeenLobbyOptions: GameOptions | null = null
-      let gameCounter = 0
+  const parseLogText = async (text: string) => {
+    setIsLoading(true)
+    setError(null)
+    setParsedGames([])
 
-      const gameStartInfos = extractGameStartInfo(logLines)
-      let gameInfoIndex = 0
-      let lastProcessedTimestamp: Date | null = null
-      for (const line of logLines) {
+    try {
+      await parseLogContent(text, { skipUpload: true })
+    } catch (err) {
+      console.error('Error parsing log:', err)
+      setError(
+        `Failed to parse log text. ${err instanceof Error ? err.message : 'Unknown error'}`
+      )
+      setParsedGames([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const parseLogContent = async (
+    content: string,
+    options?: { logFileId?: number | null; skipUpload?: boolean }
+  ) => {
+    const { logFileId = null, skipUpload = true } = options ?? {}
+    const logLines = content.split('\n')
+
+    const games: Game[] = []
+    let currentGame: Game | null = null
+    let lastSeenLobbyOptions: GameOptions | null = null
+    let gameCounter = 0
+
+    const gameStartInfos = extractGameStartInfo(logLines)
+    let gameInfoIndex = 0
+    let lastProcessedTimestamp: Date | null = null
+    for (const line of logLines) {
         if (!line.trim()) continue
         const timeMatch = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)
         const timestamp = timeMatch?.[1] ? new Date(timeMatch[1]) : new Date()
@@ -901,51 +933,42 @@ export default function LogParser() {
             }
           }
         }
-      } // End of line processing loop
+    } // End of line processing loop
 
-      if (currentGame) {
-        if (currentGame.endDate) {
-          currentGame.durationSeconds =
-            (currentGame.endDate.getTime() - currentGame.startDate.getTime()) /
-            1000
+    if (currentGame) {
+      if (currentGame.endDate) {
+        currentGame.durationSeconds =
+          (currentGame.endDate.getTime() - currentGame.startDate.getTime()) /
+          1000
 
-          games.push(currentGame)
-        }
+        games.push(currentGame)
       }
-
-      if (games.length === 0) {
-        setError('No games found in the log file.')
-      }
-
-      // Send the parsed games to the server
-      if (!skipUpload) {
-        console.log('Sending parsed games to server...')
-        const uploadResponse = await fetch('/api/logs/upload', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            logFileId,
-            parsedGames: games,
-          }),
-        })
-
-        if (!uploadResponse.ok) {
-          console.error('Failed to save parsed games')
-        }
-      }
-
-      setParsedGames(games)
-    } catch (err) {
-      console.error('Error parsing log:', err)
-      setError(
-        `Failed to parse log file. ${err instanceof Error ? err.message : 'Unknown error'}`
-      )
-      setParsedGames([])
-    } finally {
-      setIsLoading(false)
     }
+
+    if (games.length === 0) {
+      setError('No games found in the log file.')
+    }
+
+    // Send the parsed games to the server
+    if (!skipUpload) {
+      console.log('Sending parsed games to server...')
+      const uploadResponse = await fetch('/api/logs/upload', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          logFileId,
+          parsedGames: games,
+        }),
+      })
+
+      if (!uploadResponse.ok) {
+        console.error('Failed to save parsed games')
+      }
+    }
+
+    setParsedGames(games)
   }
 
   // Generate a default tab value using determined names or fallbacks
@@ -960,6 +983,13 @@ export default function LogParser() {
         className={
           'mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-4 pt-16'
         }
+        onPaste={(e) => {
+          const text = e.clipboardData.getData('text')
+          if (text.trim() && !isLoading) {
+            e.preventDefault()
+            parseLogText(text)
+          }
+        }}
       >
         <Dropzone
           onDropAccepted={(files) => {
@@ -977,7 +1007,7 @@ export default function LogParser() {
               <DropzoneGroup>
                 <DropzoneTitle>Drop log file here or click</DropzoneTitle>
                 <DropzoneDescription>
-                  Upload your logs file.
+                  Upload your logs file or paste log text anywhere on this page.
                 </DropzoneDescription>
               </DropzoneGroup>
             </DropzoneGroup>
