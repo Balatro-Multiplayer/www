@@ -190,7 +190,7 @@ export default function Home() {
               </CardHeader>
               <CardContent className='flex-grow'>
                 <p className='mb-4 text-muted-foreground'>
-                  Compete in multiple queues for MMR:
+                  Compete in multiple queues for MMR on the Discord:
                 </p>
                 <div className='space-y-4'>
                   <div className='space-y-2 text-sm'>
