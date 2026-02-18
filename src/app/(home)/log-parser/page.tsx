@@ -280,9 +280,7 @@ export default function LogParser() {
         })
         .then((content) => {
           // Create a File object from the content
-          const file = new File([content], 'log.txt', { type: 'text/plain' })
-          // Parse the file
-          parseLogFile(file, true)
+          parseLogContent(content)
         })
         .catch((err) => {
           console.error('Error loading log file:', err)
@@ -292,33 +290,30 @@ export default function LogParser() {
     }
   }, [searchParams])
 
-  const parseLogFile = async (file: File, skipUpload?: boolean) => {
+  const parseLogFile = async (file: File) => {
     setIsLoading(true)
     setError(null)
     setParsedGames([])
-    let logFileId = null
 
     try {
       const formData = new FormData()
       formData.append('file', file)
 
-      if (!skipUpload) {
-        const response = await fetch('/api/logs/upload', {
-          method: 'POST',
-          body: formData,
-        })
+      const response = await fetch('/api/logs/upload', {
+        method: 'POST',
+        body: formData,
+      })
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to upload log file')
-        }
-
-        const responseData = await response.json()
-        logFileId = responseData.id
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to upload log file')
       }
 
+      const responseData = await response.json()
+      const logFileId = responseData.id
+
       const content = await file.text()
-      await parseLogContent(content, { logFileId, skipUpload })
+      await parseLogContent(content, logFileId)
     } catch (err) {
       console.error('Error parsing log:', err)
       setError(
@@ -330,29 +325,10 @@ export default function LogParser() {
     }
   }
 
-  const parseLogText = async (text: string) => {
-    setIsLoading(true)
-    setError(null)
-    setParsedGames([])
-
-    try {
-      await parseLogContent(text, { skipUpload: true })
-    } catch (err) {
-      console.error('Error parsing log:', err)
-      setError(
-        `Failed to parse log text. ${err instanceof Error ? err.message : 'Unknown error'}`
-      )
-      setParsedGames([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const parseLogContent = async (
     content: string,
-    options?: { logFileId?: number | null; skipUpload?: boolean }
+    logFileId: number | null = null
   ) => {
-    const { logFileId = null, skipUpload = true } = options ?? {}
     const logLines = content.split('\n')
 
     const games: Game[] = []
@@ -950,7 +926,7 @@ export default function LogParser() {
     }
 
     // Send the parsed games to the server
-    if (!skipUpload) {
+    if (logFileId !== null) {
       console.log('Sending parsed games to server...')
       const uploadResponse = await fetch('/api/logs/upload', {
         method: 'PUT',
@@ -987,7 +963,7 @@ export default function LogParser() {
           const text = e.clipboardData.getData('text')
           if (text.trim() && !isLoading) {
             e.preventDefault()
-            parseLogText(text)
+            parseLogFile(new File([text], 'paste.log', { type: 'text/plain' }))
           }
         }}
       >
