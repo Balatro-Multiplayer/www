@@ -1,5 +1,6 @@
 import { env } from '@/env'
 import { redis } from '@/server/redis'
+import { isDiscordSnowflake } from '@/shared/discord'
 
 const DISCORD_URL = 'https://discord.com/api/v10'
 const CACHE_TTL = 60 * 60 * 24 // 24 hours in seconds
@@ -15,7 +16,9 @@ async function fetchWithRetry(
   if (response.status === 429) {
     const retryAfter = response.headers.get('retry-after')
     const delayMs = retryAfter ? Number.parseFloat(retryAfter) * 1000 : 1000
-    console.log(`[Discord] Rate limited, waiting ${delayMs}ms before retry. URL: ${url}`)
+    console.log(
+      `[Discord] Rate limited, waiting ${delayMs}ms before retry. URL: ${url}`
+    )
     await new Promise((resolve) => setTimeout(resolve, delayMs))
     return fetchWithRetry(url, { ...options, retryLimit: retryLimit - 1 })
   }
@@ -34,6 +37,10 @@ async function fetchWithRetry(
 
 export const discord_service = {
   get_user_by_id: async (user_id: string) => {
+    if (!isDiscordSnowflake(user_id)) {
+      throw new Error('Invalid Discord user ID')
+    }
+
     const cache_key = `discord:user:${user_id}`
 
     // Try to get from cache
@@ -43,7 +50,8 @@ export const discord_service = {
     }
 
     // Fetch from Discord API
-    const res = await fetchWithRetry(`${DISCORD_URL}/users/${user_id}`, {
+    const encodedUserId = encodeURIComponent(user_id)
+    const res = await fetchWithRetry(`${DISCORD_URL}/users/${encodedUserId}`, {
       headers: {
         Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
       },
