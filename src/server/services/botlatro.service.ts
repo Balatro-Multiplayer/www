@@ -4,6 +4,7 @@ import { transcripts } from '../db/schema'
 import { redis } from '../redis'
 
 const BOTLATRO_URL = 'http://balatro.virtualized.dev:4931/'
+const TRANSCRIPT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7
 
 export const TRANSCRIPT_CACHE_KEY = (gameNumber: number) =>
   `transcript:${gameNumber}`
@@ -77,7 +78,7 @@ export const botlatro_service = {
 
     if (dbTranscript) {
       console.log(`Transcript #${gameNumber} found in database`)
-      await redis.set(cacheKey, dbTranscript.content)
+      await redis.setEx(cacheKey, TRANSCRIPT_CACHE_TTL_SECONDS, dbTranscript.content)
       return dbTranscript.content
     }
 
@@ -113,7 +114,7 @@ export const botlatro_service = {
           set: { content: data },
         })
 
-      await redis.set(cacheKey, data)
+      await redis.setEx(cacheKey, TRANSCRIPT_CACHE_TTL_SECONDS, data)
       return data
     } catch (error) {
       console.error(`Error fetching transcript #${gameNumber}:`, error)
