@@ -15,7 +15,7 @@ async function fetchWithRetry(
   if (response.status === 429) {
     const retryAfter = response.headers.get('retry-after')
     const delayMs = retryAfter ? Number.parseFloat(retryAfter) * 1000 : 1000
-    console.log(`[Discord] Rate limited, waiting ${delayMs}ms before retry`)
+    console.log(`[Discord] Rate limited, waiting ${delayMs}ms before retry. URL: ${url}`)
     await new Promise((resolve) => setTimeout(resolve, delayMs))
     return fetchWithRetry(url, { ...options, retryLimit: retryLimit - 1 })
   }
