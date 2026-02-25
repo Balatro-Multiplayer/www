@@ -68,21 +68,21 @@ function aggregateSeasonOverview(matches: OverallMatch[]) {
   }
 }
 
-const ALL_SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4', 'season5']
-const DB_SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4']
+const ALL_SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4', 'season5', 'season6']
+const DB_SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4', 'season5']
 
 export const stats_router = createTRPCRouter({
   deck_popularity: publicProcedure
     .input(
       z
         .object({
-          season: SeasonSchema.optional().default('season5'),
+          season: SeasonSchema.optional().default('season6'),
           queueId: z.string().optional(),
         })
         .optional()
     )
     .query(async ({ ctx, input }) => {
-      const season = input?.season ?? 'season5'
+      const season = input?.season ?? 'season6'
 
       if (DB_SEASONS.includes(season)) {
         const { start, end } = getSeasonDateRange(season)
@@ -104,13 +104,13 @@ export const stats_router = createTRPCRouter({
     .input(
       z
         .object({
-          season: SeasonSchema.optional().default('season5'),
+          season: SeasonSchema.optional().default('season6'),
           queueId: z.string().optional(),
         })
         .optional()
     )
     .query(async ({ ctx, input }) => {
-      const season = input?.season ?? 'season5'
+      const season = input?.season ?? 'season6'
 
       if (DB_SEASONS.includes(season)) {
         const { start, end } = getSeasonDateRange(season)
@@ -129,7 +129,7 @@ export const stats_router = createTRPCRouter({
     }),
 
   season_overview: publicProcedure.query(async ({ ctx }) => {
-    // Seasons 1-4: use local DB (has data). Season 5+: use botlatro API.
+    // Seasons 1-5: use local DB (has data). Season 6+: use botlatro API.
     const dbResults = await Promise.all(
       DB_SEASONS.map(async (season) => {
         const { start, end } = getSeasonDateRange(season)
@@ -152,13 +152,13 @@ export const stats_router = createTRPCRouter({
       })
     )
 
-    // Season 5: fetch from API
-    const s5Matches = (await Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season5')))).flat()
-    const s5 = aggregateSeasonOverview(s5Matches)
+    // Season 6: fetch from API
+    const s6Matches = (await Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season6')))).flat()
+    const s6 = aggregateSeasonOverview(s6Matches)
 
     return [
       ...dbResults,
-      { season: 'season5' as Season, ...s5 },
+      { season: 'season6' as Season, ...s6 },
     ]
   }),
 })
