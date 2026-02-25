@@ -63,9 +63,9 @@ const chartConfig = {
 const SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4', 'season5']
 const QUEUE_TYPES = [
   { value: 'all', label: 'All Queues' },
-  { value: RANKED_QUEUE_ID, label: 'Ranked' },
+  { value: RANKED_QUEUE_ID, label: 'Standard Ranked' },
   { value: VANILLA_QUEUE_ID, label: 'Vanilla' },
-  { value: SMALLWORLD_QUEUE_ID, label: 'Small World' },
+  { value: SMALLWORLD_QUEUE_ID, label: 'Smallworld' },
   { value: CASUAL_QUEUE_ID, label: 'Casual' },
 ] as const
 

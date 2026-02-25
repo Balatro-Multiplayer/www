@@ -14,7 +14,7 @@ export const leaderboard_router = createTRPCRouter({
     .input(
       z.object({
         channel_id: z.string(),
-        season: SeasonSchema.optional().default('season5'),
+        season: SeasonSchema.optional().default('season6'),
         page: z.number().min(1).optional().default(1),
         pageSize: z.number().min(1).max(100).optional().default(50),
         search: z.string().optional(),
@@ -95,12 +95,9 @@ export const leaderboard_router = createTRPCRouter({
         }
       }
       if (input.season === 'season3') {
-        // For Season 3, use the DB snapshot data
-        const season3Data = await service.getSeason3Leaderboard(
-          input.channel_id
-        )
+        const seasonData = await service.getSeason3Leaderboard(input.channel_id)
         // Apply filtering
-        let filtered = season3Data
+        let filtered = seasonData
         if (input.search) {
           const searchLower = input.search.toLowerCase()
           filtered = filtered.filter((entry) =>
@@ -139,7 +136,46 @@ export const leaderboard_router = createTRPCRouter({
           isStale: false,
         }
       }
-      // For Season 5 (current) or all, use the current data
+      if (input.season === 'season5') {
+        const seasonData = await service.getSeason5Leaderboard(input.channel_id)
+        let filtered = seasonData
+        if (input.search) {
+          const searchLower = input.search.toLowerCase()
+          filtered = filtered.filter((entry) =>
+            entry.name.toLowerCase().includes(searchLower)
+          )
+        }
+        if (input.minGames !== undefined) {
+          filtered = filtered.filter(
+            (entry) => entry.totalgames >= input.minGames!
+          )
+        }
+        if (input.maxGames !== undefined) {
+          filtered = filtered.filter(
+            (entry) => entry.totalgames <= input.maxGames!
+          )
+        }
+        if (input.sortBy) {
+          filtered = [...filtered].sort((a, b) => {
+            const aVal = a[input.sortBy!]
+            const bVal = b[input.sortBy!]
+            const order = input.sortOrder === 'asc' ? 1 : -1
+            return aVal < bVal ? -order : aVal > bVal ? order : 0
+          })
+        }
+        const total = filtered.length
+        const offset = (input.page - 1) * input.pageSize
+        const paginated = filtered.slice(offset, offset + input.pageSize)
+        return {
+          data: paginated,
+          total,
+          page: input.page,
+          pageSize: input.pageSize,
+          totalPages: Math.ceil(total / input.pageSize),
+          isStale: false,
+        }
+      }
+      // Season 6 (current): use live data
       const result = await service.getLeaderboard(input.channel_id, {
         page: input.page,
         pageSize: input.pageSize,
@@ -189,6 +225,8 @@ export const leaderboard_router = createTRPCRouter({
         entries = await service.getSeason3Leaderboard(input.channel_id)
       } else if (input.season === 'season4') {
         entries = await service.getSeason4Leaderboard(input.channel_id)
+      } else if (input.season === 'season5') {
+        entries = await service.getSeason5Leaderboard(input.channel_id)
       } else {
         const result = await service.getLeaderboard(input.channel_id)
         entries = result.data
@@ -243,7 +281,6 @@ export const leaderboard_router = createTRPCRouter({
         }
       }
       if (input.season === 'season4') {
-        // For Season 4, use the snapshot data
         const userData = await service.getSeason4UserRank(
             input.channel_id,
             input.user_id
@@ -254,7 +291,18 @@ export const leaderboard_router = createTRPCRouter({
           isStale: false,
         }
       }
-      // For Season 5 (current) or all, use the current data
+      if (input.season === 'season5') {
+        const userData = await service.getSeason5UserRank(
+          input.channel_id,
+          input.user_id
+        )
+        if (!userData) return null
+        return {
+          data: userData,
+          isStale: false,
+        }
+      }
+      // Season 6 (current): use live data
       const result = await service.getUserRank(input.channel_id, input.user_id)
       if (!result) return null
       return {

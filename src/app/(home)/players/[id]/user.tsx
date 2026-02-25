@@ -283,7 +283,7 @@ function UserInfoComponent() {
     .filter((game) => game.gameType === 'ranked')
     .at(0)
   const lastVanillaGame = seasonFilteredGames
-    .filter((game) => game.gameType.toLowerCase() === 'vanilla')
+    .filter((game) => game.gameType.toLowerCase() === 'vanilla' || game.gameType.toLowerCase() === 'legacy')
     .at(0)
   const lastSmallworldGame = seasonFilteredGames
     .filter((game) => game.gameType.toLowerCase() === 'smallworld')
@@ -365,7 +365,7 @@ function UserInfoComponent() {
 
   const mostPlayedVanilla = useMemo(() => {
     const vanillaGames = games.filter(
-      (g) => g.gameType.toLowerCase() === 'vanilla'
+      (g) => g.gameType.toLowerCase() === 'vanilla' || g.gameType.toLowerCase() === 'legacy'
     )
     const deckCounts: Record<string, number> = {}
     const stakeCounts: Record<string, number> = {}
@@ -803,9 +803,10 @@ function UserInfoComponent() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='all'>All Leaderboards</SelectItem>
-                    <SelectItem value='ranked'>Ranked</SelectItem>
+                    <SelectItem value='ranked'>Standard Ranked</SelectItem>
                     <SelectItem value='smallworld'>Smallworld</SelectItem>
                     <SelectItem value='vanilla'>Vanilla</SelectItem>
+                    <SelectItem value='legacy'>Legacy Ranked</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -820,6 +821,9 @@ function UserInfoComponent() {
                     <SelectValue placeholder='Season' />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value='season6'>
+                      {getSeasonDisplayName('season6')}
+                    </SelectItem>
                     <SelectItem value='season5'>
                       {getSeasonDisplayName('season5')}
                     </SelectItem>
@@ -869,6 +873,7 @@ function UserInfoComponent() {
                       | 'ranked'
                       | 'smallworld'
                       | 'vanilla'
+                      | 'legacy'
                       | 'sandbox'
                       | 'casual')
               }

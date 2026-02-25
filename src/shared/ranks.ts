@@ -38,7 +38,7 @@ export const SMALLWORLD_THRESHOLD = {
 }
 
 export const getRankData = (mmr: number, queueType?: string) => {
-  if (queueType === 'vanilla') {
+  if (queueType === 'vanilla' || queueType === 'legacy') {
     return null
   }
 

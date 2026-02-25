@@ -3,6 +3,7 @@ import {
   RANKED_QUEUE_ID,
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
+  LEGACY_QUEUE_ID,
   CASUAL_QUEUE_ID,
 } from '@/shared/constants'
 import {
@@ -10,6 +11,7 @@ import {
   SEASON_3_START_DATE,
   SEASON_4_START_DATE,
   SEASON_5_START_DATE,
+  SEASON_6_START_DATE,
   type Season,
 } from '@/shared/seasons'
 
@@ -24,7 +26,7 @@ export type OverallMatch = {
   players: Array<{ user_id: string; team: number | null; elo_change: number | null }>
 }
 
-export const QUEUE_IDS = [RANKED_QUEUE_ID, SMALLWORLD_QUEUE_ID, VANILLA_QUEUE_ID, CASUAL_QUEUE_ID]
+export const QUEUE_IDS = [RANKED_QUEUE_ID, SMALLWORLD_QUEUE_ID, VANILLA_QUEUE_ID, LEGACY_QUEUE_ID, CASUAL_QUEUE_ID]
 
 export function getSeasonDateRange(season: Season): { start: Date; end: Date } {
   switch (season) {
@@ -37,7 +39,9 @@ export function getSeasonDateRange(season: Season): { start: Date; end: Date } {
     case 'season4':
       return { start: SEASON_4_START_DATE, end: SEASON_5_START_DATE }
     case 'season5':
-      return { start: SEASON_5_START_DATE, end: new Date('2099-01-01') }
+      return { start: SEASON_5_START_DATE, end: SEASON_6_START_DATE }
+    case 'season6':
+      return { start: SEASON_6_START_DATE, end: new Date('2099-01-01') }
   }
 }
 

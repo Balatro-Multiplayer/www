@@ -1,7 +1,8 @@
 export const RANKED_QUEUE_ID = '1'
 export const SMALLWORLD_QUEUE_ID = '2'
 export const SANDBOX_QUEUE_ID = '3'
-export const VANILLA_QUEUE_ID = '4' // THIS IS ALSO THE QUEUE ID FOR LEGACY RANKED
+export const VANILLA_QUEUE_ID = '4'
+export const LEGACY_QUEUE_ID = '6'
 export const CASUAL_QUEUE_ID = '5'
 export const OLD_RANKED_CHANNEL = '1352157545547960350'
 export const OLD_VANILLA_CHANNEL = '1341599300022567014'
