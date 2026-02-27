@@ -45,6 +45,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
+  LEGACY_QUEUE_ID,
   OLD_RANKED_CHANNEL,
   OLD_SMALLWORLD_CHANNEL,
   OLD_VANILLA_CHANNEL,
@@ -177,6 +178,9 @@ export function LeaderboardPage() {
       season === 'season1' || season === 'season2' || season === 'season3'
     if (leaderboardType === 'vanilla') {
       return isOldSeason ? OLD_VANILLA_CHANNEL : VANILLA_QUEUE_ID
+    }
+    if (leaderboardType === 'legacy') {
+      return LEGACY_QUEUE_ID
     }
     if (leaderboardType === 'smallworld') {
       return isOldSeason ? OLD_SMALLWORLD_CHANNEL : SMALLWORLD_QUEUE_ID
@@ -313,7 +317,8 @@ export function LeaderboardPage() {
                 <TabsList className='border border-gray-200 border-b bg-gray-50 dark:border-zinc-800 dark:bg-zinc-800/50'>
                   <TabsTrigger value='ranked'>Standard Ranked</TabsTrigger>
                   <TabsTrigger value='smallworld'>Smallworld</TabsTrigger>
-                  <TabsTrigger value='vanilla'>Legacy Ranked</TabsTrigger>
+                  <TabsTrigger value='vanilla'>Vanilla</TabsTrigger>
+                  <TabsTrigger value='legacy'>Legacy Ranked</TabsTrigger>
                 </TabsList>
 
                 <div className='flex items-center gap-2'>
