@@ -16,9 +16,11 @@ import {
   SANDBOX_QUEUE_ID,
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
+  LEGACY_QUEUE_ID,
 } from '@/shared/constants'
 import {
   SEASON_5_START_DATE,
+  SEASON_6_START_DATE,
   SeasonSchema,
   getSeasonForDate,
 } from '@/shared/seasons'
@@ -109,7 +111,10 @@ export const history_router = createTRPCRouter({
       // Season 5+ data from Botlatro API
       if (needsApi) {
         const allMatches = (
-          await Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season5')))
+          await Promise.all([
+            ...QUEUE_IDS.map((q) => fetchMatches(q, 'season5')),
+            ...QUEUE_IDS.map((q) => fetchMatches(q, 'season6')),
+          ])
         ).flat()
 
         const apiStart =
@@ -141,7 +146,7 @@ export const history_router = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      // Seasons 1-4: read from DB (backfilled data)
+      // Seasons 1-4: read from DB
       const dbGames = await ctx.db
         .select()
         .from(player_games)
@@ -157,7 +162,9 @@ export const history_router = createTRPCRouter({
       const matches = await botlatro_service.get_player_matches({
         userId: input.user_id,
       })
-      const apiGames = normalizeBotlatroMatchHistory(matches)
+      const apiGames = normalizeBotlatroMatchHistory(matches).filter(
+        (g) => g.gameTime >= SEASON_5_START_DATE
+      )
 
       return [...dbGames, ...apiGames]
     }),
@@ -168,7 +175,7 @@ export const history_router = createTRPCRouter({
         user_id: z.string(),
         season: SeasonSchema,
         gameType: z
-          .enum(['ranked', 'smallworld', 'vanilla', 'sandbox', 'casual'])
+          .enum(['ranked', 'smallworld', 'vanilla', 'legacy', 'sandbox', 'casual'])
           .optional(),
         result: z.enum(['win', 'loss', 'tie']).optional(),
         page: z.number().int().min(1).default(1),
@@ -193,7 +200,7 @@ export const history_router = createTRPCRouter({
       const pageSize = input.pageSize
       const offset = (page - 1) * pageSize
 
-      if (input.season !== 'season5') {
+      if (input.season !== 'season6' && input.season !== 'season5') {
         const dir = input.sortOrder === 'asc' ? asc : desc
         const sortCol =
           input.sortBy === 'opponentName'
@@ -218,8 +225,7 @@ export const history_router = createTRPCRouter({
           input.gameType
             ? eq(player_games.gameType, input.gameType)
             : undefined,
-          input.result ? eq(player_games.result, input.result) : undefined,
-          lt(player_games.gameTime, SEASON_5_START_DATE)
+          input.result ? eq(player_games.result, input.result) : undefined
         )
 
         const [{ total } = { total: 0 }] = await ctx.db
@@ -250,7 +256,7 @@ export const history_router = createTRPCRouter({
           ? RANKED_QUEUE_ID
           : input.gameType === 'smallworld'
             ? SMALLWORLD_QUEUE_ID
-            : input.gameType === 'vanilla'
+            : input.gameType === 'vanilla' || input.gameType === 'legacy'
               ? VANILLA_QUEUE_ID
               : input.gameType === 'sandbox'
                 ? SANDBOX_QUEUE_ID
@@ -312,7 +318,7 @@ export const history_router = createTRPCRouter({
         user_id: z.string(),
         season: SeasonSchema,
         gameType: z
-          .enum(['ranked', 'smallworld', 'vanilla', 'sandbox', 'casual'])
+          .enum(['ranked', 'smallworld', 'vanilla', 'legacy', 'sandbox', 'casual'])
           .optional(),
         result: z.enum(['win', 'loss', 'tie']).optional(),
         page: z.number().int().min(1).default(1),
@@ -335,15 +341,14 @@ export const history_router = createTRPCRouter({
       const pageSize = input.pageSize
       const offset = (page - 1) * pageSize
 
-      if (input.season !== 'season5') {
+      if (input.season !== 'season6' && input.season !== 'season5') {
         const where = and(
           eq(player_games.playerId, input.user_id),
           eq(player_games.season, input.season),
           input.gameType
             ? eq(player_games.gameType, input.gameType)
             : undefined,
-          input.result ? eq(player_games.result, input.result) : undefined,
-          lt(player_games.gameTime, SEASON_5_START_DATE)
+          input.result ? eq(player_games.result, input.result) : undefined
         )
 
         const totalGamesExpr = sql<number>`count(*) filter (where ${player_games.result} <> 'tie')::int`
@@ -401,7 +406,7 @@ export const history_router = createTRPCRouter({
           ? RANKED_QUEUE_ID
           : input.gameType === 'smallworld'
             ? SMALLWORLD_QUEUE_ID
-            : input.gameType === 'vanilla'
+            : input.gameType === 'vanilla' || input.gameType === 'legacy'
               ? VANILLA_QUEUE_ID
               : input.gameType === 'sandbox'
                 ? SANDBOX_QUEUE_ID
@@ -513,6 +518,8 @@ function getGameType(queue_id: string) {
       return 'smallworld'
     case VANILLA_QUEUE_ID:
       return 'vanilla'
+    case LEGACY_QUEUE_ID:
+      return 'legacy'
     case SANDBOX_QUEUE_ID:
       return 'sandbox'
     case CASUAL_QUEUE_ID:

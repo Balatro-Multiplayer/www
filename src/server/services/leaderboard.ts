@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { db } from '@/server/db'
 import { leaderboardSnapshots, memoryLogs, metadata } from '@/server/db/schema'
-import { SEASON_3_START_DATE, SEASON_4_START_DATE } from '@/shared/seasons'
+import { SEASON_3_START_DATE, SEASON_4_START_DATE, SEASON_5_START_DATE, SEASON_6_START_DATE } from '@/shared/seasons'
 import { and, desc, eq, gte, lt } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import { redis } from '../redis'
@@ -76,6 +76,7 @@ export class LeaderboardService {
   private season2DataCache: Map<string, LeaderboardEntry[]> = new Map()
   private season3DataCache: Map<string, LeaderboardEntry[]> = new Map()
   private season4DataCache: Map<string, LeaderboardEntry[]> = new Map()
+  private season5DataCache: Map<string, LeaderboardEntry[]> = new Map()
 
   private getZSetKey(queue_id: string) {
     return `zset:leaderboard:${queue_id}`
@@ -364,10 +365,74 @@ export class LeaderboardService {
     queue_id: string,
     user_id: string
   ): Promise<LeaderboardEntry | null> {
-    // Get the sorted leaderboard with recalculated ranks
     const sortedLeaderboard = await this.getSeason4Leaderboard(queue_id)
+    const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
+    return userEntry || null
+  }
 
-    // Find the user entry in the sorted leaderboard
+  // Load Season 5 data from the database snapshot table
+  private async loadSeason5Data(queue_id: string): Promise<LeaderboardEntry[]> {
+    if (this.season5DataCache.has(queue_id)) {
+      return this.season5DataCache.get(queue_id) as LeaderboardEntry[]
+    }
+
+    try {
+      const snapshot = await db
+        .select()
+        .from(leaderboardSnapshots)
+        .where(
+          and(
+            eq(leaderboardSnapshots.channelId, queue_id),
+            gte(leaderboardSnapshots.timestamp, SEASON_5_START_DATE),
+            lt(leaderboardSnapshots.timestamp, SEASON_6_START_DATE)
+          )
+        )
+        .orderBy(desc(leaderboardSnapshots.timestamp))
+        .limit(1)
+        .then((rows) => rows[0])
+
+      if (!snapshot) {
+        console.warn(`No Season 5 snapshot found for channel ${queue_id}`)
+        this.season5DataCache.set(queue_id, [])
+        return []
+      }
+
+      const entries = (snapshot.data as LeaderboardEntry[]).map((e) => ({
+        ...e,
+        mmr: Number(e.mmr),
+        wins: Number(e.wins),
+        losses: Number(e.losses),
+        totalgames: Number(e.totalgames),
+        peak_mmr: Number(e.peak_mmr),
+        peak_streak: Number(e.peak_streak),
+        winrate: Number(e.winrate),
+      }))
+
+      this.season5DataCache.set(queue_id, entries)
+      return entries
+    } catch (error) {
+      console.error('Error loading Season 5 data from DB:', error)
+      return []
+    }
+  }
+
+  // Get Season 5 leaderboard data
+  async getSeason5Leaderboard(queue_id: string): Promise<LeaderboardEntry[]> {
+    const entries = await this.loadSeason5Data(queue_id)
+
+    const sortedEntries = [...entries].sort((a, b) => b.mmr - a.mmr)
+    return sortedEntries.map((entry, idx) => ({
+      ...entry,
+      rank: idx + 1,
+    }))
+  }
+
+  // Get Season 5 user rank data
+  async getSeason5UserRank(
+    queue_id: string,
+    user_id: string
+  ): Promise<LeaderboardEntry | null> {
+    const sortedLeaderboard = await this.getSeason5Leaderboard(queue_id)
     const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
     return userEntry || null
   }

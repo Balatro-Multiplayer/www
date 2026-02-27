@@ -4,20 +4,22 @@ export const SEASON_2_START_DATE = new Date('2025-04-02T13:00:00.000Z')
 export const SEASON_3_START_DATE = new Date('2025-06-02T13:00:00.000Z')
 export const SEASON_4_START_DATE = new Date('2025-09-01T05:00:00.000Z')
 export const SEASON_5_START_DATE = new Date('2025-11-30T18:08:00.000Z')
+export const SEASON_6_START_DATE = new Date('2026-02-27T18:00:00.000Z')
 
 // Season type for selection
-export const SeasonSchema = z.enum(['season1', 'season2', 'season3', 'season4', 'season5'])
+export const SeasonSchema = z.enum(['season1', 'season2', 'season3', 'season4', 'season5', 'season6'])
 export type Season = z.infer<typeof SeasonSchema>
 
 // Helper function to determine which season a date belongs to
 export function getSeasonForDate(
   date: Date
-): 'season1' | 'season2' | 'season3' | 'season4' | 'season5' {
+): 'season1' | 'season2' | 'season3' | 'season4' | 'season5' | 'season6' {
   if (date < SEASON_2_START_DATE) return 'season1'
   if (date < SEASON_3_START_DATE) return 'season2'
   if (date < SEASON_4_START_DATE) return 'season3'
   if (date < SEASON_5_START_DATE) return 'season4'
-  return 'season5'
+  if (date < SEASON_6_START_DATE) return 'season5'
+  return 'season6'
 }
 
 // Helper function to filter games by season
@@ -41,6 +43,8 @@ export function getSeasonDisplayName(season: Season): string {
     case 'season4':
       return 'Season 4'
     case 'season5':
-      return 'Season 5 (Current)'
+      return 'Season 5'
+    case 'season6':
+      return 'Season 6'
   }
 }

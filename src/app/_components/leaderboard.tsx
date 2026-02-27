@@ -45,6 +45,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
+  LEGACY_QUEUE_ID,
   OLD_RANKED_CHANNEL,
   OLD_SMALLWORLD_CHANNEL,
   OLD_VANILLA_CHANNEL,
@@ -133,7 +134,7 @@ export function LeaderboardPage() {
   // Validate season
   const season = SeasonSchema.safeParse(rawSeason).success
     ? (rawSeason as Season)
-    : 'season5'
+    : 'season6'
 
   const [gamesAmount, setGamesAmount] = useState([
     minGames ?? 0,
@@ -143,12 +144,12 @@ export function LeaderboardPage() {
   // Derive sort column and direction from query params with defaults
   const sortColumn =
     sortBy ||
-    (['season1', 'season2', 'season3', 'season4', 'season5'].includes(season)
+    (['season1', 'season2', 'season3', 'season4', 'season5', 'season6'].includes(season)
       ? 'mmr'
       : 'rank')
   const sortDirection =
     (sortOrder as 'asc' | 'desc') ||
-    (['season1', 'season2', 'season3', 'season4', 'season5'].includes(season)
+    (['season1', 'season2', 'season3', 'season4', 'season5', 'season6'].includes(season)
       ? 'desc'
       : 'asc')
 
@@ -162,7 +163,7 @@ export function LeaderboardPage() {
     // Only reset sort if season actually changed AND user hasn't explicitly set a sort
     if (seasonChanged && !sortBy) {
       if (
-        ['season1', 'season2', 'season3', 'season4', 'season5'].includes(season)
+        ['season1', 'season2', 'season3', 'season4', 'season5', 'season6'].includes(season)
       ) {
         setQueryParams({ sortBy: 'mmr', sortOrder: 'desc' })
       } else {
@@ -178,13 +179,16 @@ export function LeaderboardPage() {
     if (leaderboardType === 'vanilla') {
       return isOldSeason ? OLD_VANILLA_CHANNEL : VANILLA_QUEUE_ID
     }
+    if (leaderboardType === 'legacy') {
+      return LEGACY_QUEUE_ID
+    }
     if (leaderboardType === 'smallworld') {
       return isOldSeason ? OLD_SMALLWORLD_CHANNEL : SMALLWORLD_QUEUE_ID
     }
     return isOldSeason ? OLD_RANKED_CHANNEL : RANKED_QUEUE_ID
   }, [leaderboardType, season])
 
-  // Fetch leaderboard data with pagination (use queue id if season 4, use old channel id otherwise)
+  // Fetch leaderboard data with pagination (use queue id if season 4+, use old channel id otherwise)
   const [currentLeaderboardResult] =
     api.leaderboard.get_leaderboard.useSuspenseQuery({
       channel_id: channelId,
@@ -311,9 +315,10 @@ export function LeaderboardPage() {
             <div className='mb-6 flex w-full flex-col items-start justify-between gap-4 md:items-center lg:flex-row'>
               <div className='flex flex-col gap-4 md:flex-row md:items-center'>
                 <TabsList className='border border-gray-200 border-b bg-gray-50 dark:border-zinc-800 dark:bg-zinc-800/50'>
-                  <TabsTrigger value='ranked'>Ranked</TabsTrigger>
+                  <TabsTrigger value='ranked'>Standard Ranked</TabsTrigger>
                   <TabsTrigger value='smallworld'>Smallworld</TabsTrigger>
                   <TabsTrigger value='vanilla'>Vanilla</TabsTrigger>
+                  <TabsTrigger value='legacy'>Legacy Ranked</TabsTrigger>
                 </TabsList>
 
                 <div className='flex items-center gap-2'>
@@ -330,6 +335,9 @@ export function LeaderboardPage() {
                       <SelectValue placeholder='Select season' />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value='season6'>
+                        {getSeasonDisplayName('season6')}
+                      </SelectItem>
                       <SelectItem value='season5'>
                         {getSeasonDisplayName('season5')}
                       </SelectItem>

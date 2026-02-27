@@ -89,9 +89,9 @@ const chartConfig = {
 
 const QUEUE_TYPES = [
   { value: 'all', label: 'All Queues' },
-  { value: RANKED_QUEUE_ID, label: 'Ranked' },
+  { value: RANKED_QUEUE_ID, label: 'Standard Ranked' },
   { value: VANILLA_QUEUE_ID, label: 'Vanilla' },
-  { value: SMALLWORLD_QUEUE_ID, label: 'Small World' },
+  { value: SMALLWORLD_QUEUE_ID, label: 'Smallworld' },
   { value: CASUAL_QUEUE_ID, label: 'Casual' },
 ] as const
 type FilterMode = (typeof STATS_FILTER_MODES)[number]

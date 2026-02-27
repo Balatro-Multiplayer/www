@@ -1,5 +1,6 @@
 import { LeaderboardPage } from '@/app/_components/leaderboard'
 import {
+  LEGACY_QUEUE_ID,
   OLD_RANKED_CHANNEL,
   OLD_SMALLWORLD_CHANNEL,
   OLD_VANILLA_CHANNEL,
@@ -49,6 +50,9 @@ export default async function Home({
     }
     if (type === 'vanilla') {
       return isOldSeason ? OLD_VANILLA_CHANNEL : VANILLA_QUEUE_ID
+    }
+    if (type === 'legacy') {
+      return LEGACY_QUEUE_ID
     }
     return isOldSeason ? OLD_RANKED_CHANNEL : RANKED_QUEUE_ID
   }
