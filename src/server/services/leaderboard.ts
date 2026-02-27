@@ -72,12 +72,13 @@ export type UserRankResponse = {
 } | null
 
 export class LeaderboardService {
+  private static readonly LIVE_SEASON_CACHE_TTL_SECONDS = 180
+
   private season1DataCache: Map<string, LeaderboardEntry[]> = new Map()
   private season2DataCache: Map<string, LeaderboardEntry[]> = new Map()
   private season3DataCache: Map<string, LeaderboardEntry[]> = new Map()
   private season4DataCache: Map<string, LeaderboardEntry[]> = new Map()
   private season5DataCache: Map<string, LeaderboardEntry[]> = new Map()
-  private season6DataCache: Map<string, LeaderboardEntry[]> = new Map()
 
   private getZSetKey(queue_id: string) {
     return `zset:leaderboard:${queue_id}`
@@ -410,13 +411,19 @@ export class LeaderboardService {
 
   // Load Season 6 data from the bot using ?season=6
   private async loadSeason6Data(queue_id: string): Promise<LeaderboardEntry[]> {
-    if (this.season6DataCache.has(queue_id)) {
-      return this.season6DataCache.get(queue_id) as LeaderboardEntry[]
+    const cacheKey = this.getSeasonKey(queue_id, 6)
+    const cached = await redis.get(cacheKey)
+    if (cached) {
+      return JSON.parse(cached) as LeaderboardEntry[]
     }
 
     try {
       const entries = await botlatro_service.get_leaderboard(queue_id, 6)
-      this.season6DataCache.set(queue_id, entries)
+      await redis.setEx(
+        cacheKey,
+        LeaderboardService.LIVE_SEASON_CACHE_TTL_SECONDS,
+        JSON.stringify(entries)
+      )
       return entries
     } catch (error) {
       console.error('Error loading Season 6 data from bot:', error)
@@ -455,6 +462,10 @@ export class LeaderboardService {
 
   private getBackupKey(queue_id: string) {
     return `backup_leaderboard_${queue_id}`
+  }
+
+  private getSeasonKey(queue_id: string, season: number) {
+    return `season:${season}:leaderboard:${queue_id}`
   }
 
   private getSnapshotKey(queue_id: string, timestamp: string): string {
@@ -553,8 +564,13 @@ export class LeaderboardService {
 
       // Initial pipeline for cache setup
       let initialPipeline = redis.multi()
-      initialPipeline.setEx(rawKey, 180, JSON.stringify(fresh))
+      initialPipeline.setEx(
+        rawKey,
+        LeaderboardService.LIVE_SEASON_CACHE_TTL_SECONDS,
+        JSON.stringify(fresh)
+      )
       initialPipeline.del(zsetKey)
+      initialPipeline.del(this.getSeasonKey(queue_id, 6))
       await initialPipeline.exec()
       initialPipeline = null as any
 
@@ -584,7 +600,10 @@ export class LeaderboardService {
       }
 
       // Set expiration after all batches complete
-      await redis.expire(zsetKey, 180)
+      await redis.expire(
+        zsetKey,
+        LeaderboardService.LIVE_SEASON_CACHE_TTL_SECONDS
+      )
 
       logMemory('after_expire')
       if (global.gc) {
