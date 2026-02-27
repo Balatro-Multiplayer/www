@@ -1,10 +1,10 @@
 import { redis } from '@/server/redis'
 import {
+  CASUAL_QUEUE_ID,
+  LEGACY_QUEUE_ID,
   RANKED_QUEUE_ID,
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
-  LEGACY_QUEUE_ID,
-  CASUAL_QUEUE_ID,
 } from '@/shared/constants'
 import {
   SEASON_2_START_DATE,
@@ -23,10 +23,20 @@ export type OverallMatch = {
   deck: string | null
   stake: string | null
   created_at: string
-  players: Array<{ user_id: string; team: number | null; elo_change: number | null }>
+  players: Array<{
+    user_id: string
+    team: number | null
+    elo_change: number | null
+  }>
 }
 
-export const QUEUE_IDS = [RANKED_QUEUE_ID, SMALLWORLD_QUEUE_ID, VANILLA_QUEUE_ID, LEGACY_QUEUE_ID, CASUAL_QUEUE_ID]
+export const QUEUE_IDS = [
+  RANKED_QUEUE_ID,
+  SMALLWORLD_QUEUE_ID,
+  VANILLA_QUEUE_ID,
+  LEGACY_QUEUE_ID,
+  CASUAL_QUEUE_ID,
+]
 
 export function getSeasonDateRange(season: Season): { start: Date; end: Date } {
   switch (season) {
@@ -45,8 +55,11 @@ export function getSeasonDateRange(season: Season): { start: Date; end: Date } {
   }
 }
 
-export async function fetchMatches(queueId: string, season: Season): Promise<OverallMatch[]> {
-  const cacheKey = `stats:matches:${queueId}:${season}`
+export async function fetchMatches(
+  queueId: string,
+  season: Season
+): Promise<OverallMatch[]> {
+  const cacheKey = `stats:matches:v2:${queueId}:${season}`
   const cached = await redis.get(cacheKey)
   if (cached) return JSON.parse(cached)
 
@@ -66,7 +79,9 @@ export async function fetchMatches(queueId: string, season: Season): Promise<Ove
     })
   }
 
-  const res = await fetch(`${BOTLATRO_URL}api/stats/overall-history/${queueId}?${params}`)
+  const res = await fetch(
+    `${BOTLATRO_URL}api/stats/overall-history/${queueId}?${params}`
+  )
   if (!res.ok) throw new Error(`Botlatro API error: ${res.status}`)
   const data = (await res.json()) as { matches: OverallMatch[] }
 

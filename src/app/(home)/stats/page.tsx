@@ -46,7 +46,7 @@ export default async function StatsPage({
     api.history.games_per_hour.prefetch({ groupBy: 'hour' }),
     api.leaderboard.rating_distribution.prefetch({
       channel_id: RANKED_QUEUE_ID,
-      season: 'season5',
+      season: 'season6',
     }),
     api.stats.deck_popularity.prefetch(deckPrefetchInput),
     api.stats.stake_popularity.prefetch(stakePrefetchInput),

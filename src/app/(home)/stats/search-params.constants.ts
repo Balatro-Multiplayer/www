@@ -16,11 +16,12 @@ export const STAT_TABS = [
 export const STATS_FILTER_MODES = ['season', 'dateRange'] as const
 
 export const STATS_SEASONS = [
-  'season1',
-  'season2',
-  'season3',
-  'season4',
+  'season6',
   'season5',
+  'season4',
+  'season3',
+  'season2',
+  'season1',
 ] as const
 
 export const STATS_QUEUES = [

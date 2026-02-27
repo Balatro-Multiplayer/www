@@ -32,6 +32,7 @@ import { type Season, getSeasonDisplayName } from '@/shared/seasons'
 import { api } from '@/trpc/react'
 import { useState } from 'react'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { STATS_SEASONS } from '../search-params'
 
 const chartConfig = {
   count: {
@@ -40,7 +41,6 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-const SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4', 'season5']
 const QUEUE_TYPES = [
   { value: 'ranked', label: 'Ranked' },
   { value: 'vanilla', label: 'Vanilla' },
@@ -48,7 +48,8 @@ const QUEUE_TYPES = [
 ] as const
 
 function getChannelId(type: string, season: Season): string {
-  const isOldSeason = season === 'season1' || season === 'season2' || season === 'season3'
+  const isOldSeason =
+    season === 'season1' || season === 'season2' || season === 'season3'
   if (type === 'smallworld') {
     return isOldSeason ? OLD_SMALLWORLD_CHANNEL : SMALLWORLD_QUEUE_ID
   }
@@ -83,7 +84,7 @@ function computeBellCurve(mmrValues: number[], binSize = 50) {
 }
 
 export function RatingDistributionChart() {
-  const [season, setSeason] = useState<Season>('season5')
+  const [season, setSeason] = useState<Season>('season6')
   const [queueType, setQueueType] = useState('ranked')
 
   const channelId = getChannelId(queueType, season)
@@ -95,8 +96,15 @@ export function RatingDistributionChart() {
 
   const chartData = computeBellCurve(mmrValues)
   const totalPlayers = mmrValues.length
-  const avgMmr = totalPlayers > 0 ? Math.round(mmrValues.reduce((a, b) => a + b, 0) / totalPlayers) : 0
-  const medianMmr = totalPlayers > 0 ? Math.round([...mmrValues].sort((a, b) => a - b)[Math.floor(totalPlayers / 2)]!) : 0
+  const avgMmr =
+    totalPlayers > 0
+      ? Math.round(mmrValues.reduce((a, b) => a + b, 0) / totalPlayers)
+      : 0
+  const sortedMmrValues = [...mmrValues].sort((a, b) => a - b)
+  const medianMmr =
+    totalPlayers > 0
+      ? Math.round(sortedMmrValues[Math.floor(totalPlayers / 2)] ?? 0)
+      : 0
 
   return (
     <Card className='w-full'>
@@ -104,7 +112,8 @@ export function RatingDistributionChart() {
         <div>
           <CardTitle>Rating Distribution</CardTitle>
           <CardDescription>
-            {totalPlayers.toLocaleString()} players &middot; Avg: {avgMmr} &middot; Median: {medianMmr}
+            {totalPlayers.toLocaleString()} players &middot; Avg: {avgMmr}{' '}
+            &middot; Median: {medianMmr}
           </CardDescription>
         </div>
         <div className='flex gap-2'>
@@ -113,7 +122,7 @@ export function RatingDistributionChart() {
               <SelectValue placeholder='Select season' />
             </SelectTrigger>
             <SelectContent>
-              {SEASONS.map((s) => (
+              {STATS_SEASONS.map((s) => (
                 <SelectItem key={s} value={s}>
                   {getSeasonDisplayName(s)}
                 </SelectItem>
@@ -153,8 +162,16 @@ export function RatingDistributionChart() {
             >
               <defs>
                 <linearGradient id='fillCount' x1='0' y1='0' x2='0' y2='1'>
-                  <stop offset='5%' stopColor='var(--color-count)' stopOpacity={0.8} />
-                  <stop offset='95%' stopColor='var(--color-count)' stopOpacity={0.1} />
+                  <stop
+                    offset='5%'
+                    stopColor='var(--color-count)'
+                    stopOpacity={0.8}
+                  />
+                  <stop
+                    offset='95%'
+                    stopColor='var(--color-count)'
+                    stopOpacity={0.1}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray='3 3' />

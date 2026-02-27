@@ -37,21 +37,19 @@ export const leaderboard_router = createTRPCRouter({
       })
     )
     .query(async ({ input }) => {
-      if (input.season === 'season1' || input.season === 'season2' || input.season === 'season4') {
+      if (
+        input.season === 'season1' ||
+        input.season === 'season2' ||
+        input.season === 'season4'
+      ) {
         // use the snapshot data
-        let seasonData;
+        let seasonData
         if (input.season === 'season1') {
-          seasonData = await service.getSeason1Leaderboard(
-              input.channel_id
-          )
+          seasonData = await service.getSeason1Leaderboard(input.channel_id)
         } else if (input.season === 'season2') {
-          seasonData = await service.getSeason2Leaderboard(
-              input.channel_id
-          )
+          seasonData = await service.getSeason2Leaderboard(input.channel_id)
         } else {
-          seasonData = await service.getSeason4Leaderboard(
-              input.channel_id
-          )
+          seasonData = await service.getSeason4Leaderboard(input.channel_id)
         }
 
         // Apply filtering
@@ -175,7 +173,46 @@ export const leaderboard_router = createTRPCRouter({
           isStale: false,
         }
       }
-      // Season 6 (current): use live data
+      if (input.season === 'season6') {
+        const seasonData = await service.getSeason6Leaderboard(input.channel_id)
+        let filtered = seasonData
+        if (input.search) {
+          const searchLower = input.search.toLowerCase()
+          filtered = filtered.filter((entry) =>
+            entry.name.toLowerCase().includes(searchLower)
+          )
+        }
+        if (input.minGames !== undefined) {
+          filtered = filtered.filter(
+            (entry) => entry.totalgames >= input.minGames!
+          )
+        }
+        if (input.maxGames !== undefined) {
+          filtered = filtered.filter(
+            (entry) => entry.totalgames <= input.maxGames!
+          )
+        }
+        if (input.sortBy) {
+          filtered = [...filtered].sort((a, b) => {
+            const aVal = a[input.sortBy!]
+            const bVal = b[input.sortBy!]
+            const order = input.sortOrder === 'asc' ? 1 : -1
+            return aVal < bVal ? -order : aVal > bVal ? order : 0
+          })
+        }
+        const total = filtered.length
+        const offset = (input.page - 1) * input.pageSize
+        const paginated = filtered.slice(offset, offset + input.pageSize)
+        return {
+          data: paginated,
+          total,
+          page: input.page,
+          pageSize: input.pageSize,
+          totalPages: Math.ceil(total / input.pageSize),
+          isStale: false,
+        }
+      }
+
       const result = await service.getLeaderboard(input.channel_id, {
         page: input.page,
         pageSize: input.pageSize,
@@ -211,7 +248,7 @@ export const leaderboard_router = createTRPCRouter({
     .input(
       z.object({
         channel_id: z.string(),
-        season: SeasonSchema.optional().default('season5'),
+        season: SeasonSchema.optional().default('season6'),
       })
     )
     .query(async ({ input }) => {
@@ -227,6 +264,8 @@ export const leaderboard_router = createTRPCRouter({
         entries = await service.getSeason4Leaderboard(input.channel_id)
       } else if (input.season === 'season5') {
         entries = await service.getSeason5Leaderboard(input.channel_id)
+      } else if (input.season === 'season6') {
+        entries = await service.getSeason6Leaderboard(input.channel_id)
       } else {
         const result = await service.getLeaderboard(input.channel_id)
         entries = result.data
@@ -240,15 +279,15 @@ export const leaderboard_router = createTRPCRouter({
       z.object({
         channel_id: z.string(),
         user_id: z.string(),
-        season: SeasonSchema.optional().default('season5'),
+        season: SeasonSchema.optional().default('season6'),
       })
     )
     .query(async ({ input }) => {
       if (input.season === 'season1') {
         // For Season 2, use the snapshot data
         const userData = await service.getSeason1UserRank(
-            input.channel_id,
-            input.user_id
+          input.channel_id,
+          input.user_id
         )
         if (!userData) return null
         return {
@@ -282,8 +321,8 @@ export const leaderboard_router = createTRPCRouter({
       }
       if (input.season === 'season4') {
         const userData = await service.getSeason4UserRank(
-            input.channel_id,
-            input.user_id
+          input.channel_id,
+          input.user_id
         )
         if (!userData) return null
         return {
@@ -302,7 +341,18 @@ export const leaderboard_router = createTRPCRouter({
           isStale: false,
         }
       }
-      // Season 6 (current): use live data
+      if (input.season === 'season6') {
+        const userData = await service.getSeason6UserRank(
+          input.channel_id,
+          input.user_id
+        )
+        if (!userData) return null
+        return {
+          data: userData,
+          isStale: false,
+        }
+      }
+
       const result = await service.getUserRank(input.channel_id, input.user_id)
       if (!result) return null
       return {

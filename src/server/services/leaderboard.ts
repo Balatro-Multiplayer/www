@@ -77,6 +77,7 @@ export class LeaderboardService {
   private season3DataCache: Map<string, LeaderboardEntry[]> = new Map()
   private season4DataCache: Map<string, LeaderboardEntry[]> = new Map()
   private season5DataCache: Map<string, LeaderboardEntry[]> = new Map()
+  private season6DataCache: Map<string, LeaderboardEntry[]> = new Map()
 
   private getZSetKey(queue_id: string) {
     return `zset:leaderboard:${queue_id}`
@@ -403,6 +404,43 @@ export class LeaderboardService {
     user_id: string
   ): Promise<LeaderboardEntry | null> {
     const sortedLeaderboard = await this.getSeason5Leaderboard(queue_id)
+    const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
+    return userEntry || null
+  }
+
+  // Load Season 6 data from the bot using ?season=6
+  private async loadSeason6Data(queue_id: string): Promise<LeaderboardEntry[]> {
+    if (this.season6DataCache.has(queue_id)) {
+      return this.season6DataCache.get(queue_id) as LeaderboardEntry[]
+    }
+
+    try {
+      const entries = await botlatro_service.get_leaderboard(queue_id, 6)
+      this.season6DataCache.set(queue_id, entries)
+      return entries
+    } catch (error) {
+      console.error('Error loading Season 6 data from bot:', error)
+      return []
+    }
+  }
+
+  // Get Season 6 leaderboard data
+  async getSeason6Leaderboard(queue_id: string): Promise<LeaderboardEntry[]> {
+    const entries = await this.loadSeason6Data(queue_id)
+
+    const sortedEntries = [...entries].sort((a, b) => b.mmr - a.mmr)
+    return sortedEntries.map((entry, idx) => ({
+      ...entry,
+      rank: idx + 1,
+    }))
+  }
+
+  // Get Season 6 user rank data
+  async getSeason6UserRank(
+    queue_id: string,
+    user_id: string
+  ): Promise<LeaderboardEntry | null> {
+    const sortedLeaderboard = await this.getSeason6Leaderboard(queue_id)
     const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
     return userEntry || null
   }

@@ -8,6 +8,7 @@ import {
 } from '@/server/services/match-fetcher'
 import {
   SEASON_5_START_DATE,
+  SEASON_6_START_DATE,
   type Season,
   SeasonSchema,
 } from '@/shared/seasons'
@@ -73,13 +74,56 @@ function aggregateSeasonOverview(matches: OverallMatch[]) {
   }
 }
 
-const ALL_SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4', 'season5', 'season6']
 const DB_SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4']
 
 function parseInputDate(value?: string): Date | undefined {
   if (!value) return undefined
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? undefined : date
+}
+
+function getApiSeasonsForDateRange(
+  startDate?: Date,
+  endExclusive?: Date
+): Season[] {
+  const seasons: Season[] = []
+
+  if (
+    (!endExclusive || endExclusive > SEASON_5_START_DATE) &&
+    (!startDate || startDate < SEASON_6_START_DATE)
+  ) {
+    seasons.push('season5')
+  }
+
+  if (!endExclusive || endExclusive > SEASON_6_START_DATE) {
+    seasons.push('season6')
+  }
+
+  return seasons
+}
+
+async function fetchApiMatchesForDateRange(
+  queueIds: string[],
+  startDate?: Date,
+  endExclusive?: Date
+) {
+  const seasons = getApiSeasonsForDateRange(startDate, endExclusive)
+  if (seasons.length === 0) return []
+
+  const matches = (
+    await Promise.all(
+      queueIds.flatMap((queueId) =>
+        seasons.map((season) => fetchMatches(queueId, season))
+      )
+    )
+  ).flat()
+
+  return matches.filter((match) => {
+    const createdAt = new Date(match.created_at)
+    if (startDate && createdAt < startDate) return false
+    if (endExclusive && createdAt >= endExclusive) return false
+    return true
+  })
 }
 
 export const stats_router = createTRPCRouter({
@@ -99,7 +143,7 @@ export const stats_router = createTRPCRouter({
       const mode = input?.mode ?? 'season'
 
       if (mode === 'season') {
-        const season = input?.season ?? 'season5'
+        const season = input?.season ?? 'season6'
 
         if (DB_SEASONS.includes(season)) {
           const { start, end } = getSeasonDateRange(season)
@@ -151,18 +195,15 @@ export const stats_router = createTRPCRouter({
 
       if (needsApi) {
         const queueIds = input?.queueId ? [input.queueId] : QUEUE_IDS
-        const allMatches = (
-          await Promise.all(queueIds.map((q) => fetchMatches(q, 'season5')))
-        ).flat()
-        const apiStart =
+        const allMatches = await fetchApiMatchesForDateRange(
+          queueIds,
           startDate && startDate > SEASON_5_START_DATE
             ? startDate
-            : SEASON_5_START_DATE
+            : SEASON_5_START_DATE,
+          endExclusive
+        )
 
         for (const match of allMatches) {
-          const createdAt = new Date(match.created_at)
-          if (createdAt < apiStart) continue
-          if (endExclusive && createdAt >= endExclusive) continue
           rows.push({ deck: match.deck })
         }
       }
@@ -186,7 +227,7 @@ export const stats_router = createTRPCRouter({
       const mode = input?.mode ?? 'season'
 
       if (mode === 'season') {
-        const season = input?.season ?? 'season5'
+        const season = input?.season ?? 'season6'
 
         if (DB_SEASONS.includes(season)) {
           const { start, end } = getSeasonDateRange(season)
@@ -238,18 +279,15 @@ export const stats_router = createTRPCRouter({
 
       if (needsApi) {
         const queueIds = input?.queueId ? [input.queueId] : QUEUE_IDS
-        const allMatches = (
-          await Promise.all(queueIds.map((q) => fetchMatches(q, 'season5')))
-        ).flat()
-        const apiStart =
+        const allMatches = await fetchApiMatchesForDateRange(
+          queueIds,
           startDate && startDate > SEASON_5_START_DATE
             ? startDate
-            : SEASON_5_START_DATE
+            : SEASON_5_START_DATE,
+          endExclusive
+        )
 
         for (const match of allMatches) {
-          const createdAt = new Date(match.created_at)
-          if (createdAt < apiStart) continue
-          if (endExclusive && createdAt >= endExclusive) continue
           rows.push({ stake: match.stake })
         }
       }
@@ -258,7 +296,7 @@ export const stats_router = createTRPCRouter({
     }),
 
   season_overview: publicProcedure.query(async ({ ctx }) => {
-    // Seasons 1-5: use local DB (has data). Season 6+: use botlatro API.
+    // Seasons 1-4: use local DB. Seasons 5-6: use botlatro API.
     const dbResults = await Promise.all(
       DB_SEASONS.map(async (season) => {
         const { start, end } = getSeasonDateRange(season)
@@ -292,8 +330,12 @@ export const stats_router = createTRPCRouter({
 
     // Seasons 5 and 6: fetch from API
     const [s5Matches, s6Matches] = await Promise.all([
-      Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season5'))).then((r) => r.flat()),
-      Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season6'))).then((r) => r.flat()),
+      Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season5'))).then((r) =>
+        r.flat()
+      ),
+      Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season6'))).then((r) =>
+        r.flat()
+      ),
     ])
     const s5 = aggregateSeasonOverview(s5Matches)
     const s6 = aggregateSeasonOverview(s6Matches)
