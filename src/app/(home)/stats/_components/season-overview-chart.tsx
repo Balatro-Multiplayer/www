@@ -19,6 +19,7 @@ import {
   SEASON_3_START_DATE,
   SEASON_4_START_DATE,
   SEASON_5_START_DATE,
+  SEASON_6_START_DATE,
 } from '@/shared/seasons'
 import { api } from '@/trpc/react'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from 'recharts'
@@ -37,7 +38,9 @@ function getSeasonDates(season: Season): string {
     case 'season4':
       return `${fmt(SEASON_4_START_DATE)} – ${fmt(SEASON_5_START_DATE)}`
     case 'season5':
-      return `${fmt(SEASON_5_START_DATE)} – Present`
+      return `${fmt(SEASON_5_START_DATE)} – ${fmt(SEASON_6_START_DATE)}`
+    case 'season6':
+      return `${fmt(SEASON_6_START_DATE)} – Present`
   }
 }
 
