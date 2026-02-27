@@ -107,7 +107,7 @@ export function LeaderboardPage() {
   const [queryParams, setQueryParams] = useQueryStates(
     {
       type: parseAsString.withDefault('ranked'),
-      season: parseAsString.withDefault('season5'),
+      season: parseAsString.withDefault('season6'),
       page: parseAsInteger.withDefault(1),
       search: parseAsString,
       minGames: parseAsInteger,
