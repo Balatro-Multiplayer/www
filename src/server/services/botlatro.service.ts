@@ -10,9 +10,13 @@ export const TRANSCRIPT_CACHE_KEY = (gameNumber: number) =>
   `transcript:${gameNumber}`
 
 export const botlatro_service = {
-  get_leaderboard: async (queue_id: string) => {
+  get_leaderboard: async (queue_id: string, season?: number) => {
+    const params = new URLSearchParams({ limit: '100000' })
+    if (season !== undefined) {
+      params.set('season', season.toString())
+    }
     const response = await fetch(
-      `${BOTLATRO_URL}api/stats/leaderboard/${queue_id}?limit=100000`
+      `${BOTLATRO_URL}api/stats/leaderboard/${queue_id}?${params}`
     )
     if (!response.ok) {
       throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)

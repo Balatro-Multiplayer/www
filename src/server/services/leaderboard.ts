@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { db } from '@/server/db'
 import { leaderboardSnapshots, memoryLogs, metadata } from '@/server/db/schema'
-import { SEASON_3_START_DATE, SEASON_4_START_DATE, SEASON_5_START_DATE, SEASON_6_START_DATE } from '@/shared/seasons'
+import { SEASON_3_START_DATE, SEASON_4_START_DATE } from '@/shared/seasons'
 import { and, desc, eq, gte, lt } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import { redis } from '../redis'
@@ -370,48 +370,18 @@ export class LeaderboardService {
     return userEntry || null
   }
 
-  // Load Season 5 data from the database snapshot table
+  // Load Season 5 data from the bot using ?season=5
   private async loadSeason5Data(queue_id: string): Promise<LeaderboardEntry[]> {
     if (this.season5DataCache.has(queue_id)) {
       return this.season5DataCache.get(queue_id) as LeaderboardEntry[]
     }
 
     try {
-      const snapshot = await db
-        .select()
-        .from(leaderboardSnapshots)
-        .where(
-          and(
-            eq(leaderboardSnapshots.channelId, queue_id),
-            gte(leaderboardSnapshots.timestamp, SEASON_5_START_DATE),
-            lt(leaderboardSnapshots.timestamp, SEASON_6_START_DATE)
-          )
-        )
-        .orderBy(desc(leaderboardSnapshots.timestamp))
-        .limit(1)
-        .then((rows) => rows[0])
-
-      if (!snapshot) {
-        console.warn(`No Season 5 snapshot found for channel ${queue_id}`)
-        this.season5DataCache.set(queue_id, [])
-        return []
-      }
-
-      const entries = (snapshot.data as LeaderboardEntry[]).map((e) => ({
-        ...e,
-        mmr: Number(e.mmr),
-        wins: Number(e.wins),
-        losses: Number(e.losses),
-        totalgames: Number(e.totalgames),
-        peak_mmr: Number(e.peak_mmr),
-        peak_streak: Number(e.peak_streak),
-        winrate: Number(e.winrate),
-      }))
-
+      const entries = await botlatro_service.get_leaderboard(queue_id, 5)
       this.season5DataCache.set(queue_id, entries)
       return entries
     } catch (error) {
-      console.error('Error loading Season 5 data from DB:', error)
+      console.error('Error loading Season 5 data from bot:', error)
       return []
     }
   }
