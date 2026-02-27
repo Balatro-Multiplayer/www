@@ -32,7 +32,7 @@ const chartConfig = {
 
 export function WinrateTrendChart({
   games,
-  season = 'season5',
+  season = 'season6',
   queueType = 'all',
 }: {
   games: SelectGames[]
@@ -60,7 +60,10 @@ export function WinrateTrendChart({
   // Calculate rolling winrate
   const chartData = calculateRollingWinrate(sortedGames, gamesWindow)
 
-  const queueLabel = queueType === 'all' ? 'All' : (queueType.charAt(0).toUpperCase() + queueType.slice(1))
+  const queueLabel =
+    queueType === 'all'
+      ? 'All'
+      : queueType.charAt(0).toUpperCase() + queueType.slice(1)
 
   return (
     <Card>
@@ -184,9 +187,10 @@ function calculateRollingWinrate(
     const winrate = Math.round((wins / windowGames.length) * 100)
 
     // Add data point
-    if (games[i]) {
+    const game = games[i]
+    if (game) {
       result.push({
-        date: games[i]!.gameTime,
+        date: game.gameTime,
         winrate: winrate,
       })
     }

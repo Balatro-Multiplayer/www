@@ -558,9 +558,16 @@ export class LeaderboardService {
       console.log('Updating Redis cache for leaderboard:', queue_id)
       const zsetKey = this.getZSetKey(queue_id)
       const rawKey = this.getRawKey(queue_id)
+      const season6Key = this.getSeasonKey(queue_id, 6)
       const timestamp = new Date().toISOString()
 
       logMemory('before_initial_pipeline')
+      console.log('Clearing leaderboard caches:', {
+        queue_id,
+        rawKey,
+        zsetKey,
+        season6Key,
+      })
 
       // Initial pipeline for cache setup
       let initialPipeline = redis.multi()
@@ -570,7 +577,7 @@ export class LeaderboardService {
         JSON.stringify(fresh)
       )
       initialPipeline.del(zsetKey)
-      initialPipeline.del(this.getSeasonKey(queue_id, 6))
+      initialPipeline.del(season6Key)
       await initialPipeline.exec()
       initialPipeline = null as any
 
@@ -619,6 +626,11 @@ export class LeaderboardService {
       }
       const end2 = performance.now()
       console.log('Redis cache update took:', (end2 - start2).toFixed(2))
+      console.log('Leaderboard refresh complete:', {
+        queue_id,
+        entries: fresh.length,
+        durationMs: Number((end2 - start2).toFixed(2)),
+      })
 
       logMemory('refresh_end')
       currentRunId = null

@@ -44,7 +44,7 @@ export default async function PlayerPage({
       api.history.user_games.prefetch({ user_id: id }),
       api.history.user_games_page.prefetch({
         user_id: id,
-        season: 'season5',
+        season: 'season6',
         page: Number.isFinite(page) && page >= 1 ? page : 1,
         pageSize: 50,
         sortBy,

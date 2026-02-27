@@ -30,7 +30,7 @@ const chartConfig = {
 
 export function MmrTrendChart({
   games,
-  season = 'season5',
+  season = 'season6',
   queueType = 'ranked',
 }: {
   games: SelectGames[]
@@ -60,7 +60,10 @@ export function MmrTrendChart({
     })
   }
 
-  const queueLabel = queueType === 'all' ? 'Ranked' : (queueType.charAt(0).toUpperCase() + queueType.slice(1))
+  const queueLabel =
+    queueType === 'all'
+      ? 'Ranked'
+      : queueType.charAt(0).toUpperCase() + queueType.slice(1)
 
   return (
     <Card>

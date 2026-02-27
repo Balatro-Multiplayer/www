@@ -127,7 +127,7 @@ function UserInfoComponent() {
   const [filter, setFilter] = useState('all')
   const format = useFormatter()
   const timeZone = useTimeZone()
-  const [season, setSeason] = useState<Season>('season5')
+  const [season, setSeason] = useState<Season>('season6')
   const rankedChannelId = getChannelIdForSeason('ranked', season)
   const vanillaChannelId = getChannelIdForSeason('vanilla', season)
   const smallworldChannelId = getChannelIdForSeason('smallworld', season)
@@ -283,7 +283,11 @@ function UserInfoComponent() {
     .filter((game) => game.gameType === 'ranked')
     .at(0)
   const lastVanillaGame = seasonFilteredGames
-    .filter((game) => game.gameType.toLowerCase() === 'vanilla' || game.gameType.toLowerCase() === 'legacy')
+    .filter(
+      (game) =>
+        game.gameType.toLowerCase() === 'vanilla' ||
+        game.gameType.toLowerCase() === 'legacy'
+    )
     .at(0)
   const lastSmallworldGame = seasonFilteredGames
     .filter((game) => game.gameType.toLowerCase() === 'smallworld')
@@ -365,7 +369,9 @@ function UserInfoComponent() {
 
   const mostPlayedVanilla = useMemo(() => {
     const vanillaGames = games.filter(
-      (g) => g.gameType.toLowerCase() === 'vanilla' || g.gameType.toLowerCase() === 'legacy'
+      (g) =>
+        g.gameType.toLowerCase() === 'vanilla' ||
+        g.gameType.toLowerCase() === 'legacy'
     )
     const deckCounts: Record<string, number> = {}
     const stakeCounts: Record<string, number> = {}

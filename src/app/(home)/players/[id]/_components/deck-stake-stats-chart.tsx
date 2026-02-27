@@ -18,9 +18,9 @@ import {
   filterGamesBySeason,
   getSeasonDisplayName,
 } from '@/shared/seasons'
-import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts'
-import { useMemo } from 'react'
 import Image from 'next/image'
+import { useMemo } from 'react'
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts'
 
 export const DECK_IMAGES: Record<string, string> = {
   red: '/decks/red.png',
@@ -125,7 +125,7 @@ const stakeChartConfig = {
 
 export function DeckStakeStatsChart({
   games,
-  season = 'season5',
+  season = 'season6',
 }: {
   games: SelectGames[]
   season?: Season
@@ -159,22 +159,25 @@ export function DeckStakeStatsChart({
   }, [games])
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
       <Card>
         <CardHeader>
           <CardTitle>Decks Played</CardTitle>
           <CardDescription>{getSeasonDisplayName(season)}</CardDescription>
         </CardHeader>
-        <CardContent className="p-2">
+        <CardContent className='p-2'>
           {deckData.length > 0 ? (
-            <ChartContainer config={deckChartConfig} className="h-[350px] w-full">
+            <ChartContainer
+              config={deckChartConfig}
+              className='h-[350px] w-full'
+            >
               <BarChart
                 data={deckData}
                 margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
               >
                 <CartesianGrid vertical={false} />
                 <XAxis
-                  dataKey="name"
+                  dataKey='name'
                   tickLine={false}
                   axisLine={false}
                   interval={0}
@@ -185,7 +188,7 @@ export function DeckStakeStatsChart({
                     const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
                     return (
                       <g transform={`translate(${x - imgSize / 2},${y + 10})`}>
-                        <title className="capitalize">{payload.value}</title>
+                        <title className='capitalize'>{payload.value}</title>
                         {imagePath && (
                           <image
                             href={imagePath}
@@ -197,10 +200,10 @@ export function DeckStakeStatsChart({
                           <text
                             x={imgSize / 2}
                             y={imgSize + 20}
-                            textAnchor="middle"
-                            fill="currentColor"
-                            fontSize="10"
-                            className="capitalize font-medium"
+                            textAnchor='middle'
+                            fill='currentColor'
+                            fontSize='10'
+                            className='font-medium capitalize'
                           >
                             {payload.value}
                           </text>
@@ -214,19 +217,19 @@ export function DeckStakeStatsChart({
                   cursor={false}
                   content={<ChartTooltipContent />}
                 />
-                <Bar dataKey="count" fill="var(--color-violet-500)" radius={4}>
+                <Bar dataKey='count' fill='var(--color-violet-500)' radius={4}>
                   <LabelList
-                    dataKey="count"
-                    position="top"
+                    dataKey='count'
+                    position='top'
                     offset={8}
-                    className="fill-foreground"
+                    className='fill-foreground'
                     fontSize={10}
                   />
                 </Bar>
               </BarChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-[350px] w-full items-center justify-center text-muted-foreground">
+            <div className='flex h-[350px] w-full items-center justify-center text-muted-foreground'>
               No deck data available
             </div>
           )}
@@ -238,16 +241,19 @@ export function DeckStakeStatsChart({
           <CardTitle>Stakes Played</CardTitle>
           <CardDescription>{getSeasonDisplayName(season)}</CardDescription>
         </CardHeader>
-        <CardContent className="p-2">
+        <CardContent className='p-2'>
           {stakeData.length > 0 ? (
-            <ChartContainer config={stakeChartConfig} className="h-[350px] w-full">
+            <ChartContainer
+              config={stakeChartConfig}
+              className='h-[350px] w-full'
+            >
               <BarChart
                 data={stakeData}
                 margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
               >
                 <CartesianGrid vertical={false} />
                 <XAxis
-                  dataKey="name"
+                  dataKey='name'
                   tickLine={false}
                   axisLine={false}
                   interval={0}
@@ -258,7 +264,7 @@ export function DeckStakeStatsChart({
                     const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
                     return (
                       <g transform={`translate(${x - imgSize / 2},${y + 10})`}>
-                        <title className="capitalize">{payload.value}</title>
+                        <title className='capitalize'>{payload.value}</title>
                         {imagePath && (
                           <image
                             href={imagePath}
@@ -270,10 +276,10 @@ export function DeckStakeStatsChart({
                           <text
                             x={imgSize / 2}
                             y={imgSize + 20}
-                            textAnchor="middle"
-                            fill="currentColor"
-                            fontSize="10"
-                            className="capitalize font-medium"
+                            textAnchor='middle'
+                            fill='currentColor'
+                            fontSize='10'
+                            className='font-medium capitalize'
                           >
                             {payload.value}
                           </text>
@@ -287,19 +293,19 @@ export function DeckStakeStatsChart({
                   cursor={false}
                   content={<ChartTooltipContent />}
                 />
-                <Bar dataKey="count" fill="var(--color-emerald-500)" radius={4}>
+                <Bar dataKey='count' fill='var(--color-emerald-500)' radius={4}>
                   <LabelList
-                    dataKey="count"
-                    position="top"
+                    dataKey='count'
+                    position='top'
                     offset={8}
-                    className="fill-foreground"
+                    className='fill-foreground'
                     fontSize={10}
                   />
                 </Bar>
               </BarChart>
             </ChartContainer>
           ) : (
-            <div className="flex h-[350px] w-full items-center justify-center text-muted-foreground">
+            <div className='flex h-[350px] w-full items-center justify-center text-muted-foreground'>
               No stake data available
             </div>
           )}
