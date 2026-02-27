@@ -97,19 +97,34 @@ export async function POST(req: NextRequest) {
       }
 
       case 'MATCH_COMPLETED': {
-        const playerIds = payload.teamResults?.teams
-          ?.map((p: any) => p?.[0]?.id)
-          .filter(Boolean) as string[]
-        if (!playerIds?.length) {
-          console.error('MATCH_COMPLETED missing player IDs', payload)
+        const queueId = payload.queueId ? String(payload.queueId) : null
+        if (!queueId) {
+          console.error('MATCH_COMPLETED missing queue ID', payload)
           break
         }
-        const queueId = payload.queueId
-        await Promise.allSettled([
-          leaderboardService.refreshLeaderboard(queueId),
-        ])
+
+        const playerIds =
+          payload.teamResults?.teams?.flatMap((team: any) =>
+            (team?.players ?? [])
+              .map((player: any) =>
+                String(player?.user_id ?? player?.id ?? '')
+              )
+              .filter(Boolean)
+          ) ?? []
+
+        console.log('MATCH_COMPLETED refreshing leaderboard', {
+          queueId,
+          playerCount: playerIds.length,
+        })
+        await leaderboardService.refreshLeaderboard(queueId)
+
+        if (!playerIds.length) {
+          console.error('MATCH_COMPLETED missing player IDs for state cleanup', payload)
+          break
+        }
+
         await Promise.all(
-          playerIds.map(async (id) => {
+          playerIds.map(async (id: string) => {
             await redis.del(PLAYER_STATE_KEY(id))
             globalEmitter.emit(`state-change:${id}`, { status: 'idle' })
           })
