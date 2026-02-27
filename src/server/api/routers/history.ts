@@ -19,6 +19,7 @@ import {
   LEGACY_QUEUE_ID,
 } from '@/shared/constants'
 import {
+  SEASON_5_START_DATE,
   SEASON_6_START_DATE,
   SeasonSchema,
   getSeasonForDate,
@@ -72,17 +73,17 @@ export const history_router = createTRPCRouter({
       if (nextDay) nextDay.setDate(nextDay.getDate() + 1)
 
       const effectiveEnd = nextDay ?? new Date()
-      const needsDb = !startDate || startDate < SEASON_6_START_DATE
-      const needsApi = !nextDay || effectiveEnd > SEASON_6_START_DATE
+      const needsDb = !startDate || startDate < SEASON_5_START_DATE
+      const needsApi = !nextDay || effectiveEnd > SEASON_5_START_DATE
 
       const gamesByTimeUnit: Record<string, number> = {}
 
-      // Old data (seasons 1-5) from DB
+      // Old data (seasons 1-4) from DB
       if (needsDb) {
         const dbEnd =
-          nextDay && nextDay < SEASON_6_START_DATE
+          nextDay && nextDay < SEASON_5_START_DATE
             ? nextDay
-            : SEASON_6_START_DATE
+            : SEASON_5_START_DATE
         const games = await ctx.db
           .select({
             gameTime: player_games.gameTime,
@@ -107,16 +108,19 @@ export const history_router = createTRPCRouter({
         }
       }
 
-      // Season 6+ data from Botlatro API
+      // Season 5+ data from Botlatro API
       if (needsApi) {
         const allMatches = (
-          await Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season6')))
+          await Promise.all([
+            ...QUEUE_IDS.map((q) => fetchMatches(q, 'season5')),
+            ...QUEUE_IDS.map((q) => fetchMatches(q, 'season6')),
+          ])
         ).flat()
 
         const apiStart =
-          startDate && startDate > SEASON_6_START_DATE
+          startDate && startDate > SEASON_5_START_DATE
             ? startDate
-            : SEASON_6_START_DATE
+            : SEASON_5_START_DATE
 
         const seen = new Set<number>()
         for (const m of allMatches) {
@@ -142,19 +146,24 @@ export const history_router = createTRPCRouter({
       })
     )
     .query(async ({ ctx, input }) => {
-      // Seasons 1-5: read from DB
+      // Seasons 1-4: read from DB
       const dbGames = await ctx.db
         .select()
         .from(player_games)
-        .where(eq(player_games.playerId, input.user_id))
+        .where(
+          and(
+            eq(player_games.playerId, input.user_id),
+            lt(player_games.gameTime, SEASON_5_START_DATE)
+          )
+        )
         .orderBy(desc(player_games.gameTime))
 
-      // Season 6+: read from Botlatro API
+      // Season 5+: read from Botlatro API
       const matches = await botlatro_service.get_player_matches({
         userId: input.user_id,
       })
       const apiGames = normalizeBotlatroMatchHistory(matches).filter(
-        (g) => g.gameTime >= SEASON_6_START_DATE
+        (g) => g.gameTime >= SEASON_5_START_DATE
       )
 
       return [...dbGames, ...apiGames]
@@ -191,7 +200,7 @@ export const history_router = createTRPCRouter({
       const pageSize = input.pageSize
       const offset = (page - 1) * pageSize
 
-      if (input.season !== 'season6') {
+      if (input.season !== 'season6' && input.season !== 'season5') {
         const dir = input.sortOrder === 'asc' ? asc : desc
         const sortCol =
           input.sortBy === 'opponentName'
@@ -332,7 +341,7 @@ export const history_router = createTRPCRouter({
       const pageSize = input.pageSize
       const offset = (page - 1) * pageSize
 
-      if (input.season !== 'season6') {
+      if (input.season !== 'season6' && input.season !== 'season5') {
         const where = and(
           eq(player_games.playerId, input.user_id),
           eq(player_games.season, input.season),

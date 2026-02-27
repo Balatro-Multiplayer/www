@@ -50,12 +50,22 @@ export async function fetchMatches(queueId: string, season: Season): Promise<Ove
   const cached = await redis.get(cacheKey)
   if (cached) return JSON.parse(cached)
 
-  const { start, end } = getSeasonDateRange(season)
-  const params = new URLSearchParams({
-    limit: '200000',
-    start_date: start.toISOString(),
-    end_date: end.toISOString(),
-  })
+  let params: URLSearchParams
+  if (season === 'season5' || season === 'season6') {
+    const seasonNumber = season === 'season5' ? '5' : '6'
+    params = new URLSearchParams({
+      limit: '200000',
+      season: seasonNumber,
+    })
+  } else {
+    const { start, end } = getSeasonDateRange(season)
+    params = new URLSearchParams({
+      limit: '200000',
+      start_date: start.toISOString(),
+      end_date: end.toISOString(),
+    })
+  }
+
   const res = await fetch(`${BOTLATRO_URL}api/stats/overall-history/${queueId}?${params}`)
   if (!res.ok) throw new Error(`Botlatro API error: ${res.status}`)
   const data = (await res.json()) as { matches: OverallMatch[] }

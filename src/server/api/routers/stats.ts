@@ -69,7 +69,7 @@ function aggregateSeasonOverview(matches: OverallMatch[]) {
 }
 
 const ALL_SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4', 'season5', 'season6']
-const DB_SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4', 'season5']
+const DB_SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4']
 
 export const stats_router = createTRPCRouter({
   deck_popularity: publicProcedure
@@ -152,12 +152,17 @@ export const stats_router = createTRPCRouter({
       })
     )
 
-    // Season 6: fetch from API
-    const s6Matches = (await Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season6')))).flat()
+    // Seasons 5 and 6: fetch from API
+    const [s5Matches, s6Matches] = await Promise.all([
+      Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season5'))).then((r) => r.flat()),
+      Promise.all(QUEUE_IDS.map((q) => fetchMatches(q, 'season6'))).then((r) => r.flat()),
+    ])
+    const s5 = aggregateSeasonOverview(s5Matches)
     const s6 = aggregateSeasonOverview(s6Matches)
 
     return [
       ...dbResults,
+      { season: 'season5' as Season, ...s5 },
       { season: 'season6' as Season, ...s6 },
     ]
   }),
