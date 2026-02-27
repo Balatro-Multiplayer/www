@@ -1,5 +1,8 @@
 'use client'
 
+import { STAKE_IMAGES } from '@/app/(home)/players/[id]/_components/deck-stake-stats-chart'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
 import {
   Card,
   CardContent,
@@ -14,6 +17,11 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -21,18 +29,37 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { STAKE_IMAGES } from '@/app/(home)/players/[id]/_components/deck-stake-stats-chart'
+import { cn } from '@/lib/utils'
 import {
+  CASUAL_QUEUE_ID,
   RANKED_QUEUE_ID,
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
-  CASUAL_QUEUE_ID,
 } from '@/shared/constants'
 import { type Season, getSeasonDisplayName } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import { BarChart3, PieChartIcon } from 'lucide-react'
-import { useCallback, useState } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart, Sector, XAxis, YAxis } from 'recharts'
+import { format } from 'date-fns'
+import { BarChart3, CalendarIcon, PieChartIcon } from 'lucide-react'
+import { parseAsString, useQueryStates } from 'nuqs'
+import { useCallback, useMemo, useState } from 'react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  Pie,
+  PieChart,
+  Sector,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import {
+  type STATS_FILTER_MODES,
+  type STATS_QUEUES,
+  STATS_SEASONS,
+  statsSearchParamsParsers,
+} from '../search-params'
 
 const PIE_COLORS = [
   'var(--color-emerald-500)',
@@ -54,7 +81,6 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-const SEASONS: Season[] = ['season1', 'season2', 'season3', 'season4', 'season5']
 const QUEUE_TYPES = [
   { value: 'all', label: 'All Queues' },
   { value: RANKED_QUEUE_ID, label: 'Ranked' },
@@ -62,9 +88,33 @@ const QUEUE_TYPES = [
   { value: SMALLWORLD_QUEUE_ID, label: 'Small World' },
   { value: CASUAL_QUEUE_ID, label: 'Casual' },
 ] as const
+type FilterMode = (typeof STATS_FILTER_MODES)[number]
+type PieActiveShapeProps = {
+  cx: number
+  cy: number
+  innerRadius: number
+  outerRadius: number
+  startAngle: number
+  endAngle: number
+  fill: string
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function renderActiveShape(props: any) {
+function isPieActiveShapeProps(value: unknown): value is PieActiveShapeProps {
+  if (!value || typeof value !== 'object') return false
+  const shape = value as Record<string, unknown>
+  return (
+    typeof shape.cx === 'number' &&
+    typeof shape.cy === 'number' &&
+    typeof shape.innerRadius === 'number' &&
+    typeof shape.outerRadius === 'number' &&
+    typeof shape.startAngle === 'number' &&
+    typeof shape.endAngle === 'number' &&
+    typeof shape.fill === 'string'
+  )
+}
+
+function renderActiveShape(props: unknown) {
+  if (!isPieActiveShapeProps(props)) return <></>
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props
   return (
     <Sector
@@ -82,16 +132,46 @@ function renderActiveShape(props: any) {
 export function StakePopularityChart() {
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar')
   const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined)
-  const [season, setSeason] = useState<Season>('season5')
-  const [queueId, setQueueId] = useState('all')
+  const [queryParams, setQueryParams] = useQueryStates({
+    stakeMode: statsSearchParamsParsers.stakeMode,
+    stakeSeason: statsSearchParamsParsers.stakeSeason,
+    stakeStartDate: parseAsString,
+    stakeEndDate: parseAsString,
+    stakeQueueId: statsSearchParamsParsers.stakeQueueId,
+  })
+
+  const filterMode = queryParams.stakeMode as FilterMode
+  const season = queryParams.stakeSeason as Season
+  const queueId = queryParams.stakeQueueId
+
+  const dateRange = useMemo(() => {
+    const from = queryParams.stakeStartDate
+      ? new Date(queryParams.stakeStartDate)
+      : undefined
+    const to = queryParams.stakeEndDate
+      ? new Date(queryParams.stakeEndDate)
+      : undefined
+    return {
+      from: from && !Number.isNaN(from.getTime()) ? from : undefined,
+      to: to && !Number.isNaN(to.getTime()) ? to : undefined,
+    }
+  }, [queryParams.stakeEndDate, queryParams.stakeStartDate])
 
   const [data] = api.stats.stake_popularity.useSuspenseQuery({
-    season,
+    mode: filterMode,
+    season: filterMode === 'season' ? season : undefined,
+    startDate:
+      filterMode === 'dateRange' ? dateRange?.from?.toISOString() : undefined,
+    endDate:
+      filterMode === 'dateRange' ? dateRange?.to?.toISOString() : undefined,
     queueId: queueId === 'all' ? undefined : queueId,
   })
 
   const totalGames = data.reduce((sum, d) => sum + d.games, 0)
-  const onPieEnter = useCallback((_: unknown, index: number) => setActiveIndex(index), [])
+  const onPieEnter = useCallback(
+    (_: unknown, index: number) => setActiveIndex(index),
+    []
+  )
   const onPieLeave = useCallback(() => setActiveIndex(undefined), [])
 
   return (
@@ -100,11 +180,18 @@ export function StakePopularityChart() {
         <div>
           <CardTitle>Stake Popularity</CardTitle>
           <CardDescription>
-            {totalGames.toLocaleString()} total games across {data.length} stakes
+            {totalGames.toLocaleString()} total games across {data.length}{' '}
+            stakes
           </CardDescription>
         </div>
-        <div className='flex gap-2'>
-          <ToggleGroup type='single' value={chartType} onValueChange={(v) => v && setChartType(v as 'bar' | 'pie')} variant='outline' size='sm'>
+        <div className='flex flex-wrap gap-2'>
+          <ToggleGroup
+            type='single'
+            value={chartType}
+            onValueChange={(v) => v && setChartType(v as 'bar' | 'pie')}
+            variant='outline'
+            size='sm'
+          >
             <ToggleGroupItem value='bar' aria-label='Bar chart'>
               <BarChart3 className='h-4 w-4' />
             </ToggleGroupItem>
@@ -112,19 +199,96 @@ export function StakePopularityChart() {
               <PieChartIcon className='h-4 w-4' />
             </ToggleGroupItem>
           </ToggleGroup>
-          <Select value={season} onValueChange={(v) => setSeason(v as Season)}>
+          <Select
+            value={filterMode}
+            onValueChange={(v) => {
+              setQueryParams({ stakeMode: v as FilterMode })
+            }}
+          >
             <SelectTrigger className='w-[180px]'>
-              <SelectValue placeholder='Select season' />
+              <SelectValue placeholder='Filter mode' />
             </SelectTrigger>
             <SelectContent>
-              {SEASONS.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {getSeasonDisplayName(s)}
-                </SelectItem>
-              ))}
+              <SelectItem value='season'>Filter by season</SelectItem>
+              <SelectItem value='dateRange'>Filter by date range</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={queueId} onValueChange={setQueueId}>
+          {filterMode === 'season' ? (
+            <Select
+              value={season}
+              onValueChange={(v) => {
+                setQueryParams({
+                  stakeSeason: v as (typeof STATS_SEASONS)[number],
+                })
+              }}
+            >
+              <SelectTrigger className='w-[180px]'>
+                <SelectValue placeholder='Select season' />
+              </SelectTrigger>
+              <SelectContent>
+                {STATS_SEASONS.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {getSeasonDisplayName(s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id='stake-date'
+                  variant='outline'
+                  className={cn(
+                    'w-[280px] justify-start text-left font-normal',
+                    !dateRange?.from && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className='mr-2 h-4 w-4' />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, 'LLL dd, y')} -{' '}
+                        {format(dateRange.to, 'LLL dd, y')}
+                      </>
+                    ) : (
+                      format(dateRange.from, 'LLL dd, y')
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className='w-auto p-0' align='end'>
+                <Calendar
+                  initialFocus
+                  mode='range'
+                  defaultMonth={dateRange?.from}
+                  selected={{
+                    from: dateRange?.from,
+                    to: dateRange?.to,
+                  }}
+                  onSelect={(value) => {
+                    setQueryParams({
+                      stakeStartDate: value?.from
+                        ? value.from.toISOString()
+                        : null,
+                      stakeEndDate: value?.to ? value.to.toISOString() : null,
+                    })
+                  }}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+          <Select
+            value={queueId}
+            onValueChange={(v) => {
+              setQueryParams({
+                stakeQueueId: v as (typeof STATS_QUEUES)[number],
+              })
+            }}
+          >
             <SelectTrigger className='w-[160px]'>
               <SelectValue placeholder='Select queue' />
             </SelectTrigger>
@@ -141,7 +305,7 @@ export function StakePopularityChart() {
       <CardContent className='h-[500px] w-full p-2'>
         {data.length === 0 ? (
           <div className='flex h-full items-center justify-center text-fd-muted-foreground'>
-            No data available for this season and queue type.
+            No data available for selected filters.
           </div>
         ) : chartType === 'bar' ? (
           <ChartContainer config={chartConfig} className='h-full w-full'>
@@ -164,7 +328,11 @@ export function StakePopularityChart() {
                     <g transform={`translate(${x - imgSize / 2},${y + 10})`}>
                       <title className='capitalize'>{payload.value}</title>
                       {imagePath && (
-                        <image href={imagePath} width={imgSize} height={imgSize} />
+                        <image
+                          href={imagePath}
+                          width={imgSize}
+                          height={imgSize}
+                        />
                       )}
                       {itemCount <= 12 && (
                         <text
@@ -173,7 +341,7 @@ export function StakePopularityChart() {
                           textAnchor='middle'
                           fill='currentColor'
                           fontSize='10'
-                          className='capitalize font-medium'
+                          className='font-medium capitalize'
                         >
                           {payload.value}
                         </text>
@@ -238,7 +406,9 @@ export function StakePopularityChart() {
                     <Cell
                       key={entry.stake}
                       fill={PIE_COLORS[i % PIE_COLORS.length]}
-                      opacity={activeIndex !== undefined && activeIndex !== i ? 0.4 : 1}
+                      opacity={
+                        activeIndex !== undefined && activeIndex !== i ? 0.4 : 1
+                      }
                     />
                   ))}
                 </Pie>
@@ -251,14 +421,21 @@ export function StakePopularityChart() {
                   className='flex cursor-default items-center gap-2 rounded px-2 py-1 text-xs capitalize transition-colors hover:bg-fd-muted'
                   onMouseEnter={() => setActiveIndex(i)}
                   onMouseLeave={() => setActiveIndex(undefined)}
-                  style={{ opacity: activeIndex !== undefined && activeIndex !== i ? 0.4 : 1 }}
+                  style={{
+                    opacity:
+                      activeIndex !== undefined && activeIndex !== i ? 0.4 : 1,
+                  }}
                 >
                   <span
                     className='inline-block h-3 w-3 shrink-0 rounded-sm'
-                    style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }}
+                    style={{
+                      backgroundColor: PIE_COLORS[i % PIE_COLORS.length],
+                    }}
                   />
                   <span className='truncate'>{entry.stake}</span>
-                  <span className='ml-auto text-fd-muted-foreground'>{entry.pickRate}%</span>
+                  <span className='ml-auto text-fd-muted-foreground'>
+                    {entry.pickRate}%
+                  </span>
                 </div>
               ))}
             </div>
