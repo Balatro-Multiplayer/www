@@ -399,7 +399,7 @@ export function LeaderboardPage({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <div className='mx-auto flex w-full max-w-fd-container flex-1 flex-col'>
+      <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col'>
         <div className='flex flex-1 flex-col overflow-hidden border-none'>
           {currentLeaderboardResult?.isStale && (
             <Alert className='my-4 border-amber-500 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300'>
