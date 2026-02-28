@@ -272,7 +272,7 @@ export default function Home() {
             </Card>
           </div>
 
-          <div className='mt-10 text-center'>
+          <div className='mt-10 flex flex-col gap-4 text-center sm:flex-row sm:justify-center'>
             <Button
               asChild
               size='lg'
@@ -286,7 +286,7 @@ export default function Home() {
             <Button
               asChild
               size='lg'
-              className='ml-4 w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto'
+              className='w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto'
             >
               <Link href='https://discord.gg/bBb5eU2gWc' target='_blank'>
                 Join Our Discord

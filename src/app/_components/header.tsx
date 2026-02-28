@@ -16,7 +16,6 @@ import { LogIn, LogOut, Settings, Shield, Tv, User } from 'lucide-react'
 import { signIn, signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { Fragment } from 'react'
-import { Menu, MenuContent, MenuLinkItem, MenuTrigger } from './home/menu'
 import {
   NavbarLink,
   NavbarMenu,
@@ -25,6 +24,7 @@ import {
   NavbarMenuTrigger,
 } from './home/navbar'
 import { Navbar } from './home/navbar'
+import { MobileMenu } from './mobile-menu'
 import { LargeSearchToggle, SearchToggle } from './search-toggle'
 
 function getLinkItemKey(item: LinkItemType): string {
@@ -51,9 +51,6 @@ export function Header({
   const navItems = finalLinks.filter((item) =>
     ['nav', 'all'].includes(item.on ?? 'all')
   )
-  const menuItems = finalLinks.filter((item) =>
-    ['menu', 'all'].includes(item.on ?? 'all')
-  )
 
   return (
     <Navbar>
@@ -64,7 +61,7 @@ export function Header({
         {nav.title}
       </Link>
       {nav.children}
-      <ul className='flex flex-row items-center gap-2 px-6 max-sm:hidden'>
+      <ul className='flex flex-row items-center gap-2 px-6 max-md:hidden'>
         {navItems
           .filter((item) => !isSecondary(item))
           .map((item) => (
@@ -130,168 +127,100 @@ export function Header({
       <div className='flex flex-1 flex-row items-center justify-end gap-1.5'>
         {enableSearch ? (
           <>
-            <SearchToggle className='lg:hidden' hideIfDisabled />
+            <SearchToggle className='md:hidden' hideIfDisabled />
             <LargeSearchToggle
-              className='w-full max-w-[240px] max-lg:hidden'
+              className='w-full max-w-[240px] max-md:hidden'
               hideIfDisabled
             />
           </>
         ) : null}
         {replaceOrDefault(
           themeSwitch,
-          <ThemeToggle className='max-lg:hidden' mode={themeSwitch?.mode} />
+          <ThemeToggle className='max-md:hidden' mode={themeSwitch?.mode} />
         )}
 
-        {/* Sign In Button or User Menu */}
-        {isAuthenticated && session?.user ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant='ghost' className='relative h-9 w-9 rounded-full'>
-                <Avatar className='h-9 w-9'>
-                  <AvatarImage
-                    src={session.user.image ?? ''}
-                    alt={session.user.name ?? 'User'}
-                  />
-                  <AvatarFallback className='bg-violet-50 text-violet-600 dark:bg-violet-900/50 dark:text-violet-300'>
-                    {session.user.name?.slice(0, 2).toUpperCase() ?? 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className='w-56' align='end' forceMount>
-              <div className='flex items-center justify-start gap-2 p-2'>
-                <div className='flex flex-col space-y-1 leading-none'>
-                  <p className='font-medium'>{session.user.name}</p>
+        {/* Sign In Button or User Menu (desktop only, Sheet handles mobile) */}
+        <div className='flex items-center max-md:hidden'>
+          {isAuthenticated && session?.user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant='ghost'
+                  className='relative h-9 w-9 rounded-full'
+                >
+                  <Avatar className='h-9 w-9'>
+                    <AvatarImage
+                      src={session.user.image ?? ''}
+                      alt={session.user.name ?? 'User'}
+                    />
+                    <AvatarFallback className='bg-violet-50 text-violet-600 dark:bg-violet-900/50 dark:text-violet-300'>
+                      {session.user.name?.slice(0, 2).toUpperCase() ?? 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className='w-56' align='end' forceMount>
+                <div className='flex items-center justify-start gap-2 p-2'>
+                  <div className='flex flex-col space-y-1 leading-none'>
+                    <p className='font-medium'>{session.user.name}</p>
+                  </div>
                 </div>
-              </div>
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/players/${session.user.discord_id}`}
-                  className='flex w-full items-center'
-                >
-                  <User className='mr-2 h-4 w-4' />
-                  <span>Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link
-                  href='/profile/settings'
-                  className='flex w-full items-center'
-                >
-                  <Settings className='mr-2 h-4 w-4' />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/stream-card/${session.user.discord_id}`}
-                  className='flex w-full items-center'
-                  target='_blank'
-                >
-                  <Tv className='mr-2 h-4 w-4' />
-                  <span>Stream Widget</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => signOut()}>
-                <LogOut className='mr-2 h-4 w-4' />
-                <span>Sign out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <Button
-            variant='outline'
-            size='sm'
-            className='text-gray-700 hover:bg-violet-50 hover:text-violet-600 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-violet-400'
-            onClick={() => signIn('discord')}
-          >
-            <LogIn className='mr-2 h-4 w-4' />
-            Sign In
-          </Button>
-        )}
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/players/${session.user.discord_id}`}
+                    className='flex w-full items-center'
+                  >
+                    <User className='mr-2 h-4 w-4' />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href='/profile/settings'
+                    className='flex w-full items-center'
+                  >
+                    <Settings className='mr-2 h-4 w-4' />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href={`/stream-card/${session.user.discord_id}`}
+                    className='flex w-full items-center'
+                    target='_blank'
+                  >
+                    <Tv className='mr-2 h-4 w-4' />
+                    <span>Stream Widget</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <LogOut className='mr-2 h-4 w-4' />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant='outline'
+              size='sm'
+              className='text-gray-700 hover:bg-violet-50 hover:text-violet-600 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-violet-400'
+              onClick={() => signIn('discord')}
+            >
+              <LogIn className='mr-2 h-4 w-4' />
+              Sign In
+            </Button>
+          )}
+        </div>
       </div>
       <ul className='flex flex-row items-center'>
         {navItems.filter(isSecondary).map((item) => (
           <NavbarLinkItem
             key={getLinkItemKey(item)}
             item={item}
-            className='-me-1.5 max-lg:hidden'
+            className='-me-1.5 max-md:hidden'
           />
         ))}
-        <Menu className='lg:hidden'>
-          <MenuTrigger
-            aria-label='Toggle Menu'
-            enableHover={nav.enableHoverToOpen}
-          >
-            {/*<ChevronDown className='size-3 transition-transform duration-300 group-data-[state=open]:rotate-180' />*/}
-          </MenuTrigger>
-          <MenuContent className='sm:flex-row sm:items-center sm:justify-end'>
-            {menuItems
-              .filter((item) => !isSecondary(item))
-              .map((item) => (
-                <MenuLinkItem
-                  key={getLinkItemKey(item)}
-                  item={item}
-                  className='sm:hidden'
-                />
-              ))}
-            {(isAdmin || isOwner) && (
-              <div className='sm:hidden'>
-                <div className='flex items-center gap-1 px-3 py-2 font-medium'>
-                  <Shield className='h-4 w-4' />
-                  <span>Admin</span>
-                </div>
-                <div className='ml-4 flex flex-col gap-1'>
-                  {isOwner && (
-                    <Link href='/admin/roles' className='px-3 py-1 text-sm'>
-                      Role Manager
-                    </Link>
-                  )}
-                  {isOwner && (
-                    <Link href='/admin/seasons' className='px-3 py-1 text-sm'>
-                      Seasons
-                    </Link>
-                  )}
-                  <Link href='/admin/blog' className='px-3 py-1 text-sm'>
-                    Blog
-                  </Link>
-                  <Link href='/admin/logs' className='px-3 py-1 text-sm'>
-                    Logs
-                  </Link>
-                  <Link href='/admin/releases' className='px-3 py-1 text-sm'>
-                    Releases
-                  </Link>
-                  <Link
-                    href='/admin/stream/obs-control-panel'
-                    className='px-3 py-1 text-sm'
-                  >
-                    OBS Control Panel
-                  </Link>
-                </div>
-              </div>
-            )}
-            <div className='sm:hidden'>
-              <Link href='/blog' className='px-3 py-2 font-medium text-sm'>
-                Blog
-              </Link>
-            </div>
-            <div className='-ms-1.5 flex flex-row items-center gap-1.5 max-sm:mt-2'>
-              {menuItems.filter(isSecondary).map((item) => (
-                <MenuLinkItem
-                  key={getLinkItemKey(item)}
-                  item={item}
-                  className='-me-1.5'
-                />
-              ))}
-              <hr className='flex-1 border-border' />
-
-              {replaceOrDefault(
-                themeSwitch,
-                <ThemeToggle mode={themeSwitch?.mode} />
-              )}
-            </div>
-          </MenuContent>
-        </Menu>
+        <MobileMenu className='md:hidden' themeSwitch={themeSwitch} />
       </ul>
     </Navbar>
   )

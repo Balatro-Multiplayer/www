@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   Trophy,
   Upload,
+  Wrench,
 } from 'lucide-react'
 import { Header } from './_components/header'
 
@@ -33,6 +34,7 @@ const links = [
   {
     text: 'Tools',
     type: 'menu',
+    icon: <Wrench />,
     items: [
       {
         text: 'Fix Corrupted Profile',
