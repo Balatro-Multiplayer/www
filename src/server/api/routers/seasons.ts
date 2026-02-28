@@ -129,6 +129,24 @@ async function getSnapshotByQueueTypeOrThrow(
   return snapshot
 }
 
+async function getSnapshotByQueueType(
+  db: DbClient,
+  seasonId: number,
+  queueType: string
+) {
+  return db
+    .select()
+    .from(seasonSnapshots)
+    .where(
+      and(
+        eq(seasonSnapshots.seasonId, seasonId),
+        eq(seasonSnapshots.queueType, queueType)
+      )
+    )
+    .limit(1)
+    .then((rows) => rows[0] ?? null)
+}
+
 async function loadSeasonSnapshotsForCache(db: DbClient, seasonId: number) {
   const rows = await db
     .select()
@@ -339,6 +357,7 @@ export const seasonsRouter = createTRPCRouter({
       z.object({
         seasonId: z.number().int().positive(),
         queueType: z.string().trim().min(1),
+        queueId: z.string().trim().min(1).optional(),
         fileName: z.string().trim().min(1).optional(),
         contentType: z.string().trim().min(1).optional(),
         buffer: binaryPayloadSchema,
@@ -346,7 +365,7 @@ export const seasonsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const season = await getSeasonByIdOrThrow(ctx.db, input.seasonId)
-      const snapshot = await getSnapshotByQueueTypeOrThrow(
+      const existingSnapshot = await getSnapshotByQueueType(
         ctx.db,
         input.seasonId,
         input.queueType
@@ -368,14 +387,35 @@ export const seasonsRouter = createTRPCRouter({
         }
       )
 
-      const [updatedSnapshot] = await ctx.db
-        .update(seasonSnapshots)
-        .set({
-          minioKey: objectKey,
-          uploadedBy: ctx.session.user.id,
+      const resolvedQueueId = existingSnapshot?.queueId ?? input.queueId
+
+      if (!resolvedQueueId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Queue ${input.queueType} is missing a queueId`,
         })
-        .where(eq(seasonSnapshots.id, snapshot.id))
-        .returning()
+      }
+
+      const [updatedSnapshot] = existingSnapshot
+        ? await ctx.db
+            .update(seasonSnapshots)
+            .set({
+              queueId: resolvedQueueId,
+              minioKey: objectKey,
+              uploadedBy: ctx.session.user.id,
+            })
+            .where(eq(seasonSnapshots.id, existingSnapshot.id))
+            .returning()
+        : await ctx.db
+            .insert(seasonSnapshots)
+            .values({
+              seasonId: input.seasonId,
+              queueType: input.queueType,
+              queueId: resolvedQueueId,
+              minioKey: objectKey,
+              uploadedBy: ctx.session.user.id,
+            })
+            .returning()
 
       if (!updatedSnapshot) {
         throw new TRPCError({
@@ -384,8 +424,8 @@ export const seasonsRouter = createTRPCRouter({
         })
       }
 
-      await removeMinioObjectIfExists(snapshot.minioKey)
-      await redis.del(getSeasonLeaderboardKey(season.id, snapshot.queueId))
+      await removeMinioObjectIfExists(existingSnapshot?.minioKey ?? null)
+      await redis.del(getSeasonLeaderboardKey(season.id, resolvedQueueId))
       await redis.del(getSeasonQueuesCacheKey(season.id))
 
       return {
@@ -434,7 +474,11 @@ export const seasonsRouter = createTRPCRouter({
       )
 
       await ctx.db
-        .delete(seasonSnapshots)
+        .update(seasonSnapshots)
+        .set({
+          minioKey: null,
+          uploadedBy: null,
+        })
         .where(eq(seasonSnapshots.id, snapshot.id))
 
       await removeMinioObjectIfExists(snapshot.minioKey)

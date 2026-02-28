@@ -37,18 +37,18 @@
 
 ## 5. Admin UI — Season List Page
 
-- [ ] 5.1 Create `src/app/(home)/admin/seasons/page.tsx` — owner-only guard (redirect to `/` if not owner), fetch and display seasons table
-- [ ] 5.2 Implement seasons table columns: id, name, dates, active badge, snapshot count, Edit/Manage links
-- [ ] 5.3 Implement "New Season" modal/form with name + start date fields, calls `seasons.create` mutation
+- [x] 5.1 Create `src/app/(home)/admin/seasons/page.tsx` — owner-only guard (redirect to `/` if not owner), fetch and display seasons table
+- [x] 5.2 Implement seasons table columns: id, name, dates, active badge, snapshot count, Edit/Manage links
+- [x] 5.3 Implement "New Season" modal/form with name + start date fields, calls `seasons.create` mutation
 
 ## 6. Admin UI — Season Detail Page
 
-- [ ] 6.1 Create `src/app/(home)/admin/seasons/[id]/page.tsx` — owner-only guard, load season by id
-- [ ] 6.2 Implement season edit form (name, startDate, endDate, isActive toggle), calls `seasons.update` mutation
-- [ ] 6.3 Create snapshot manager table with one row per known queue type (ranked, smallworld, vanilla, legacy)
-- [ ] 6.4 Implement upload control: file picker accepting `.json`, client-side parse validation, calls `seasons.upload_snapshot` mutation with file buffer
-- [ ] 6.5 Implement "Invalidate Cache" button per snapshot row, calls `seasons.invalidate_cache` mutation, shows toast
-- [ ] 6.6 Implement "Delete" button per snapshot row with confirmation, calls `seasons.delete_snapshot` mutation
+- [x] 6.1 Create `src/app/(home)/admin/seasons/[id]/page.tsx` — owner-only guard, load season by id
+- [x] 6.2 Implement season edit form (name, startDate, endDate, isActive toggle), calls `seasons.update` mutation
+- [x] 6.3 Create snapshot manager table with one row per known queue type (ranked, smallworld, vanilla, legacy)
+- [x] 6.4 Implement upload control: file picker accepting `.json`, client-side parse validation, calls `seasons.upload_snapshot` mutation with file buffer
+- [x] 6.5 Implement "Invalidate Cache" button per snapshot row, calls `seasons.invalidate_cache` mutation, shows toast
+- [x] 6.6 Implement "Delete" button per snapshot row with confirmation, calls `seasons.delete_snapshot` mutation
 
 ## 7. Frontend Season Selectors
 
