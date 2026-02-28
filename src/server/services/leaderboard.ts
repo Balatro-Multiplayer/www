@@ -1,5 +1,3 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import { env } from '@/env'
 import { db } from '@/server/db'
 import {
@@ -259,28 +257,6 @@ export class LeaderboardService {
     return `config:season:${seasonId}:queues`
   }
 
-  private readStaticSnapshot(
-    seasonId: number,
-    queue_id: string,
-    fileName: string
-  ): LeaderboardEntry[] {
-    const cacheKey = this.getLegacySeasonKey(seasonId, queue_id)
-    const cached = this.legacySeasonDataCache.get(cacheKey)
-    if (cached) return cached
-
-    try {
-      const filePath = path.join(process.cwd(), 'src', 'data', fileName)
-      const fileContent = fs.readFileSync(filePath, 'utf-8')
-      const entries = parseLeaderboardPayload(JSON.parse(fileContent))
-      const sortedEntries = sortLeaderboard(entries)
-      this.legacySeasonDataCache.set(cacheKey, sortedEntries)
-      return sortedEntries
-    } catch (error) {
-      console.error(`Error loading Season ${seasonId} data:`, error)
-      return []
-    }
-  }
-
   private async loadSeason3LegacyData(
     queue_id: string
   ): Promise<LeaderboardEntry[]> {
@@ -358,28 +334,10 @@ export class LeaderboardService {
     queue_id: string
   ): Promise<LeaderboardEntry[]> {
     switch (seasonId) {
-      case 1:
-        return this.readStaticSnapshot(
-          seasonId,
-          queue_id,
-          'leaderboard-snapshot-eos1.json'
-        )
-      case 2:
-        return this.readStaticSnapshot(
-          seasonId,
-          queue_id,
-          'leaderboard-snapshot-eos2.json'
-        )
       case 3:
         return this.loadSeason3LegacyData(queue_id)
-      case 4:
-        return this.readStaticSnapshot(
-          seasonId,
-          queue_id,
-          `leaderboard-snapshot-eos4-${queue_id}.json`
-        )
       default:
-        return this.loadLiveSeasonData(seasonId, queue_id)
+        return []
     }
   }
 
