@@ -4,10 +4,69 @@ import {
   publicProcedure,
 } from '@/server/api/trpc'
 import type { LeaderboardEntry } from '@/server/services/botlatro.service'
+import type { PaginationOptions } from '@/server/services/leaderboard'
 import { LeaderboardService } from '@/server/services/leaderboard'
 import { SeasonSchema } from '@/shared/seasons'
 import { z } from 'zod'
+
 const service = new LeaderboardService()
+
+type StaticLeaderboardInput = {
+  page: number
+  pageSize: number
+  search?: string
+  minGames?: number
+  maxGames?: number
+  sortBy?: PaginationOptions['sortBy']
+  sortOrder?: PaginationOptions['sortOrder']
+}
+
+function getStaticLeaderboardResponse(
+  seasonData: LeaderboardEntry[],
+  input: StaticLeaderboardInput
+) {
+  let filtered = seasonData
+
+  if (input.search) {
+    const searchLower = input.search.toLowerCase()
+    filtered = filtered.filter((entry) =>
+      entry.name.toLowerCase().includes(searchLower)
+    )
+  }
+
+  if (input.minGames !== undefined) {
+    const minGames = input.minGames
+    filtered = filtered.filter((entry) => entry.totalgames >= minGames)
+  }
+
+  if (input.maxGames !== undefined) {
+    const maxGames = input.maxGames
+    filtered = filtered.filter((entry) => entry.totalgames <= maxGames)
+  }
+
+  if (input.sortBy) {
+    const sortBy = input.sortBy
+    const order = input.sortOrder === 'asc' ? 1 : -1
+    filtered = [...filtered].sort((a, b) => {
+      const aVal = a[sortBy]
+      const bVal = b[sortBy]
+      return aVal < bVal ? -order : aVal > bVal ? order : 0
+    })
+  }
+
+  const total = filtered.length
+  const offset = (input.page - 1) * input.pageSize
+  const paginated = filtered.slice(offset, offset + input.pageSize)
+
+  return {
+    data: paginated,
+    total,
+    page: input.page,
+    pageSize: input.pageSize,
+    totalPages: Math.ceil(total / input.pageSize),
+    isStale: false,
+  }
+}
 
 export const leaderboard_router = createTRPCRouter({
   get_leaderboard: publicProcedure
@@ -42,8 +101,7 @@ export const leaderboard_router = createTRPCRouter({
         input.season === 'season2' ||
         input.season === 'season4'
       ) {
-        // use the snapshot data
-        let seasonData
+        let seasonData: LeaderboardEntry[]
         if (input.season === 'season1') {
           seasonData = await service.getSeason1Leaderboard(input.channel_id)
         } else if (input.season === 'season2') {
@@ -52,165 +110,19 @@ export const leaderboard_router = createTRPCRouter({
           seasonData = await service.getSeason4Leaderboard(input.channel_id)
         }
 
-        // Apply filtering
-        let filtered = seasonData
-        if (input.search) {
-          const searchLower = input.search.toLowerCase()
-          filtered = filtered.filter((entry) =>
-            entry.name.toLowerCase().includes(searchLower)
-          )
-        }
-        if (input.minGames !== undefined) {
-          filtered = filtered.filter(
-            (entry) => entry.totalgames >= input.minGames!
-          )
-        }
-        if (input.maxGames !== undefined) {
-          filtered = filtered.filter(
-            (entry) => entry.totalgames <= input.maxGames!
-          )
-        }
-        // Apply sorting
-        if (input.sortBy) {
-          filtered = [...filtered].sort((a, b) => {
-            const aVal = a[input.sortBy!]
-            const bVal = b[input.sortBy!]
-            const order = input.sortOrder === 'asc' ? 1 : -1
-            return aVal < bVal ? -order : aVal > bVal ? order : 0
-          })
-        }
-        // Apply pagination
-        const total = filtered.length
-        const offset = (input.page - 1) * input.pageSize
-        const paginated = filtered.slice(offset, offset + input.pageSize)
-        return {
-          data: paginated,
-          total,
-          page: input.page,
-          pageSize: input.pageSize,
-          totalPages: Math.ceil(total / input.pageSize),
-          isStale: false,
-        }
+        return getStaticLeaderboardResponse(seasonData, input)
       }
       if (input.season === 'season3') {
         const seasonData = await service.getSeason3Leaderboard(input.channel_id)
-        // Apply filtering
-        let filtered = seasonData
-        if (input.search) {
-          const searchLower = input.search.toLowerCase()
-          filtered = filtered.filter((entry) =>
-            entry.name.toLowerCase().includes(searchLower)
-          )
-        }
-        if (input.minGames !== undefined) {
-          filtered = filtered.filter(
-            (entry) => entry.totalgames >= input.minGames!
-          )
-        }
-        if (input.maxGames !== undefined) {
-          filtered = filtered.filter(
-            (entry) => entry.totalgames <= input.maxGames!
-          )
-        }
-        // Apply sorting
-        if (input.sortBy) {
-          filtered = [...filtered].sort((a, b) => {
-            const aVal = a[input.sortBy!]
-            const bVal = b[input.sortBy!]
-            const order = input.sortOrder === 'asc' ? 1 : -1
-            return aVal < bVal ? -order : aVal > bVal ? order : 0
-          })
-        }
-        // Apply pagination
-        const total = filtered.length
-        const offset = (input.page - 1) * input.pageSize
-        const paginated = filtered.slice(offset, offset + input.pageSize)
-        return {
-          data: paginated,
-          total,
-          page: input.page,
-          pageSize: input.pageSize,
-          totalPages: Math.ceil(total / input.pageSize),
-          isStale: false,
-        }
+        return getStaticLeaderboardResponse(seasonData, input)
       }
       if (input.season === 'season5') {
         const seasonData = await service.getSeason5Leaderboard(input.channel_id)
-        let filtered = seasonData
-        if (input.search) {
-          const searchLower = input.search.toLowerCase()
-          filtered = filtered.filter((entry) =>
-            entry.name.toLowerCase().includes(searchLower)
-          )
-        }
-        if (input.minGames !== undefined) {
-          filtered = filtered.filter(
-            (entry) => entry.totalgames >= input.minGames!
-          )
-        }
-        if (input.maxGames !== undefined) {
-          filtered = filtered.filter(
-            (entry) => entry.totalgames <= input.maxGames!
-          )
-        }
-        if (input.sortBy) {
-          filtered = [...filtered].sort((a, b) => {
-            const aVal = a[input.sortBy!]
-            const bVal = b[input.sortBy!]
-            const order = input.sortOrder === 'asc' ? 1 : -1
-            return aVal < bVal ? -order : aVal > bVal ? order : 0
-          })
-        }
-        const total = filtered.length
-        const offset = (input.page - 1) * input.pageSize
-        const paginated = filtered.slice(offset, offset + input.pageSize)
-        return {
-          data: paginated,
-          total,
-          page: input.page,
-          pageSize: input.pageSize,
-          totalPages: Math.ceil(total / input.pageSize),
-          isStale: false,
-        }
+        return getStaticLeaderboardResponse(seasonData, input)
       }
       if (input.season === 'season6') {
         const seasonData = await service.getSeason6Leaderboard(input.channel_id)
-        let filtered = seasonData
-        if (input.search) {
-          const searchLower = input.search.toLowerCase()
-          filtered = filtered.filter((entry) =>
-            entry.name.toLowerCase().includes(searchLower)
-          )
-        }
-        if (input.minGames !== undefined) {
-          filtered = filtered.filter(
-            (entry) => entry.totalgames >= input.minGames!
-          )
-        }
-        if (input.maxGames !== undefined) {
-          filtered = filtered.filter(
-            (entry) => entry.totalgames <= input.maxGames!
-          )
-        }
-        if (input.sortBy) {
-          filtered = [...filtered].sort((a, b) => {
-            const aVal = a[input.sortBy!]
-            const bVal = b[input.sortBy!]
-            const order = input.sortOrder === 'asc' ? 1 : -1
-            return aVal < bVal ? -order : aVal > bVal ? order : 0
-          })
-        }
-        const total = filtered.length
-        const offset = (input.page - 1) * input.pageSize
-        const paginated = filtered.slice(offset, offset + input.pageSize)
-        return {
-          data: paginated,
-          total,
-          page: input.page,
-          pageSize: input.pageSize,
-          totalPages: Math.ceil(total / input.pageSize),
-          isStale: false,
-        }
+        return getStaticLeaderboardResponse(seasonData, input)
       }
 
       const result = await service.getLeaderboard(input.channel_id, {

@@ -1,15 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { api } from '@/trpc/react'
+import { MarkdownEditor } from '@/components/markdown-editor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
-import { MarkdownEditor } from '@/components/markdown-editor'
-import { toast } from 'sonner'
 import {
   Select,
   SelectContent,
@@ -17,6 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { api } from '@/trpc/react'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { toast } from 'sonner'
 
 export default function NewBlogPostPage() {
   const router = useRouter()
@@ -28,7 +28,8 @@ export default function NewBlogPostPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Fetch all users for author selection
-  const { data: users, isLoading: isLoadingUsers } = api.blog.getAllUsers.useQuery()
+  const { data: users, isLoading: isLoadingUsers } =
+    api.blog.getAllUsers.useQuery()
 
   const createPost = api.blog.create.useMutation({
     onSuccess: () => {
@@ -67,44 +68,41 @@ export default function NewBlogPostPage() {
   }
 
   return (
-    <div className="container py-10">
-      <h1 className="mb-8 text-4xl font-bold">Create New Blog Post</h1>
+    <div className='container py-10'>
+      <h1 className='mb-8 font-bold text-4xl'>Create New Blog Post</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="space-y-2">
-          <Label htmlFor="title">Title</Label>
+      <form onSubmit={handleSubmit} className='space-y-8'>
+        <div className='space-y-2'>
+          <Label htmlFor='title'>Title</Label>
           <Input
-            id="title"
+            id='title'
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Enter post title"
+            placeholder='Enter post title'
             required
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="excerpt">Excerpt (optional)</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='excerpt'>Excerpt (optional)</Label>
           <Textarea
-            id="excerpt"
+            id='excerpt'
             value={excerpt}
             onChange={(e) => setExcerpt(e.target.value)}
-            placeholder="Brief summary of the post"
-            className="h-24"
+            placeholder='Brief summary of the post'
+            className='h-24'
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="author">Author</Label>
-          <Select
-            value={authorId}
-            onValueChange={setAuthorId}
-          >
-            <SelectTrigger id="author">
-              <SelectValue placeholder="Select an author (defaults to you)" />
+        <div className='space-y-2'>
+          <Label htmlFor='author'>Author</Label>
+          <Select value={authorId} onValueChange={setAuthorId}>
+            <SelectTrigger id='author'>
+              <SelectValue placeholder='Select an author (defaults to you)' />
             </SelectTrigger>
             <SelectContent>
               {isLoadingUsers ? (
-                <SelectItem value="loading" disabled>
+                <SelectItem value='loading' disabled>
                   Loading...
                 </SelectItem>
               ) : (
@@ -118,35 +116,32 @@ export default function NewBlogPostPage() {
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="content">Content</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='content'>Content</Label>
           <MarkdownEditor
             value={content}
             onChange={setContent}
-            placeholder="Write your blog post content here..."
-            minHeight="500px"
+            placeholder='Write your blog post content here...'
+            minHeight='500px'
           />
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className='flex items-center space-x-2'>
           <Switch
-            id="published"
+            id='published'
             checked={published}
             onCheckedChange={setPublished}
           />
-          <Label htmlFor="published">Publish immediately</Label>
+          <Label htmlFor='published'>Publish immediately</Label>
         </div>
 
-        <div className="flex gap-4">
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-          >
+        <div className='flex gap-4'>
+          <Button type='submit' disabled={isSubmitting}>
             {isSubmitting ? 'Creating...' : 'Create Post'}
           </Button>
           <Button
-            type="button"
-            variant="outline"
+            type='button'
+            variant='outline'
             onClick={() => router.push('/admin/blog')}
           >
             Cancel

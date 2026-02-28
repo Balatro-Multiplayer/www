@@ -23,7 +23,9 @@ interface PlayerGameRow {
 
 async function backfill() {
   console.log('Reading season 4 JSON...')
-  const file = Bun.file(`${process.env.HOME}/Downloads/season-4-player-games.json`)
+  const file = Bun.file(
+    `${process.env.HOME}/Downloads/season-4-player-games.json`
+  )
   const rows: PlayerGameRow[] = await file.json()
   console.log(`Loaded ${rows.length} records`)
 
@@ -32,7 +34,9 @@ async function backfill() {
     .select({ max: sql<number>`coalesce(max(${player_games.gameNum}), 0)` })
     .from(player_games)
   const offset = Number(max)
-  console.log(`Current max game_num: ${offset}, offsetting all season 4 gameNums`)
+  console.log(
+    `Current max game_num: ${offset}, offsetting all season 4 gameNums`
+  )
 
   const BATCH_SIZE = 1000
   let inserted = 0
@@ -42,7 +46,21 @@ async function backfill() {
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE)
     const values = batch
-      .filter((r) => r.playerId && r.playerName && r.gameId != null && r.gameTime && r.gameType && r.gameNum != null && r.playerMmr != null && r.mmrChange != null && r.opponentId && r.opponentName && r.opponentMmr != null && r.result)
+      .filter(
+        (r) =>
+          r.playerId &&
+          r.playerName &&
+          r.gameId != null &&
+          r.gameTime &&
+          r.gameType &&
+          r.gameNum != null &&
+          r.playerMmr != null &&
+          r.mmrChange != null &&
+          r.opponentId &&
+          r.opponentName &&
+          r.opponentMmr != null &&
+          r.result
+      )
       .map((r) => {
         const season = r.season === '4' ? 'season4' : `season${r.season}`
         seasonCounts[season] = (seasonCounts[season] ?? 0) + 1
@@ -74,15 +92,21 @@ async function backfill() {
     const result = await db
       .insert(player_games)
       .values(values)
-      .onConflictDoNothing({ target: [player_games.playerId, player_games.gameNum] })
+      .onConflictDoNothing({
+        target: [player_games.playerId, player_games.gameNum],
+      })
 
     inserted += values.length
     skipped += batch.length - values.length
     const pct = Math.round(((i + batch.length) / rows.length) * 100)
-    process.stdout.write(`\rProgress: ${i + batch.length}/${rows.length} (${pct}%)`)
+    process.stdout.write(
+      `\rProgress: ${i + batch.length}/${rows.length} (${pct}%)`
+    )
   }
 
-  console.log(`\n\nDone! Inserted: ${inserted}, Skipped (validation): ${skipped}`)
+  console.log(
+    `\n\nDone! Inserted: ${inserted}, Skipped (validation): ${skipped}`
+  )
   console.log('Season distribution:')
   for (const [season, count] of Object.entries(seasonCounts).sort()) {
     console.log(`  ${season}: ${count}`)

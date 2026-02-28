@@ -12,18 +12,24 @@
 import { db } from '@/server/db'
 import { leaderboardSnapshots, player_games } from '@/server/db/schema'
 import {
+  CASUAL_QUEUE_ID,
   RANKED_QUEUE_ID,
+  SANDBOX_QUEUE_ID,
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
-  CASUAL_QUEUE_ID,
-  SANDBOX_QUEUE_ID,
 } from '@/shared/constants'
 import { SEASON_5_START_DATE, getSeasonForDate } from '@/shared/seasons'
 import { sql } from 'drizzle-orm'
 
 const BOTLATRO_URL = 'http://balatro.virtualized.dev:4931'
 
-const QUEUE_IDS = [RANKED_QUEUE_ID, SMALLWORLD_QUEUE_ID, VANILLA_QUEUE_ID, CASUAL_QUEUE_ID, SANDBOX_QUEUE_ID]
+const QUEUE_IDS = [
+  RANKED_QUEUE_ID,
+  SMALLWORLD_QUEUE_ID,
+  VANILLA_QUEUE_ID,
+  CASUAL_QUEUE_ID,
+  SANDBOX_QUEUE_ID,
+]
 
 const QUEUE_NAME: Record<string, string> = {
   [RANKED_QUEUE_ID]: 'ranked',
@@ -86,17 +92,25 @@ async function runWithConcurrency<T>(
   async function worker() {
     while (nextIdx < items.length) {
       const i = nextIdx++
-      await fn(items[i]!, i)
+      const item = items[i]
+      if (item === undefined) {
+        continue
+      }
+      await fn(item, i)
     }
   }
 
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker)
+  )
 }
 
 // ─── Step 1: Leaderboard snapshots ───────────────────────────────────────────
 
 async function snapshotLeaderboard(queueId: string): Promise<string[]> {
-  const res = await fetch(`${BOTLATRO_URL}/api/stats/leaderboard/${queueId}?limit=100000`)
+  const res = await fetch(
+    `${BOTLATRO_URL}/api/stats/leaderboard/${queueId}?limit=100000`
+  )
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 
   const json = (await res.json()) as { leaderboard: ApiLeaderboardEntry[] }
@@ -145,14 +159,18 @@ async function getPlayerIdsFromHistory(queueId: string): Promise<Set<string>> {
     for (const p of match.players) ids.add(p.user_id)
   }
 
-  console.log(`  ✓ Queue ${queueId}: ${json.matches.length} matches, ${ids.size} unique players`)
+  console.log(
+    `  ✓ Queue ${queueId}: ${json.matches.length} matches, ${ids.size} unique players`
+  )
   return ids
 }
 
 // ─── Step 3: Fetch + insert per-player match history ─────────────────────────
 
 async function fetchPlayerMatches(userId: string): Promise<ApiPlayerMatch[]> {
-  const res = await fetch(`${BOTLATRO_URL}/api/players/${userId}/matches?limit=10000`)
+  const res = await fetch(
+    `${BOTLATRO_URL}/api/players/${userId}/matches?limit=10000`
+  )
   if (!res.ok) return []
 
   const json = (await res.json()) as { matches: ApiPlayerMatch[] }
@@ -172,33 +190,42 @@ async function insertPlayerGames(
     const matches = await fetchPlayerMatches(playerId)
 
     if (matches.length > 0) {
-      const rows = matches
-        .filter((m) => m.opponents[0] != null)
-        .map((m) => ({
-          playerId: m.player_id,
-          queueId: m.queue_id.toString(),
-          playerName: m.player_name,
-          gameId: m.match_id,
-          gameTime: new Date(m.created_at),
-          gameType: QUEUE_NAME[m.queue_id.toString()] ?? 'unknown',
-          gameNum: m.match_id + gameNumOffset,
-          playerMmr: m.mmr_after,
-          mmrChange: m.elo_change,
-          opponentId: m.opponents[0]!.user_id,
-          opponentName: m.opponents[0]!.name,
-          opponentMmr: m.opponents[0]!.mmr_after,
-          deck: m.deck,
-          stake: m.stake,
-          result: m.won ? 'win' : ('loss' as const),
-          season: 'season5' as const,
-        }))
+      const rows = matches.flatMap((m) => {
+        const opponent = m.opponents[0]
+        if (!opponent) {
+          return []
+        }
+
+        return [
+          {
+            playerId: m.player_id,
+            queueId: m.queue_id.toString(),
+            playerName: m.player_name,
+            gameId: m.match_id,
+            gameTime: new Date(m.created_at),
+            gameType: QUEUE_NAME[m.queue_id.toString()] ?? 'unknown',
+            gameNum: m.match_id + gameNumOffset,
+            playerMmr: m.mmr_after,
+            mmrChange: m.elo_change,
+            opponentId: opponent.user_id,
+            opponentName: opponent.name,
+            opponentMmr: opponent.mmr_after,
+            deck: m.deck,
+            stake: m.stake,
+            result: m.won ? 'win' : ('loss' as const),
+            season: 'season5' as const,
+          },
+        ]
+      })
 
       const BATCH = 500
       for (let i = 0; i < rows.length; i += BATCH) {
         await db
           .insert(player_games)
           .values(rows.slice(i, i + BATCH))
-          .onConflictDoNothing({ target: [player_games.playerId, player_games.gameNum] })
+          .onConflictDoNothing({
+            target: [player_games.playerId, player_games.gameNum],
+          })
       }
 
       totalRows += rows.length
@@ -224,19 +251,25 @@ async function main() {
   for (const queueId of QUEUE_IDS) {
     try {
       const ids = await snapshotLeaderboard(queueId)
-      ids.forEach((id) => leaderboardPlayerIds.add(id))
+      for (const id of ids) {
+        leaderboardPlayerIds.add(id)
+      }
     } catch (err) {
       console.error(`  ✗ Queue ${queueId} leaderboard failed:`, err)
     }
   }
 
   // Step 2: Collect all Season 5 player IDs from match history
-  console.log('\nStep 2: Collecting all Season 5 player IDs from match history...')
+  console.log(
+    '\nStep 2: Collecting all Season 5 player IDs from match history...'
+  )
   const allPlayerIds = new Set(leaderboardPlayerIds)
   for (const queueId of QUEUE_IDS) {
     try {
       const ids = await getPlayerIdsFromHistory(queueId)
-      ids.forEach((id) => allPlayerIds.add(id))
+      for (const id of ids) {
+        allPlayerIds.add(id)
+      }
     } catch (err) {
       console.error(`  ✗ Queue ${queueId} history failed:`, err)
     }
@@ -264,9 +297,15 @@ async function main() {
   console.log('\nSnapshot complete!')
   console.log('\nNext steps to wire up Season 5 as a DB season:')
   console.log('  1. Add SEASON_6_START_DATE to src/shared/seasons.ts')
-  console.log('  2. Add season5 to DB_SEASONS in src/server/api/routers/stats.ts')
-  console.log('  3. Update the date guards in src/server/api/routers/history.ts')
-  console.log('  4. Add getSeason5Leaderboard to LeaderboardService (same as Season 3)')
+  console.log(
+    '  2. Add season5 to DB_SEASONS in src/server/api/routers/stats.ts'
+  )
+  console.log(
+    '  3. Update the date guards in src/server/api/routers/history.ts'
+  )
+  console.log(
+    '  4. Add getSeason5Leaderboard to LeaderboardService (same as Season 3)'
+  )
 
   process.exit(0)
 }

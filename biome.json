@@ -6,6 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
+    "maxSize": 3145728,
     "ignoreUnknown": false,
     "ignore": []
   },
@@ -31,11 +32,7 @@
           "level": "warn",
           "fix": "safe",
           "options": {
-            "functions": [
-              "clsx",
-              "cva",
-              "cn"
-            ]
+            "functions": ["clsx", "cva", "cn"]
           }
         }
       },

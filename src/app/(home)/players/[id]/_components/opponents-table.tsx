@@ -49,7 +49,13 @@ function RawOpponentsTable({
 }: {
   userId: string
   season: Season
-  gameType?: 'ranked' | 'smallworld' | 'vanilla' | 'legacy' | 'sandbox' | 'casual'
+  gameType?:
+    | 'ranked'
+    | 'smallworld'
+    | 'vanilla'
+    | 'legacy'
+    | 'sandbox'
+    | 'casual'
   result?: 'win' | 'loss'
 }) {
   const pageSize = 50

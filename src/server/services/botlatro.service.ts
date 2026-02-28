@@ -82,7 +82,11 @@ export const botlatro_service = {
 
     if (dbTranscript) {
       console.log(`Transcript #${gameNumber} found in database`)
-      await redis.setEx(cacheKey, TRANSCRIPT_CACHE_TTL_SECONDS, dbTranscript.content)
+      await redis.setEx(
+        cacheKey,
+        TRANSCRIPT_CACHE_TTL_SECONDS,
+        dbTranscript.content
+      )
       return dbTranscript.content
     }
 
@@ -99,7 +103,10 @@ export const botlatro_service = {
       if (!response.ok) {
         throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
       }
-      const res = (await response.json()) as { success: boolean; transcript: string }
+      const res = (await response.json()) as {
+        success: boolean
+        transcript: string
+      }
 
       if (!res.success || !res.transcript) {
         return null

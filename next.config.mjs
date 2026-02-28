@@ -18,12 +18,36 @@ const config = {
   },
   async redirects() {
     return [
-      { source: '/games-per-hour', destination: '/stats?tab=game-activity', permanent: true },
-      { source: '/game-activity', destination: '/stats?tab=game-activity', permanent: true },
-      { source: '/rating-distribution', destination: '/stats?tab=rating-distribution', permanent: true },
-      { source: '/deck-popularity', destination: '/stats?tab=deck-popularity', permanent: true },
-      { source: '/stake-popularity', destination: '/stats?tab=stake-popularity', permanent: true },
-      { source: '/season-overview', destination: '/stats?tab=season-overview', permanent: true },
+      {
+        source: '/games-per-hour',
+        destination: '/stats?tab=game-activity',
+        permanent: true,
+      },
+      {
+        source: '/game-activity',
+        destination: '/stats?tab=game-activity',
+        permanent: true,
+      },
+      {
+        source: '/rating-distribution',
+        destination: '/stats?tab=rating-distribution',
+        permanent: true,
+      },
+      {
+        source: '/deck-popularity',
+        destination: '/stats?tab=deck-popularity',
+        permanent: true,
+      },
+      {
+        source: '/stake-popularity',
+        destination: '/stats?tab=stake-popularity',
+        permanent: true,
+      },
+      {
+        source: '/season-overview',
+        destination: '/stats?tab=season-overview',
+        permanent: true,
+      },
     ]
   },
   // Generate a unique build ID for each build if not provided by the environment

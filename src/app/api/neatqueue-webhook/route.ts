@@ -6,7 +6,24 @@ import { leaderboardService } from '@/server/services/leaderboard'
 import { type NextRequest, NextResponse } from 'next/server'
 
 const EXPECTED_QUERY_SECRET = process.env.WEBHOOK_QUERY_SECRET
-const QUERY_PARAM_NAME = 'token'
+
+type WebhookPlayer = {
+  id?: string | number
+  user_id?: string | number
+}
+
+type WebhookPayload = {
+  action?: string
+  new_players?: WebhookPlayer[]
+  players?: WebhookPlayer[]
+  players_removed?: WebhookPlayer[]
+  queueId?: string | number
+  teamResults?: {
+    teams?: Array<{
+      players?: WebhookPlayer[]
+    }>
+  }
+}
 
 /**
  * Verifies the secret from the query parameter.
@@ -56,7 +73,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const payload = await req.json()
+    const payload = (await req.json()) as WebhookPayload
 
     switch (payload.action) {
       case 'JOIN_QUEUE': {
@@ -78,7 +95,11 @@ export async function POST(req: NextRequest) {
       }
 
       case 'MATCH_STARTED': {
-        const playerIds = payload.players.map((p: any) => p.id) as string[]
+        const playerIds =
+          payload.players
+            ?.map((player) => player.id)
+            .filter((playerId): playerId is string | number => playerId != null)
+            .map(String) ?? []
 
         await Promise.all(
           playerIds.map(async (id) => {
@@ -104,11 +125,9 @@ export async function POST(req: NextRequest) {
         }
 
         const playerIds =
-          payload.teamResults?.teams?.flatMap((team: any) =>
+          payload.teamResults?.teams?.flatMap((team) =>
             (team?.players ?? [])
-              .map((player: any) =>
-                String(player?.user_id ?? player?.id ?? '')
-              )
+              .map((player) => String(player?.user_id ?? player?.id ?? ''))
               .filter(Boolean)
           ) ?? []
 
@@ -119,7 +138,10 @@ export async function POST(req: NextRequest) {
         await leaderboardService.refreshLeaderboard(queueId)
 
         if (!playerIds.length) {
-          console.error('MATCH_COMPLETED missing player IDs for state cleanup', payload)
+          console.error(
+            'MATCH_COMPLETED missing player IDs for state cleanup',
+            payload
+          )
           break
         }
 
@@ -160,7 +182,7 @@ export async function POST(req: NextRequest) {
       { message: 'Webhook received successfully' },
       { status: 200 }
     )
-  } catch (error: any) {
+  } catch (error) {
     console.error('!!! Error processing webhook:', error)
     try {
       // Attempt to read body on error
@@ -176,7 +198,10 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    if (error.message.includes('Webhook query secret is not configured')) {
+    if (
+      error instanceof Error &&
+      error.message.includes('Webhook query secret is not configured')
+    ) {
       return NextResponse.json(
         { message: 'Internal Server Error: Webhook secret not configured' },
         { status: 500 }

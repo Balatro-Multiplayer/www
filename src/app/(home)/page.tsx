@@ -1,9 +1,16 @@
-import {GithubLinks} from '@/app/_components/github-links'
-import {Button} from '@/components/ui/button'
-import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
-import {DropdownMenuTrigger} from '@/components/ui/dropdown-menu'
-import {SiGithub} from '@icons-pack/react-simple-icons'
-import {ChevronRight, CircleArrowRightIcon, MessageSquare, PersonStandingIcon, Trophy, Users} from 'lucide-react'
+import { GithubLinks } from '@/app/_components/github-links'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { SiGithub } from '@icons-pack/react-simple-icons'
+import {
+  ChevronRight,
+  CircleArrowRightIcon,
+  MessageSquare,
+  PersonStandingIcon,
+  Trophy,
+  Users,
+} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -36,7 +43,7 @@ export default function Home() {
               >
                 <Link href='/docs/getting-started/installation'>
                   Get Started
-                  <ChevronRight className='ml-2 h-4 w-4'/>
+                  <ChevronRight className='ml-2 h-4 w-4' />
                 </Link>
               </Button>
               <Button variant='outline' size='lg' asChild>
@@ -143,7 +150,7 @@ export default function Home() {
             <Card className='flex h-full flex-col'>
               <CardHeader className='pb-2'>
                 <div className='mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-red-100'>
-                  <Users className='h-6 w-6 text-red-600'/>
+                  <Users className='h-6 w-6 text-red-600' />
                 </div>
                 <CardTitle>Direct Play</CardTitle>
               </CardHeader>
@@ -184,7 +191,7 @@ export default function Home() {
             <Card className='flex h-full flex-col'>
               <CardHeader className='pb-2'>
                 <div className='mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-red-100'>
-                  <Trophy className='h-6 w-6 text-red-600'/>
+                  <Trophy className='h-6 w-6 text-red-600' />
                 </div>
                 <CardTitle>Matchmaking Queues</CardTitle>
               </CardHeader>
@@ -196,19 +203,29 @@ export default function Home() {
                   <div className='space-y-2 text-sm'>
                     <h4 className='font-semibold'>Ranked Queue:</h4>
                     <ul className='space-y-1'>
-                      <li>• Rebalanced cards and mechanics, new jokers, and more to create a competitive experience.</li>
+                      <li>
+                        • Rebalanced cards and mechanics, new jokers, and more
+                        to create a competitive experience.
+                      </li>
                     </ul>
                   </div>
                   <div className='space-y-2 text-sm'>
                     <h4 className='font-semibold'>Smallworld:</h4>
                     <ul className='space-y-1'>
-                      <li>• A whole new style of play, with only 25% of everything at your disposal, and showman is ALWAYS active. How will you build?</li>
+                      <li>
+                        • A whole new style of play, with only 25% of everything
+                        at your disposal, and showman is ALWAYS active. How will
+                        you build?
+                      </li>
                     </ul>
                   </div>
                   <div className='space-y-2 text-sm'>
                     <h4 className='font-semibold'>Vanilla Queue:</h4>
                     <ul className='space-y-1'>
-                      <li>• Uses the original game balance with no special changes besides same seed.</li>
+                      <li>
+                        • Uses the original game balance with no special changes
+                        besides same seed.
+                      </li>
                     </ul>
                   </div>
                 </div>
@@ -223,7 +240,7 @@ export default function Home() {
             <Card className='flex h-full flex-col'>
               <CardHeader className='pb-2'>
                 <div className='mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-red-100'>
-                  <MessageSquare className='h-6 w-6 text-red-600'/>
+                  <MessageSquare className='h-6 w-6 text-red-600' />
                 </div>
                 <CardTitle>Custom LFG</CardTitle>
               </CardHeader>
@@ -263,17 +280,17 @@ export default function Home() {
             >
               <Link href='/leaderboards'>
                 View Leaderboards
-                <Trophy className='ml-2 h-4 w-4'/>
+                <Trophy className='ml-2 h-4 w-4' />
               </Link>
             </Button>
             <Button
-                asChild
-                size='lg'
-                className='w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto ml-4'
+              asChild
+              size='lg'
+              className='ml-4 w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto'
             >
               <Link href='https://discord.gg/bBb5eU2gWc' target='_blank'>
                 Join Our Discord
-                <CircleArrowRightIcon className='ml-2 h-4 w-4'/>
+                <CircleArrowRightIcon className='ml-2 h-4 w-4' />
               </Link>
             </Button>
           </div>
@@ -294,8 +311,7 @@ export default function Home() {
                 </div>
                 <ul className='grid gap-6'>
                   <li className='flex items-start gap-4'>
-                    <div
-                      className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600'>
+                    <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600'>
                       1
                     </div>
                     <div className='space-y-1'>
@@ -307,8 +323,7 @@ export default function Home() {
                     </div>
                   </li>
                   <li className='flex items-start gap-4'>
-                    <div
-                      className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600'>
+                    <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600'>
                       2
                     </div>
                     <div className='space-y-1'>
@@ -320,8 +335,7 @@ export default function Home() {
                     </div>
                   </li>
                   <li className='flex items-start gap-4'>
-                    <div
-                      className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600'>
+                    <div className='flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600'>
                       3
                     </div>
                     <div className='space-y-1'>
@@ -399,7 +413,7 @@ export default function Home() {
             <GithubLinks>
               <DropdownMenuTrigger asChild>
                 <Button variant='ghost' size='icon'>
-                  <SiGithub className='h-5 w-5'/>
+                  <SiGithub className='h-5 w-5' />
                   <span className='sr-only'>GitHub</span>
                 </Button>
               </DropdownMenuTrigger>

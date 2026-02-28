@@ -97,12 +97,8 @@
           "name": "account_userId_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -110,10 +106,7 @@
       "compositePrimaryKeys": {
         "account_provider_providerAccountId_pk": {
           "name": "account_provider_providerAccountId_pk",
-          "columns": [
-            "provider",
-            "providerAccountId"
-          ]
+          "columns": ["provider", "providerAccountId"]
         }
       },
       "uniqueConstraints": {},
@@ -200,12 +193,8 @@
           "name": "blog_posts_author_id_user_id_fk",
           "tableFrom": "blog_posts",
           "tableTo": "user",
-          "columnsFrom": [
-            "author_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["author_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -215,9 +204,7 @@
         "blog_posts_slug_unique": {
           "name": "blog_posts_slug_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         }
       },
       "policies": {},
@@ -272,9 +259,7 @@
         "mod_branches_name_unique": {
           "name": "mod_branches_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -396,12 +381,8 @@
           "name": "log_files_user_id_user_id_fk",
           "tableFrom": "log_files",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -547,10 +528,7 @@
       "compositePrimaryKeys": {
         "player_games_player_id_game_num_pk": {
           "name": "player_games_player_id_game_num_pk",
-          "columns": [
-            "player_id",
-            "game_num"
-          ]
+          "columns": ["player_id", "game_num"]
         }
       },
       "uniqueConstraints": {},
@@ -703,12 +681,8 @@
           "name": "mod_release_branch_id_mod_branches_id_fk",
           "tableFrom": "mod_release",
           "tableTo": "mod_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["branch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -764,12 +738,8 @@
           "name": "session_userId_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -828,9 +798,7 @@
         "transcripts_game_number_unique": {
           "name": "transcripts_game_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "game_number"
-          ]
+          "columns": ["game_number"]
         }
       },
       "policies": {},
@@ -934,10 +902,7 @@
       "compositePrimaryKeys": {
         "verification_token_identifier_token_pk": {
           "name": "verification_token_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
+          "columns": ["identifier", "token"]
         }
       },
       "uniqueConstraints": {},

@@ -141,7 +141,7 @@ function SearchResults({
   }
 
   const onKey = useEffectEvent((e: KeyboardEvent) => {
-    if (e.key === 'ArrowDown' || e.key == 'ArrowUp') {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       setActive((cur) => {
         const idx = items.findIndex((item) => item.id === cur)
         if (idx === -1) return items.at(0)?.id
@@ -187,10 +187,7 @@ function SearchResults({
           }}
         >
           {item.type !== 'page' && item.type !== 'player' ? (
-            <div
-              role='none'
-              className='ms-2 h-full min-h-10 w-px bg-fd-border'
-            />
+            <div className='ms-2 h-full min-h-10 w-px bg-fd-border' />
           ) : null}
           {icons[item.type]}
           <p className='w-0 flex-1 truncate'>{item.content}</p>
@@ -271,9 +268,7 @@ export default function CustomSearchDialog(props: SharedProps) {
   // Transform results to include custom rendering
   const transformedResults =
     query.data && Array.isArray(query.data)
-      ? query.data.map((result: any) => {
-          const typedResult = result as SearchResult
-
+      ? (query.data as SearchResult[]).map((typedResult) => {
           if (typedResult.type === 'player') {
             return {
               id: `player-${typedResult.discord_id}`,

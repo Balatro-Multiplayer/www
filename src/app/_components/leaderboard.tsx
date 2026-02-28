@@ -144,12 +144,26 @@ export function LeaderboardPage() {
   // Derive sort column and direction from query params with defaults
   const sortColumn =
     sortBy ||
-    (['season1', 'season2', 'season3', 'season4', 'season5', 'season6'].includes(season)
+    ([
+      'season1',
+      'season2',
+      'season3',
+      'season4',
+      'season5',
+      'season6',
+    ].includes(season)
       ? 'mmr'
       : 'rank')
   const sortDirection =
     (sortOrder as 'asc' | 'desc') ||
-    (['season1', 'season2', 'season3', 'season4', 'season5', 'season6'].includes(season)
+    ([
+      'season1',
+      'season2',
+      'season3',
+      'season4',
+      'season5',
+      'season6',
+    ].includes(season)
       ? 'desc'
       : 'asc')
 
@@ -163,7 +177,14 @@ export function LeaderboardPage() {
     // Only reset sort if season actually changed AND user hasn't explicitly set a sort
     if (seasonChanged && !sortBy) {
       if (
-        ['season1', 'season2', 'season3', 'season4', 'season5', 'season6'].includes(season)
+        [
+          'season1',
+          'season2',
+          'season3',
+          'season4',
+          'season5',
+          'season6',
+        ].includes(season)
       ) {
         setQueryParams({ sortBy: 'mmr', sortOrder: 'desc' })
       } else {

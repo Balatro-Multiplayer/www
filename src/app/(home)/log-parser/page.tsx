@@ -1,6 +1,6 @@
 'use client'
 
-import { LuaToJsonConverter } from '@/app/(home)/log-parser/lua-parser'
+import { convertLuaToJson } from '@/app/(home)/log-parser/lua-parser'
 import {
   Card,
   CardContent,
@@ -193,7 +193,9 @@ function convertDates<T>(obj: T): T {
     return obj.map((item) => convertDates(item)) as unknown as T
   }
 
-  const result = { ...obj } as any
+  const result: Record<string, unknown> = {
+    ...(obj as Record<string, unknown>),
+  }
 
   // Process each property
   for (const key in result) {
@@ -219,7 +221,7 @@ function convertDates<T>(obj: T): T {
     }
   }
 
-  return result
+  return result as T
 }
 
 // Main component
@@ -340,404 +342,262 @@ export default function LogParser() {
     let gameInfoIndex = 0
     let lastProcessedTimestamp: Date | null = null
     for (const line of logLines) {
-        if (!line.trim()) continue
-        const timeMatch = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)
-        const timestamp = timeMatch?.[1] ? new Date(timeMatch[1]) : new Date()
-        const lineLower = line.toLowerCase()
-        const sentPayload = parseClientSentPayload(line)
-        const sentAction = getPayloadString(sentPayload, 'action')
-        lastProcessedTimestamp = timestamp
-        // --- Game Lifecycle ---
-        if (line.includes('Client got receiveEndGameJokers message')) {
-          if (currentGame) {
-            // Mark end date if not already set
-            if (!currentGame.endDate) {
-              currentGame.endDate = timestamp
-            }
-            // Extract Opponent Jokers
-            const keysMatch = line.match(/\(keys: ([^)]+)\)/)
-            if (keysMatch?.[1]) {
-              const str = keysMatch?.[1]
-              currentGame.opponentFinalJokers = await parseJokersFromString(str)
-            }
-            // Extract Seed (often found here)
-            const seedMatch = line.match(/seed: ([A-Z0-9]+)/)
-            if (!currentGame.seed && seedMatch?.[1]) {
-              currentGame.seed = seedMatch[1]
-            }
-          }
-          continue
-        }
-        if (line.includes('Client got nemesisEndGameStats message')) {
-          if (currentGame) {
-            // Extract Opponent Reroll Count
-            const rerollCountMatch = line.match(/\(reroll_count: (\d+)\)/)
-            if (rerollCountMatch?.[1]) {
-              currentGame.opponentRerolls = Number.parseInt(
-                rerollCountMatch[1],
-                10
-              )
-            }
-
-            // Extract Opponent Reroll Cost Total
-            const rerollCostMatch = line.match(/\(reroll_cost_total: (\d+)\)/)
-            if (rerollCostMatch?.[1]) {
-              currentGame.opponentRerollCostTotal = Number.parseInt(
-                rerollCostMatch[1],
-                10
-              )
-            }
-
-            // Extract Opponent Vouchers
-            const vouchersMatch = line.match(/\(vouchers: ([^)]+)\)/)
-            if (vouchersMatch?.[1]) {
-              currentGame.opponentVouchers = vouchersMatch[1].split('-')
-            }
-          }
-          continue
-        }
-        if (sentAction === 'receiveEndGameJokers') {
-          if (currentGame) {
-            // Mark end date if not already set (might happen slightly before 'got')
-            if (!currentGame.endDate) {
-              currentGame.endDate = timestamp
-            }
-            // Extract Log Owner Jokers
-            const str = getPayloadString(sentPayload, 'keys')
-            if (str) {
-              currentGame.logOwnerFinalJokers = await parseJokersFromString(str)
-            }
-          }
-          continue
-        }
-        if (sentAction === 'nemesisEndGameStats') {
-          if (currentGame) {
-            // Extract Log Owner Reroll Count
-            const rerollCount = getPayloadNumber(sentPayload, 'reroll_count')
-            if (rerollCount !== null) {
-              currentGame.rerolls = rerollCount
-            }
-
-            // Extract Log Owner Reroll Cost Total
-            const rerollCostTotal = getPayloadNumber(
-              sentPayload,
-              'reroll_cost_total'
-            )
-            if (rerollCostTotal !== null) {
-              currentGame.rerollCostTotal = rerollCostTotal
-            }
-
-            // Extract Log Owner Vouchers
-            const vouchers = getPayloadString(sentPayload, 'vouchers')
-            if (vouchers) {
-              currentGame.logOwnerVouchers = vouchers.split('-')
-            }
-          }
-          continue
-        }
-        if (lineLower.includes('startgame message')) {
-          if (currentGame) {
-            if (!currentGame.endDate) currentGame.endDate = timestamp
-            currentGame.durationSeconds = currentGame.endDate
-              ? (currentGame.endDate.getTime() -
-                  currentGame.startDate.getTime()) /
-                1000
-              : null
-            games.push(currentGame)
-          }
-
-          gameCounter++
-          currentGame = initGame(gameCounter, timestamp)
-          const currentInfo =
-            gameStartInfos[gameInfoIndex++] ?? ({} as GameStartInfo)
-
-          // Assign host/guest first
-          currentGame.host = currentInfo.lobbyInfo?.host ?? null
-          currentGame.guest = currentInfo.lobbyInfo?.guest ?? null
-          currentGame.hostMods = currentInfo.lobbyInfo?.hostHash ?? []
-          currentGame.guestMods = currentInfo.lobbyInfo?.guestHash ?? []
-          currentGame.isHost = currentInfo.lobbyInfo?.isHost ?? null // Log owner's role
-
-          // *** Determine Log Owner and Opponent Names based on isHost ***
-          if (currentGame.isHost !== null) {
-            if (currentGame.isHost) {
-              // Log owner was the host
-              currentGame.logOwnerName = currentGame.host
-              currentGame.opponentName = currentGame.guest
-            } else {
-              // Log owner was the guest
-              currentGame.logOwnerName = currentGame.guest
-              currentGame.opponentName = currentGame.host
-            }
-          }
-          // Fallback if names are missing but role is known
-          if (!currentGame.logOwnerName && currentGame.isHost !== null) {
-            currentGame.logOwnerName = currentGame.isHost ? 'Host' : 'Guest'
-          }
-          if (!currentGame.opponentName && currentGame.isHost !== null) {
-            currentGame.opponentName = currentGame.isHost ? 'Guest' : 'Host'
-          }
-
-          currentGame.options = lastSeenLobbyOptions
-          currentGame.deck = lastSeenLobbyOptions?.back ?? null
-          currentGame.seed = currentInfo.seed ?? null
-          if (currentGame.options?.starting_lives) {
-            currentGame.opponentLastLives = currentGame.options.starting_lives
-          }
-
-          currentGame.events.push({
-            timestamp,
-            text: `Game ${gameCounter} Started`,
-            type: 'system',
-          })
-          continue
-        }
-
-        if (line.includes('Client got receiveEndGameJokers')) {
-          if (currentGame && !currentGame.endDate) {
+      if (!line.trim()) continue
+      const timeMatch = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/)
+      const timestamp = timeMatch?.[1] ? new Date(timeMatch[1]) : new Date()
+      const lineLower = line.toLowerCase()
+      const sentPayload = parseClientSentPayload(line)
+      const sentAction = getPayloadString(sentPayload, 'action')
+      lastProcessedTimestamp = timestamp
+      // --- Game Lifecycle ---
+      if (line.includes('Client got receiveEndGameJokers message')) {
+        if (currentGame) {
+          // Mark end date if not already set
+          if (!currentGame.endDate) {
             currentGame.endDate = timestamp
-            const seedMatch = line.match(/seed: ([A-Z0-9]+)/)
-            if (!currentGame.seed && seedMatch?.[1]) {
-              currentGame.seed = seedMatch[1]
-            }
           }
-          continue
-        }
-
-        // --- Lobby and Options Parsing ---
-        if (lineLower.includes('lobbyoptions')) {
-          const parsedSentOptions =
-            sentAction === 'lobbyOptions' && sentPayload
-              ? parseLobbyOptions(sentPayload)
-              : null
-          const optionsStr = parsedSentOptions
-            ? null
-            : line.includes('Client got lobbyOptions message:')
-              ? line
-                  .split(' Client got lobbyOptions message:  ')[1]
-                  ?.trim()
-                  ?.replaceAll('(', '')
-                  ?.replaceAll(')', ',')
-              : line.split(' Client sent message:')[1]?.trim()
-          const parsedOptions = parsedSentOptions
-            ? parsedSentOptions
-            : optionsStr
-              ? parseLobbyOptions(optionsStr)
-              : null
-          if (parsedOptions) {
-            lastSeenLobbyOptions = parsedOptions
-            if (currentGame && !currentGame.options) {
-              currentGame.options = lastSeenLobbyOptions
-              currentGame.deck = lastSeenLobbyOptions.back ?? currentGame.deck
-              if (lastSeenLobbyOptions.starting_lives) {
-                currentGame.opponentLastLives =
-                  lastSeenLobbyOptions.starting_lives
-              }
-            }
+          // Extract Opponent Jokers
+          const keysMatch = line.match(/\(keys: ([^)]+)\)/)
+          if (keysMatch?.[1]) {
+            const str = keysMatch?.[1]
+            currentGame.opponentFinalJokers = await parseJokersFromString(str)
           }
-          continue
+          // Extract Seed (often found here)
+          const seedMatch = line.match(/seed: ([A-Z0-9]+)/)
+          if (!currentGame.seed && seedMatch?.[1]) {
+            currentGame.seed = seedMatch[1]
+          }
         }
-
-        // --- In-Game Event Parsing (requires currentGame) ---
-        if (!currentGame) continue
-
-        // enemyInfo ALWAYS refers to the opponent from the log owner's perspective
-        if (lineLower.includes('enemyinfo')) {
-          // Parse opponent lives
-          const livesMatch = line.match(/lives: *(\d+)/)
-          if (livesMatch?.[1]) {
-            const newLives = Number.parseInt(livesMatch[1], 10)
-            if (
-              !Number.isNaN(newLives) &&
-              newLives < currentGame.opponentLastLives
-            ) {
-              currentGame.events.push({
-                timestamp,
-                text: `Opponent lost a life (${currentGame.opponentLastLives} -> ${newLives})`,
-                type: 'event',
-              })
-            }
-            currentGame.opponentLastLives = newLives
+        continue
+      }
+      if (line.includes('Client got nemesisEndGameStats message')) {
+        if (currentGame) {
+          // Extract Opponent Reroll Count
+          const rerollCountMatch = line.match(/\(reroll_count: (\d+)\)/)
+          if (rerollCountMatch?.[1]) {
+            currentGame.opponentRerolls = Number.parseInt(
+              rerollCountMatch[1],
+              10
+            )
           }
 
-          // Parse opponent skips
-          const skipsMatch = line.match(/skips: *(\d+)/)
-          if (skipsMatch?.[1]) {
-            const newSkips = Number.parseInt(skipsMatch[1], 10)
-            if (
-              !Number.isNaN(newSkips) &&
-              newSkips > currentGame.opponentLastSkips
-            ) {
-              const numSkipsOccurred = newSkips - currentGame.opponentLastSkips
-              for (let i = 0; i < numSkipsOccurred; i++) {
-                currentGame.moneySpentPerShopOpponent.push(null)
-              }
-              currentGame.events.push({
-                timestamp,
-                text: `Opponent skipped ${numSkipsOccurred} shop${numSkipsOccurred > 1 ? 's' : ''} (Total: ${newSkips})`,
-                type: 'shop',
-              })
-              currentGame.opponentLastSkips = newSkips
-            } else if (!Number.isNaN(newSkips)) {
-              currentGame.opponentLastSkips = newSkips
-            }
+          // Extract Opponent Reroll Cost Total
+          const rerollCostMatch = line.match(/\(reroll_cost_total: (\d+)\)/)
+          if (rerollCostMatch?.[1]) {
+            currentGame.opponentRerollCostTotal = Number.parseInt(
+              rerollCostMatch[1],
+              10
+            )
           }
 
-          // Parse opponent score for PVP blind
-          if (currentGame.currentPvpBlind !== null) {
-            const scoreMatch = line.match(/score: *(\d+)/)
-            const handsLeftMatch = line.match(/handsLeft: *(\d+)/)
-
-            if (scoreMatch?.[1]) {
-              const totalScore = Number.parseInt(scoreMatch[1], 10)
-              const handsLeft = handsLeftMatch?.[1]
-                ? Number.parseInt(handsLeftMatch[1], 10)
-                : 0
-
-              if (!Number.isNaN(totalScore)) {
-                const currentBlindIndex = currentGame.currentPvpBlind - 1
-                if (
-                  currentBlindIndex >= 0 &&
-                  currentBlindIndex < currentGame.pvpBlinds.length
-                ) {
-                  const currentBlind = currentGame.pvpBlinds[currentBlindIndex]
-                  if (!currentBlind) {
-                    continue
-                  }
-                  // Update opponent score in current blind
-                  const gainedScore = totalScore - currentBlind.opponentScore
-                  currentBlind.opponentScore = totalScore
-
-                  // Add hand score
-                  currentBlind.handScores.push({
-                    timestamp,
-                    gainedScore,
-                    totalScore,
-                    handsLeft,
-                    isLogOwner: false,
-                  })
-
-                  // Add event for opponent score only if gainedScore > 0
-                  if (gainedScore > 0) {
-                    currentGame.events.push({
-                      timestamp,
-                      text: `Opponent scored: ${gainedScore} (Total: ${totalScore}, hands left: ${handsLeft})`,
-                      type: 'event',
-                    })
-                  }
-                }
-              }
-            }
+          // Extract Opponent Vouchers
+          const vouchersMatch = line.match(/\(vouchers: ([^)]+)\)/)
+          if (vouchersMatch?.[1]) {
+            currentGame.opponentVouchers = vouchersMatch[1].split('-')
+          }
+        }
+        continue
+      }
+      if (sentAction === 'receiveEndGameJokers') {
+        if (currentGame) {
+          // Mark end date if not already set (might happen slightly before 'got')
+          if (!currentGame.endDate) {
+            currentGame.endDate = timestamp
+          }
+          // Extract Log Owner Jokers
+          const str = getPayloadString(sentPayload, 'keys')
+          if (str) {
+            currentGame.logOwnerFinalJokers = await parseJokersFromString(str)
+          }
+        }
+        continue
+      }
+      if (sentAction === 'nemesisEndGameStats') {
+        if (currentGame) {
+          // Extract Log Owner Reroll Count
+          const rerollCount = getPayloadNumber(sentPayload, 'reroll_count')
+          if (rerollCount !== null) {
+            currentGame.rerolls = rerollCount
           }
 
-          continue
-        }
-        if (sentAction === 'soldCard') {
-          const card = getPayloadString(sentPayload, 'card')
-          if (card) {
-            currentGame.events.push({
-              timestamp,
-              text: `Sold ${card}`,
-              type: 'shop',
-            })
-          }
-          continue
-        }
-        if (
-          line.includes('Client got soldJoker message:  (action: soldJoker)')
-        ) {
-          currentGame.events.push({
-            timestamp,
-            text: 'Opponent sold a joker',
-            type: 'shop',
-          })
-        }
-        // This message indicates opponent's spending report
-        if (line.includes(' Client got spentLastShop message')) {
-          const match = line.match(/amount: (\d+)/)
-          if (match?.[1]) {
-            const amount = Number.parseInt(match[1], 10)
-            if (!Number.isNaN(amount)) {
-              currentGame.opponentMoneySpent += amount
-              currentGame.moneySpentPerShopOpponent.push(amount)
-              currentGame.events.push({
-                timestamp,
-                text: `Opponent spent $${amount} in shop`,
-                type: 'shop',
-              })
-            }
-          }
-          continue
-        }
-
-        // This message indicates the log owner reporting their spending
-        if (sentAction === 'spentLastShop') {
-          const amount = getPayloadNumber(sentPayload, 'amount')
-          if (amount !== null) {
-            currentGame.moneySpentPerShop.push(amount)
-            currentGame.events.push({
-              timestamp,
-              text: `Reported spending $${amount} last shop`,
-              type: 'shop',
-            })
-          }
-          continue
-        }
-
-        // This message indicates the log owner skipped
-        if (sentAction === 'skip') {
-          currentGame.moneySpentPerShop.push(null)
-          currentGame.events.push({
-            timestamp,
-            text: 'Skipped shop',
-            type: 'shop',
-          })
-          continue
-        }
-
-        // Detect win/lose game messages
-        if (line.includes('Client got winGame message:  (action: winGame)')) {
-          currentGame.winner = 'logOwner'
-          currentGame.events.push({
-            timestamp,
-            text: 'You won the game!',
-            type: 'system',
-          })
-          continue
-        }
-
-        if (line.includes('Client got loseGame message:  (action: loseGame)')) {
-          currentGame.winner = 'opponent'
-          currentGame.events.push({
-            timestamp,
-            text: 'You lost the game.',
-            type: 'system',
-          })
-          continue
-        }
-
-        // Detect disconnect message
-        if (
-          line.includes(
-            'Client got disconnected message:  (action: disconnected)'
+          // Extract Log Owner Reroll Cost Total
+          const rerollCostTotal = getPayloadNumber(
+            sentPayload,
+            'reroll_cost_total'
           )
-        ) {
-          currentGame.events.push({
-            timestamp,
-            text: 'Log owner disconnected',
-            type: 'system',
-          })
-          continue
+          if (rerollCostTotal !== null) {
+            currentGame.rerollCostTotal = rerollCostTotal
+          }
+
+          // Extract Log Owner Vouchers
+          const vouchers = getPayloadString(sentPayload, 'vouchers')
+          if (vouchers) {
+            currentGame.logOwnerVouchers = vouchers.split('-')
+          }
+        }
+        continue
+      }
+      if (lineLower.includes('startgame message')) {
+        if (currentGame) {
+          if (!currentGame.endDate) currentGame.endDate = timestamp
+          currentGame.durationSeconds = currentGame.endDate
+            ? (currentGame.endDate.getTime() -
+                currentGame.startDate.getTime()) /
+              1000
+            : null
+          games.push(currentGame)
         }
 
-        // Parse endPvP messages to determine the winner of each blind
-        if (line.includes('Client got endPvP message')) {
-          if (currentGame.currentPvpBlind !== null) {
-            const lostMatch = line.match(/lost: (true|false)/)
-            if (lostMatch?.[1]) {
-              const lost = lostMatch[1].toLowerCase() === 'true'
-              const currentBlindIndex = currentGame.currentPvpBlind - 1
+        gameCounter++
+        currentGame = initGame(gameCounter, timestamp)
+        const currentInfo =
+          gameStartInfos[gameInfoIndex++] ?? ({} as GameStartInfo)
 
+        // Assign host/guest first
+        currentGame.host = currentInfo.lobbyInfo?.host ?? null
+        currentGame.guest = currentInfo.lobbyInfo?.guest ?? null
+        currentGame.hostMods = currentInfo.lobbyInfo?.hostHash ?? []
+        currentGame.guestMods = currentInfo.lobbyInfo?.guestHash ?? []
+        currentGame.isHost = currentInfo.lobbyInfo?.isHost ?? null // Log owner's role
+
+        // *** Determine Log Owner and Opponent Names based on isHost ***
+        if (currentGame.isHost !== null) {
+          if (currentGame.isHost) {
+            // Log owner was the host
+            currentGame.logOwnerName = currentGame.host
+            currentGame.opponentName = currentGame.guest
+          } else {
+            // Log owner was the guest
+            currentGame.logOwnerName = currentGame.guest
+            currentGame.opponentName = currentGame.host
+          }
+        }
+        // Fallback if names are missing but role is known
+        if (!currentGame.logOwnerName && currentGame.isHost !== null) {
+          currentGame.logOwnerName = currentGame.isHost ? 'Host' : 'Guest'
+        }
+        if (!currentGame.opponentName && currentGame.isHost !== null) {
+          currentGame.opponentName = currentGame.isHost ? 'Guest' : 'Host'
+        }
+
+        currentGame.options = lastSeenLobbyOptions
+        currentGame.deck = lastSeenLobbyOptions?.back ?? null
+        currentGame.seed = currentInfo.seed ?? null
+        if (currentGame.options?.starting_lives) {
+          currentGame.opponentLastLives = currentGame.options.starting_lives
+        }
+
+        currentGame.events.push({
+          timestamp,
+          text: `Game ${gameCounter} Started`,
+          type: 'system',
+        })
+        continue
+      }
+
+      if (line.includes('Client got receiveEndGameJokers')) {
+        if (currentGame && !currentGame.endDate) {
+          currentGame.endDate = timestamp
+          const seedMatch = line.match(/seed: ([A-Z0-9]+)/)
+          if (!currentGame.seed && seedMatch?.[1]) {
+            currentGame.seed = seedMatch[1]
+          }
+        }
+        continue
+      }
+
+      // --- Lobby and Options Parsing ---
+      if (lineLower.includes('lobbyoptions')) {
+        const parsedSentOptions =
+          sentAction === 'lobbyOptions' && sentPayload
+            ? parseLobbyOptions(sentPayload)
+            : null
+        const optionsStr = parsedSentOptions
+          ? null
+          : line.includes('Client got lobbyOptions message:')
+            ? line
+                .split(' Client got lobbyOptions message:  ')[1]
+                ?.trim()
+                ?.replaceAll('(', '')
+                ?.replaceAll(')', ',')
+            : line.split(' Client sent message:')[1]?.trim()
+        const parsedOptions = parsedSentOptions
+          ? parsedSentOptions
+          : optionsStr
+            ? parseLobbyOptions(optionsStr)
+            : null
+        if (parsedOptions) {
+          lastSeenLobbyOptions = parsedOptions
+          if (currentGame && !currentGame.options) {
+            currentGame.options = lastSeenLobbyOptions
+            currentGame.deck = lastSeenLobbyOptions.back ?? currentGame.deck
+            if (lastSeenLobbyOptions.starting_lives) {
+              currentGame.opponentLastLives =
+                lastSeenLobbyOptions.starting_lives
+            }
+          }
+        }
+        continue
+      }
+
+      // --- In-Game Event Parsing (requires currentGame) ---
+      if (!currentGame) continue
+
+      // enemyInfo ALWAYS refers to the opponent from the log owner's perspective
+      if (lineLower.includes('enemyinfo')) {
+        // Parse opponent lives
+        const livesMatch = line.match(/lives: *(\d+)/)
+        if (livesMatch?.[1]) {
+          const newLives = Number.parseInt(livesMatch[1], 10)
+          if (
+            !Number.isNaN(newLives) &&
+            newLives < currentGame.opponentLastLives
+          ) {
+            currentGame.events.push({
+              timestamp,
+              text: `Opponent lost a life (${currentGame.opponentLastLives} -> ${newLives})`,
+              type: 'event',
+            })
+          }
+          currentGame.opponentLastLives = newLives
+        }
+
+        // Parse opponent skips
+        const skipsMatch = line.match(/skips: *(\d+)/)
+        if (skipsMatch?.[1]) {
+          const newSkips = Number.parseInt(skipsMatch[1], 10)
+          if (
+            !Number.isNaN(newSkips) &&
+            newSkips > currentGame.opponentLastSkips
+          ) {
+            const numSkipsOccurred = newSkips - currentGame.opponentLastSkips
+            for (let i = 0; i < numSkipsOccurred; i++) {
+              currentGame.moneySpentPerShopOpponent.push(null)
+            }
+            currentGame.events.push({
+              timestamp,
+              text: `Opponent skipped ${numSkipsOccurred} shop${numSkipsOccurred > 1 ? 's' : ''} (Total: ${newSkips})`,
+              type: 'shop',
+            })
+            currentGame.opponentLastSkips = newSkips
+          } else if (!Number.isNaN(newSkips)) {
+            currentGame.opponentLastSkips = newSkips
+          }
+        }
+
+        // Parse opponent score for PVP blind
+        if (currentGame.currentPvpBlind !== null) {
+          const scoreMatch = line.match(/score: *(\d+)/)
+          const handsLeftMatch = line.match(/handsLeft: *(\d+)/)
+
+          if (scoreMatch?.[1]) {
+            const totalScore = Number.parseInt(scoreMatch[1], 10)
+            const handsLeft = handsLeftMatch?.[1]
+              ? Number.parseInt(handsLeftMatch[1], 10)
+              : 0
+
+            if (!Number.isNaN(totalScore)) {
+              const currentBlindIndex = currentGame.currentPvpBlind - 1
               if (
                 currentBlindIndex >= 0 &&
                 currentBlindIndex < currentGame.pvpBlinds.length
@@ -746,169 +606,309 @@ export default function LogParser() {
                 if (!currentBlind) {
                   continue
                 }
-                // Set the winner
-                currentBlind.winner = lost ? 'opponent' : 'logOwner'
+                // Update opponent score in current blind
+                const gainedScore = totalScore - currentBlind.opponentScore
+                currentBlind.opponentScore = totalScore
 
-                // Set the end timestamp
-                currentBlind.endTimestamp = timestamp
-
-                // Add event for blind end
-                currentGame.events.push({
+                // Add hand score
+                currentBlind.handScores.push({
                   timestamp,
-                  text: `Ended Blind #${currentBlind.blindNumber} - ${lost ? 'You lost' : 'You won'} (Your score: ${currentBlind.logOwnerScore}, Opponent score: ${currentBlind.opponentScore})`,
-                  type: 'event',
+                  gainedScore,
+                  totalScore,
+                  handsLeft,
+                  isLogOwner: false,
                 })
 
-                // Reset current blind
-                currentGame.currentPvpBlind = null
-              }
-            }
-          }
-          continue
-        }
-
-        // --- Log Owner Actions/Events (Client sent ...) ---
-        if (lineLower.includes('client sent')) {
-          // Log owner gained/spent money directly
-          if (sentAction === 'moneyMoved') {
-            const amount = getPayloadNumber(sentPayload, 'amount')
-            if (amount !== null) {
-              if (amount >= 0) {
-                currentGame.moneyGained += amount
-                currentGame.events.push({
-                  timestamp,
-                  text: `Gained $${amount}`,
-                  type: 'event',
-                })
-              } else {
-                const spent = Math.abs(amount)
-                currentGame.moneySpent += spent
-                currentGame.events.push({
-                  timestamp,
-                  text: `Spent $${spent}`,
-                  type: 'event',
-                })
-              }
-            }
-          } else if (sentAction === 'boughtCardFromShop') {
-            // Log owner bought card
-            const cardRaw =
-              getPayloadString(sentPayload, 'card') ?? 'Unknown Card'
-            const cardClean = cardRaw.replace(/^(c_mp_|j_mp_)/, '')
-            const cost = getPayloadNumber(sentPayload, 'cost') ?? 0
-            currentGame.events.push({
-              timestamp,
-              img: jokers[cardRaw]?.file,
-              text: `Bought ${cardClean}${cost > 0 ? ` for $${cost}` : ''}`,
-              type: 'shop',
-            })
-          } else if (sentAction === 'rerollShop') {
-            // Log owner rerolled
-            const cost = getPayloadNumber(sentPayload, 'cost')
-            if (cost !== null) {
-              currentGame.events.push({
-                timestamp,
-                text: `Rerolled shop for $${cost}`,
-                type: 'shop',
-              })
-            }
-            currentGame.rerolls++
-          } else if (sentAction === 'usedCard') {
-            // Log owner used card
-            const raw = getPayloadString(sentPayload, 'card')
-            if (raw) {
-              const clean = raw
-                .replace(/^(c_mp_|j_mp_)/, '')
-                .replace(/_/g, ' ')
-                .replace(
-                  /\w\S*/g,
-                  (txt) =>
-                    txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-                )
-              currentGame.events.push({
-                timestamp,
-                text: `Used ${clean}`,
-                type: 'action',
-              })
-            }
-          } else if (sentAction === 'playHand') {
-            // Log owner played a hand
-            if (currentGame.currentPvpBlind !== null) {
-              const totalScore = getPayloadNumber(sentPayload, 'score')
-              const handsLeft = getPayloadNumber(sentPayload, 'handsLeft') ?? 0
-
-              if (totalScore !== null) {
-                const currentBlindIndex = currentGame.currentPvpBlind - 1
-                if (
-                  currentBlindIndex >= 0 &&
-                  currentBlindIndex < currentGame.pvpBlinds.length
-                ) {
-                  const currentBlind = currentGame.pvpBlinds[currentBlindIndex]
-                  if (!currentBlind) {
-                    continue
-                  }
-                  // Update log owner score in current blind
-                  const gainedScore = totalScore - currentBlind.logOwnerScore
-                  currentBlind.logOwnerScore = totalScore
-
-                  // Add hand score
-                  currentBlind.handScores.push({
+                // Add event for opponent score only if gainedScore > 0
+                if (gainedScore > 0) {
+                  currentGame.events.push({
                     timestamp,
-                    gainedScore,
-                    totalScore,
-                    handsLeft,
-                    isLogOwner: true,
+                    text: `Opponent scored: ${gainedScore} (Total: ${totalScore}, hands left: ${handsLeft})`,
+                    type: 'event',
                   })
-
-                  // Add event for log owner score only if gainedScore > 0
-                  if (gainedScore > 0) {
-                    currentGame.events.push({
-                      timestamp,
-                      text: `You scored: ${gainedScore} (Total: ${totalScore}, hands left: ${handsLeft})`,
-                      type: 'event',
-                    })
-                  }
                 }
               }
             }
-          } else if (sentAction === 'setLocation') {
-            // Log owner changed location
-            const locCode = getPayloadString(sentPayload, 'location')
-            if (locCode && locCode !== 'loc_selecting') {
+          }
+        }
+
+        continue
+      }
+      if (sentAction === 'soldCard') {
+        const card = getPayloadString(sentPayload, 'card')
+        if (card) {
+          currentGame.events.push({
+            timestamp,
+            text: `Sold ${card}`,
+            type: 'shop',
+          })
+        }
+        continue
+      }
+      if (line.includes('Client got soldJoker message:  (action: soldJoker)')) {
+        currentGame.events.push({
+          timestamp,
+          text: 'Opponent sold a joker',
+          type: 'shop',
+        })
+      }
+      // This message indicates opponent's spending report
+      if (line.includes(' Client got spentLastShop message')) {
+        const match = line.match(/amount: (\d+)/)
+        if (match?.[1]) {
+          const amount = Number.parseInt(match[1], 10)
+          if (!Number.isNaN(amount)) {
+            currentGame.opponentMoneySpent += amount
+            currentGame.moneySpentPerShopOpponent.push(amount)
+            currentGame.events.push({
+              timestamp,
+              text: `Opponent spent $${amount} in shop`,
+              type: 'shop',
+            })
+          }
+        }
+        continue
+      }
+
+      // This message indicates the log owner reporting their spending
+      if (sentAction === 'spentLastShop') {
+        const amount = getPayloadNumber(sentPayload, 'amount')
+        if (amount !== null) {
+          currentGame.moneySpentPerShop.push(amount)
+          currentGame.events.push({
+            timestamp,
+            text: `Reported spending $${amount} last shop`,
+            type: 'shop',
+          })
+        }
+        continue
+      }
+
+      // This message indicates the log owner skipped
+      if (sentAction === 'skip') {
+        currentGame.moneySpentPerShop.push(null)
+        currentGame.events.push({
+          timestamp,
+          text: 'Skipped shop',
+          type: 'shop',
+        })
+        continue
+      }
+
+      // Detect win/lose game messages
+      if (line.includes('Client got winGame message:  (action: winGame)')) {
+        currentGame.winner = 'logOwner'
+        currentGame.events.push({
+          timestamp,
+          text: 'You won the game!',
+          type: 'system',
+        })
+        continue
+      }
+
+      if (line.includes('Client got loseGame message:  (action: loseGame)')) {
+        currentGame.winner = 'opponent'
+        currentGame.events.push({
+          timestamp,
+          text: 'You lost the game.',
+          type: 'system',
+        })
+        continue
+      }
+
+      // Detect disconnect message
+      if (
+        line.includes(
+          'Client got disconnected message:  (action: disconnected)'
+        )
+      ) {
+        currentGame.events.push({
+          timestamp,
+          text: 'Log owner disconnected',
+          type: 'system',
+        })
+        continue
+      }
+
+      // Parse endPvP messages to determine the winner of each blind
+      if (line.includes('Client got endPvP message')) {
+        if (currentGame.currentPvpBlind !== null) {
+          const lostMatch = line.match(/lost: (true|false)/)
+          if (lostMatch?.[1]) {
+            const lost = lostMatch[1].toLowerCase() === 'true'
+            const currentBlindIndex = currentGame.currentPvpBlind - 1
+
+            if (
+              currentBlindIndex >= 0 &&
+              currentBlindIndex < currentGame.pvpBlinds.length
+            ) {
+              const currentBlind = currentGame.pvpBlinds[currentBlindIndex]
+              if (!currentBlind) {
+                continue
+              }
+              // Set the winner
+              currentBlind.winner = lost ? 'opponent' : 'logOwner'
+
+              // Set the end timestamp
+              currentBlind.endTimestamp = timestamp
+
+              // Add event for blind end
               currentGame.events.push({
                 timestamp,
-                text: `Moved to ${formatLocation(locCode)}`,
-                type: 'status',
+                text: `Ended Blind #${currentBlind.blindNumber} - ${lost ? 'You lost' : 'You won'} (Your score: ${currentBlind.logOwnerScore}, Opponent score: ${currentBlind.opponentScore})`,
+                type: 'event',
               })
 
-              // Check if this is a blind location
-              if (locCode.startsWith('loc_playing-bl_')) {
-                // Increment blind counter
-                const blindNumber = currentGame.pvpBlinds.length + 1
-
-                // Create a new PVP blind
-                currentGame.pvpBlinds.push({
-                  blindNumber,
-                  startTimestamp: timestamp,
-                  logOwnerScore: 0,
-                  opponentScore: 0,
-                  handScores: [],
-                  winner: null,
-                })
-
-                // Set as current blind
-                currentGame.currentPvpBlind = blindNumber
-
-                // Add event for blind start
-                currentGame.events.push({
-                  timestamp,
-                  text: `Started ${formatLocation(locCode)} (Blind #${blindNumber})`,
-                  type: 'event',
-                })
-              }
+              // Reset current blind
+              currentGame.currentPvpBlind = null
             }
           }
         }
+        continue
+      }
+
+      // --- Log Owner Actions/Events (Client sent ...) ---
+      if (lineLower.includes('client sent')) {
+        // Log owner gained/spent money directly
+        if (sentAction === 'moneyMoved') {
+          const amount = getPayloadNumber(sentPayload, 'amount')
+          if (amount !== null) {
+            if (amount >= 0) {
+              currentGame.moneyGained += amount
+              currentGame.events.push({
+                timestamp,
+                text: `Gained $${amount}`,
+                type: 'event',
+              })
+            } else {
+              const spent = Math.abs(amount)
+              currentGame.moneySpent += spent
+              currentGame.events.push({
+                timestamp,
+                text: `Spent $${spent}`,
+                type: 'event',
+              })
+            }
+          }
+        } else if (sentAction === 'boughtCardFromShop') {
+          // Log owner bought card
+          const cardRaw =
+            getPayloadString(sentPayload, 'card') ?? 'Unknown Card'
+          const cardClean = cardRaw.replace(/^(c_mp_|j_mp_)/, '')
+          const cost = getPayloadNumber(sentPayload, 'cost') ?? 0
+          currentGame.events.push({
+            timestamp,
+            img: jokers[cardRaw]?.file,
+            text: `Bought ${cardClean}${cost > 0 ? ` for $${cost}` : ''}`,
+            type: 'shop',
+          })
+        } else if (sentAction === 'rerollShop') {
+          // Log owner rerolled
+          const cost = getPayloadNumber(sentPayload, 'cost')
+          if (cost !== null) {
+            currentGame.events.push({
+              timestamp,
+              text: `Rerolled shop for $${cost}`,
+              type: 'shop',
+            })
+          }
+          currentGame.rerolls++
+        } else if (sentAction === 'usedCard') {
+          // Log owner used card
+          const raw = getPayloadString(sentPayload, 'card')
+          if (raw) {
+            const clean = raw
+              .replace(/^(c_mp_|j_mp_)/, '')
+              .replace(/_/g, ' ')
+              .replace(
+                /\w\S*/g,
+                (txt) =>
+                  txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+              )
+            currentGame.events.push({
+              timestamp,
+              text: `Used ${clean}`,
+              type: 'action',
+            })
+          }
+        } else if (sentAction === 'playHand') {
+          // Log owner played a hand
+          if (currentGame.currentPvpBlind !== null) {
+            const totalScore = getPayloadNumber(sentPayload, 'score')
+            const handsLeft = getPayloadNumber(sentPayload, 'handsLeft') ?? 0
+
+            if (totalScore !== null) {
+              const currentBlindIndex = currentGame.currentPvpBlind - 1
+              if (
+                currentBlindIndex >= 0 &&
+                currentBlindIndex < currentGame.pvpBlinds.length
+              ) {
+                const currentBlind = currentGame.pvpBlinds[currentBlindIndex]
+                if (!currentBlind) {
+                  continue
+                }
+                // Update log owner score in current blind
+                const gainedScore = totalScore - currentBlind.logOwnerScore
+                currentBlind.logOwnerScore = totalScore
+
+                // Add hand score
+                currentBlind.handScores.push({
+                  timestamp,
+                  gainedScore,
+                  totalScore,
+                  handsLeft,
+                  isLogOwner: true,
+                })
+
+                // Add event for log owner score only if gainedScore > 0
+                if (gainedScore > 0) {
+                  currentGame.events.push({
+                    timestamp,
+                    text: `You scored: ${gainedScore} (Total: ${totalScore}, hands left: ${handsLeft})`,
+                    type: 'event',
+                  })
+                }
+              }
+            }
+          }
+        } else if (sentAction === 'setLocation') {
+          // Log owner changed location
+          const locCode = getPayloadString(sentPayload, 'location')
+          if (locCode && locCode !== 'loc_selecting') {
+            currentGame.events.push({
+              timestamp,
+              text: `Moved to ${formatLocation(locCode)}`,
+              type: 'status',
+            })
+
+            // Check if this is a blind location
+            if (locCode.startsWith('loc_playing-bl_')) {
+              // Increment blind counter
+              const blindNumber = currentGame.pvpBlinds.length + 1
+
+              // Create a new PVP blind
+              currentGame.pvpBlinds.push({
+                blindNumber,
+                startTimestamp: timestamp,
+                logOwnerScore: 0,
+                opponentScore: 0,
+                handScores: [],
+                winner: null,
+              })
+
+              // Set as current blind
+              currentGame.currentPvpBlind = blindNumber
+
+              // Add event for blind start
+              currentGame.events.push({
+                timestamp,
+                text: `Started ${formatLocation(locCode)} (Blind #${blindNumber})`,
+                type: 'event',
+              })
+            }
+          }
+        }
+      }
     } // End of line processing loop
 
     if (currentGame) {
@@ -948,9 +948,10 @@ export default function LogParser() {
   }
 
   // Generate a default tab value using determined names or fallbacks
+  const lastParsedGame = parsedGames.at(-1)
   const defaultTabValue =
-    parsedGames.length > 0
-      ? `game-${parsedGames!.at(-1)!.id}-${parsedGames!.at(-1)!.logOwnerName || 'LogOwner'}-vs-${parsedGames!.at(-1)!.opponentName || 'Opponent'}`
+    lastParsedGame !== undefined
+      ? `game-${lastParsedGame.id}-${lastParsedGame.logOwnerName || 'LogOwner'}-vs-${lastParsedGame.opponentName || 'Opponent'}`
       : ''
 
   return (
@@ -1520,7 +1521,9 @@ function ShopSpendingTable({
         <Table>
           <TableHeader className='sticky top-0 z-10 bg-background'>
             <TableRow className='bg-muted/50'>
-              <TableHead className='w-[60px] text-right font-mono'>Shop</TableHead>
+              <TableHead className='w-[60px] text-right font-mono'>
+                Shop
+              </TableHead>
               <TableHead className='text-right font-mono'>
                 {ownerLabel}
                 {game.winner === 'logOwner' ? ' 🏆' : ''}
@@ -1575,8 +1578,8 @@ function ShopSpendingTable({
                     ${game.moneySpent}
                   </TooltipTrigger>
                   <TooltipContent>
-                    Sum of money {ownerLabel} spent via buy/reroll actions detected
-                    in this log.
+                    Sum of money {ownerLabel} spent via buy/reroll actions
+                    detected in this log.
                   </TooltipContent>
                 </Tooltip>
               </TableCell>
@@ -1961,7 +1964,7 @@ type JsonValue =
 
 async function luaTableToJson(luaString: string) {
   const str = luaString.replace(/^return\s*/, '')
-  return LuaToJsonConverter.convert(str)
+  return convertLuaToJson(str)
 }
 
 async function decodePackedString(encodedString: string): Promise<JsonValue> {
@@ -2002,13 +2005,14 @@ async function parseJokersFromString(str: string) {
     if (str.startsWith('H4')) {
       const decoded = await decodePackedString(str)
       if (decoded && typeof decoded === 'object' && 'cards' in decoded) {
-        return Object.values(decoded.cards as any).map(
-          (c: any) => c.save_fields.center
-        )
+        const { cards } = decoded as {
+          cards: Record<string, { save_fields: { center: string } }>
+        }
+        return Object.values(cards).map((card) => card.save_fields.center)
       }
     }
-  } catch (e) {
-    console.error('Failed to parse jokers from string:', str, e)
+  } catch (error) {
+    console.error('Failed to parse jokers from string:', str, error)
     return []
   }
   return str.split(';').filter(Boolean) // Remove empty strings if any

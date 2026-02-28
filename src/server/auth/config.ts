@@ -9,7 +9,12 @@ import {
   users,
   verificationTokens,
 } from '@/server/db/schema'
+
 type UserRole = 'user' | 'helper' | 'admin' | 'owner'
+type SessionUserFields = {
+  discord_id?: string
+  role?: UserRole
+}
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
  * object and keep type safety.
@@ -72,14 +77,21 @@ export const authConfig = {
     verificationTokensTable: verificationTokens,
   }),
   callbacks: {
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-        discord_id: (user as any).discord_id ?? (session.user as any).discord_id,
-        role: (user as any).role as any,
-      },
-    }),
+    session: ({ session, user }) => {
+      const typedUser = user as typeof user & SessionUserFields
+      const typedSessionUser = session.user as typeof session.user &
+        SessionUserFields
+
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: user.id,
+          discord_id:
+            typedUser.discord_id ?? typedSessionUser.discord_id ?? user.id,
+          role: typedUser.role ?? typedSessionUser.role ?? 'user',
+        },
+      }
+    },
   },
 } satisfies NextAuthConfig

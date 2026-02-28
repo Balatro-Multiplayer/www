@@ -23,7 +23,9 @@ type QueueEntry = {
   value: PlayerState
 }
 
-async function findQueueingPlayers(redis: ReturnType<typeof createClient>): Promise<QueueEntry[]> {
+async function findQueueingPlayers(
+  redis: ReturnType<typeof createClient>
+): Promise<QueueEntry[]> {
   try {
     const queueingPlayers: QueueEntry[] = []
     let cursor = '0'

@@ -11,7 +11,33 @@ import { type LeaderboardEntry, botlatro_service } from './botlatro.service'
 // Memory profiling utility
 let currentRunId: string | null = null
 
-function logMemory(label: string, metadata?: Record<string, any>) {
+type SnapshotEntry = {
+  id: string
+  name: string
+  data: {
+    mmr: number
+    wins: number
+    losses: number
+    streak: number
+    totalgames: number
+    peak_mmr: number
+    peak_streak: number
+    rank: number
+    winrate: number
+  }
+}
+
+type SnapshotFile = {
+  alltime: SnapshotEntry[]
+}
+
+type StoredLeaderboardSnapshot = {
+  data: LeaderboardEntry[]
+  timestamp: string
+  queue_id: string
+}
+
+function logMemory(label: string, metadata?: Record<string, unknown>) {
   if (!currentRunId) return
 
   const mem = process.memoryUsage()
@@ -30,6 +56,43 @@ function logMemory(label: string, metadata?: Record<string, any>) {
     rss: `${Math.round(data.rssMb)}MB`,
     ...metadata,
   })
+}
+
+function mapSnapshotEntries(fileContent: string): LeaderboardEntry[] {
+  const data = JSON.parse(fileContent) as SnapshotFile
+  return data.alltime.map((entry) => ({
+    id: entry.id,
+    name: entry.name,
+    mmr: entry.data.mmr,
+    wins: entry.data.wins,
+    losses: entry.data.losses,
+    streak: entry.data.streak,
+    totalgames: entry.data.totalgames,
+    peak_mmr: entry.data.peak_mmr,
+    peak_streak: entry.data.peak_streak,
+    rank: entry.data.rank,
+    winrate: entry.data.winrate,
+  }))
+}
+
+function toRedisLeaderboardEntry(
+  entry: LeaderboardEntry,
+  queue_id: string
+): Record<string, string> {
+  return {
+    id: entry.id,
+    name: entry.name,
+    mmr: entry.mmr.toString(),
+    wins: entry.wins.toString(),
+    losses: entry.losses.toString(),
+    streak: entry.streak.toString(),
+    totalgames: entry.totalgames.toString(),
+    peak_mmr: entry.peak_mmr.toString(),
+    peak_streak: entry.peak_streak.toString(),
+    rank: entry.rank.toString(),
+    winrate: entry.winrate.toString(),
+    queue_id,
+  }
 }
 
 export type LeaderboardResponse = {
@@ -95,30 +158,15 @@ export class LeaderboardService {
     try {
       // Path to the Season 1 snapshot file
       const filePath = path.join(
-          process.cwd(),
-          'src',
-          'data',
-          'leaderboard-snapshot-eos1.json'
+        process.cwd(),
+        'src',
+        'data',
+        'leaderboard-snapshot-eos1.json'
       )
 
       // Read and parse the file
       const fileContent = fs.readFileSync(filePath, 'utf-8')
-      const data = JSON.parse(fileContent)
-
-      // Extract and format the leaderboard entries
-      const entries = data.alltime.map((entry: any) => ({
-        id: entry.id,
-        name: entry.name,
-        mmr: entry.data.mmr,
-        wins: entry.data.wins,
-        losses: entry.data.losses,
-        streak: entry.data.streak,
-        totalgames: entry.data.totalgames,
-        peak_mmr: entry.data.peak_mmr,
-        peak_streak: entry.data.peak_streak,
-        rank: entry.data.rank,
-        winrate: entry.data.winrate,
-      }))
+      const entries = mapSnapshotEntries(fileContent)
 
       // Cache the data for future requests
       this.season1DataCache.set(queue_id, entries)
@@ -146,8 +194,8 @@ export class LeaderboardService {
 
   // Get Season 1 user rank data
   async getSeason1UserRank(
-      queue_id: string,
-      user_id: string
+    queue_id: string,
+    user_id: string
   ): Promise<LeaderboardEntry | null> {
     // Get the sorted leaderboard with recalculated ranks
     const sortedLeaderboard = await this.getSeason1Leaderboard(queue_id)
@@ -176,22 +224,7 @@ export class LeaderboardService {
 
       // Read and parse the file
       const fileContent = fs.readFileSync(filePath, 'utf-8')
-      const data = JSON.parse(fileContent)
-
-      // Extract and format the leaderboard entries
-      const entries = data.alltime.map((entry: any) => ({
-        id: entry.id,
-        name: entry.name,
-        mmr: entry.data.mmr,
-        wins: entry.data.wins,
-        losses: entry.data.losses,
-        streak: entry.data.streak,
-        totalgames: entry.data.totalgames,
-        peak_mmr: entry.data.peak_mmr,
-        peak_streak: entry.data.peak_streak,
-        rank: entry.data.rank,
-        winrate: entry.data.winrate,
-      }))
+      const entries = mapSnapshotEntries(fileContent)
 
       // Cache the data for future requests
       this.season2DataCache.set(queue_id, entries)
@@ -305,46 +338,31 @@ export class LeaderboardService {
   private loadSeason4Data(queue_id: string): LeaderboardEntry[] {
     // Check if data is already cached
     if (this.season4DataCache.has(queue_id)) {
-        const cached = this.season4DataCache.get(queue_id)
-        if (cached) return cached
+      const cached = this.season4DataCache.get(queue_id)
+      if (cached) return cached
     }
 
     try {
-        // Path to the Season 4 snapshot file (change depending on queue id)
-        // TODO: Make this better, this is kind of scuffed but I can't be bothered to figure out how to utilize the db
-        const filePath = path.join(
-            process.cwd(),
-            'src',
-            'data',
-            `leaderboard-snapshot-eos4-${queue_id}.json`
-        )
+      // Path to the Season 4 snapshot file (change depending on queue id)
+      // TODO: Make this better, this is kind of scuffed but I can't be bothered to figure out how to utilize the db
+      const filePath = path.join(
+        process.cwd(),
+        'src',
+        'data',
+        `leaderboard-snapshot-eos4-${queue_id}.json`
+      )
 
-        // Read and parse the file
-        const fileContent = fs.readFileSync(filePath, 'utf-8')
-        const data = JSON.parse(fileContent)
+      // Read and parse the file
+      const fileContent = fs.readFileSync(filePath, 'utf-8')
+      const entries = mapSnapshotEntries(fileContent)
 
-        // Extract and format the leaderboard entries
-        const entries = data.alltime.map((entry: any) => ({
-          id: entry.id,
-          name: entry.name,
-          mmr: entry.data.mmr,
-          wins: entry.data.wins,
-          losses: entry.data.losses,
-          streak: entry.data.streak,
-          totalgames: entry.data.totalgames,
-          peak_mmr: entry.data.peak_mmr,
-          peak_streak: entry.data.peak_streak,
-          rank: entry.data.rank,
-          winrate: entry.data.winrate,
-        }))
+      // Cache the data for future requests
+      this.season4DataCache.set(queue_id, entries)
 
-        // Cache the data for future requests
-        this.season4DataCache.set(queue_id, entries)
-
-        return entries
+      return entries
     } catch (error) {
-        console.error('Error loading Season 4 data:', error)
-        return []
+      console.error('Error loading Season 4 data:', error)
+      return []
     }
   }
 
@@ -357,8 +375,8 @@ export class LeaderboardService {
 
     // Recalculate ranks based on sorted order
     return sortedEntries.map((entry, idx) => ({
-        ...entry,
-        rank: idx + 1,
+      ...entry,
+      rank: idx + 1,
     }))
   }
 
@@ -492,21 +510,20 @@ export class LeaderboardService {
       )
     }
     if (options.minGames !== undefined) {
-      filtered = filtered.filter(
-        (entry) => entry.totalgames >= options.minGames!
-      )
+      const minGames = options.minGames
+      filtered = filtered.filter((entry) => entry.totalgames >= minGames)
     }
     if (options.maxGames !== undefined) {
-      filtered = filtered.filter(
-        (entry) => entry.totalgames <= options.maxGames!
-      )
+      const maxGames = options.maxGames
+      filtered = filtered.filter((entry) => entry.totalgames <= maxGames)
     }
 
     // Apply sorting
     if (options.sortBy) {
+      const sortBy = options.sortBy
       filtered = [...filtered].sort((a, b) => {
-        const aVal = a[options.sortBy!]
-        const bVal = b[options.sortBy!]
+        const aVal = a[sortBy]
+        const bVal = b[sortBy]
         const order = options.sortOrder === 'asc' ? 1 : -1
         return aVal < bVal ? -order : aVal > bVal ? order : 0
       })
@@ -570,7 +587,7 @@ export class LeaderboardService {
       })
 
       // Initial pipeline for cache setup
-      let initialPipeline = redis.multi()
+      const initialPipeline = redis.multi()
       initialPipeline.setEx(
         rawKey,
         LeaderboardService.LIVE_SEASON_CACHE_TTL_SECONDS,
@@ -579,7 +596,6 @@ export class LeaderboardService {
       initialPipeline.del(zsetKey)
       initialPipeline.del(season6Key)
       await initialPipeline.exec()
-      initialPipeline = null as any
 
       logMemory('after_initial_pipeline')
 
@@ -587,18 +603,17 @@ export class LeaderboardService {
       const BATCH_SIZE = 1000
       for (let i = 0; i < fresh.length; i += BATCH_SIZE) {
         const batch = fresh.slice(i, i + BATCH_SIZE)
-        let batchPipeline = redis.multi()
+        const batchPipeline = redis.multi()
 
         for (const entry of batch) {
           batchPipeline.zAdd(zsetKey, { score: entry.mmr, value: entry.id })
-          batchPipeline.hSet(this.getUserKey(entry.id, queue_id), {
-            ...entry,
-            queue_id,
-          } as any)
+          batchPipeline.hSet(
+            this.getUserKey(entry.id, queue_id),
+            toRedisLeaderboardEntry(entry, queue_id)
+          )
         }
 
         await batchPipeline.exec()
-        batchPipeline = null as any
 
         logMemory(`after_redis_batch_${Math.floor(i / BATCH_SIZE)}`, {
           batch_index: Math.floor(i / BATCH_SIZE),
@@ -781,13 +796,15 @@ export class LeaderboardService {
         const oldSnapshots = await db
           .select()
           .from(metadata)
-          .where(sql`${metadata.key} LIKE ${prefix + '%'}`)
+          .where(sql`${metadata.key} LIKE ${`${prefix}%`}`)
           .orderBy(sql`${metadata.key} DESC`) // Most recent first
           .limit(limit)
 
         // Parse the snapshots
         return oldSnapshots.map((snapshot) => {
-          const parsedValue = JSON.parse(snapshot.value)
+          const parsedValue = JSON.parse(
+            snapshot.value
+          ) as StoredLeaderboardSnapshot
           return {
             data: parsedValue.data as LeaderboardEntry[],
             timestamp: parsedValue.timestamp,
@@ -848,9 +865,11 @@ export class LeaderboardService {
         .then((res) => res[0])
 
       if (backup) {
-        const parsedBackup = JSON.parse(backup.value)
+        const parsedBackup = JSON.parse(
+          backup.value
+        ) as StoredLeaderboardSnapshot
         const userEntry = parsedBackup.data.find(
-          (entry: any) => entry.id === user_id
+          (entry) => entry.id === user_id
         )
         if (userEntry) {
           console.log(

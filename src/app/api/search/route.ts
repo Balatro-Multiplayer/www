@@ -5,6 +5,12 @@ import { createFromSource } from 'fumadocs-core/search/server'
 import { source } from '../../../../lib/source'
 
 const leaderboardService = new LeaderboardService()
+type FumadocsResult = {
+  id: string
+  url: string
+  content: string
+  type: 'page' | 'heading' | 'text'
+}
 
 // Create the default fumadocs search handler
 const fumadocsSearch = createFromSource(source)
@@ -16,7 +22,7 @@ export async function GET(request: Request) {
 
     // Get fumadocs results
     const fumadocsResponse = await fumadocsSearch.GET(request)
-    const fumadocsData = await fumadocsResponse.json()
+    const fumadocsData = (await fumadocsResponse.json()) as FumadocsResult[]
 
     // Get leaderboard players - search by name or discord ID
     let playerResults: PlayerSearchResult[] = []
@@ -46,7 +52,7 @@ export async function GET(request: Request) {
     }
     // Merge results - fumadocs results first, then player results
     const combinedResults: SearchResult[] = [
-      ...fumadocsData.map((result: any) => ({
+      ...fumadocsData.map((result) => ({
         type: 'doc' as const,
         id: result.id,
         url: result.url,

@@ -15,8 +15,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -24,6 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/trpc/react'
 import { useParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
@@ -50,7 +50,8 @@ export default function EditBlogPostPage() {
   const { data: posts, isLoading: isFetching } = api.blog.getAll.useQuery()
 
   // Fetch all users for author selection
-  const { data: users, isLoading: isLoadingUsers } = api.blog.getAllUsers.useQuery()
+  const { data: users, isLoading: isLoadingUsers } =
+    api.blog.getAllUsers.useQuery()
 
   useEffect(() => {
     if (posts) {
@@ -187,10 +188,7 @@ export default function EditBlogPostPage() {
 
         <div className='space-y-2'>
           <Label htmlFor='author'>Author</Label>
-          <Select
-            value={authorId}
-            onValueChange={setAuthorId}
-          >
+          <Select value={authorId} onValueChange={setAuthorId}>
             <SelectTrigger id='author'>
               <SelectValue placeholder='Select an author' />
             </SelectTrigger>

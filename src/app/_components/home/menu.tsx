@@ -31,6 +31,16 @@ const menuItemVariants = cva('', {
   },
 })
 
+function getLinkItemKey(item: LinkItemType): string {
+  if ('url' in item && typeof item.url === 'string') {
+    return item.url
+  }
+  if ('text' in item && typeof item.text === 'string') {
+    return item.text
+  }
+  return JSON.stringify(item)
+}
+
 export function MenuLinkItem({
   item,
   ...props
@@ -60,8 +70,8 @@ export function MenuLinkItem({
             header
           )}
         </p>
-        {item.items.map((child, i) => (
-          <MenuLinkItem key={i} item={child} />
+        {item.items.map((child) => (
+          <MenuLinkItem key={getLinkItemKey(child)} item={child} />
         ))}
       </div>
     )

@@ -11,7 +11,7 @@ const CHANNEL_IDS = [RANKED_QUEUE_ID, VANILLA_QUEUE_ID]
 function logMemory(
   label: string,
   runId: string,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ) {
   const mem = process.memoryUsage()
   const data = {

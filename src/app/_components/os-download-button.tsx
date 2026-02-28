@@ -55,12 +55,11 @@ export function OSDownloadButton() {
 
           <div className='mt-1 text-sm'>
             <button
+              type='button'
               onClick={() => setShowOptions(!showOptions)}
               className='text-blue-500 hover:underline'
             >
-              {showOptions
-                ? 'Hide other options'
-                : 'Not using ' + detectedOS + '?'}
+              {showOptions ? 'Hide other options' : `Not using ${detectedOS}?`}
             </button>
           </div>
 

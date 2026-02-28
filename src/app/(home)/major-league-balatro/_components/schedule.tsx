@@ -119,8 +119,8 @@ const WeekTab = ({ week, matches, status }: WeekTabProps) => {
         <StatusBadge status={status} />
       </div>
       <TimeZoneProvider>
-        {filteredMatches.map((match, index) => (
-          <MatchCard key={index} match={match} />
+        {filteredMatches.map((match) => (
+          <MatchCard key={match.id} match={match} />
         ))}
       </TimeZoneProvider>
     </TabsContent>

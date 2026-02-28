@@ -1,5 +1,5 @@
-import { branchesRouter } from '@/server/api/routers/branches'
 import { blogRouter } from '@/server/api/routers/blog'
+import { branchesRouter } from '@/server/api/routers/branches'
 import { discord_router } from '@/server/api/routers/discord'
 import { history_router } from '@/server/api/routers/history'
 import { leaderboard_router } from '@/server/api/routers/leaderboard'
@@ -7,8 +7,8 @@ import { playerStateRouter } from '@/server/api/routers/player-state'
 import { profileRouter } from '@/server/api/routers/profile'
 import { releasesRouter } from '@/server/api/routers/releases'
 import { stats_router } from '@/server/api/routers/stats'
-import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc'
 import { usersRouter } from '@/server/api/routers/users'
+import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc'
 
 /**
  * This is the primary router for your server.

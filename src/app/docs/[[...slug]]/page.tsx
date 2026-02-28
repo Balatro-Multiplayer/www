@@ -18,8 +18,21 @@ import {
   DocsTitle,
 } from 'fumadocs-ui/page'
 import { notFound } from 'next/navigation'
+import type { ComponentProps } from 'react'
 import { metadataImage } from '../../../../lib/metadata'
 import { source } from '../../../../lib/source'
+
+type ImageZoomProps = ComponentProps<typeof ImageZoom>
+type ButtonProps = ComponentProps<typeof Button>
+type JokerCardProps = ComponentProps<typeof JokerCard>
+type ChipsProps = ComponentProps<typeof Chips>
+type HandsProps = ComponentProps<typeof Hands>
+type ChanceProps = ComponentProps<typeof Chance>
+type MoneyProps = ComponentProps<typeof Money>
+type XmultProps = ComponentProps<typeof Xmult>
+type SpectralProps = ComponentProps<typeof Spectral>
+type MultProps = ComponentProps<typeof Mult>
+type NemesisProps = ComponentProps<typeof Nemesis>
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>
@@ -49,30 +62,31 @@ export default async function Page(props: {
                 process.env.NODE_ENV === 'development' ||
                 process.env.IS_PREVIEW === 'true'
               if (isDev) {
-                return <ImageZoom {...props} />
+                return <ImageZoom {...(props as ImageZoomProps)} />
               }
 
+              const typedProps = props as ImageZoomProps
               return (
                 <ImageZoom
-                  {...(props as any)}
+                  {...typedProps}
                   src={
-                    props.src.startsWith('/')
-                      ? `${CDN_URL}${props.src}`
-                      : props.src
+                    typedProps.src?.startsWith('/')
+                      ? `${CDN_URL}${typedProps.src}`
+                      : typedProps.src
                   }
                 />
               )
             },
-            Button: (props) => <Button {...(props as any)} />,
-            JokerCard: (props) => <JokerCard {...(props as any)} />,
-            Chips: (props) => <Chips {...(props as any)} />,
-            Hands: (props) => <Hands {...(props as any)} />,
-            Chance: (props) => <Chance {...(props as any)} />,
-            Money: (props) => <Money {...(props as any)} />,
-            Xmult: (props) => <Xmult {...(props as any)} />,
-            Spectral: (props) => <Spectral {...(props as any)} />,
-            Mult: (props) => <Mult {...(props as any)} />,
-            Nemesis: (props) => <Nemesis {...(props as any)} />,
+            Button: (props) => <Button {...(props as ButtonProps)} />,
+            JokerCard: (props) => <JokerCard {...(props as JokerCardProps)} />,
+            Chips: (props) => <Chips {...(props as ChipsProps)} />,
+            Hands: (props) => <Hands {...(props as HandsProps)} />,
+            Chance: (props) => <Chance {...(props as ChanceProps)} />,
+            Money: (props) => <Money {...(props as MoneyProps)} />,
+            Xmult: (props) => <Xmult {...(props as XmultProps)} />,
+            Spectral: (props) => <Spectral {...(props as SpectralProps)} />,
+            Mult: (props) => <Mult {...(props as MultProps)} />,
+            Nemesis: (props) => <Nemesis {...(props as NemesisProps)} />,
           }}
         />
       </DocsBody>

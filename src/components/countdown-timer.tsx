@@ -1,7 +1,12 @@
 'use client'
+import type { Match } from '@/app/(home)/major-league-balatro/types'
 import { useEffect, useState } from 'react'
 
-export function CountdownTimer({ nextMatch }: { nextMatch: any }) {
+export function CountdownTimer({
+  nextMatch,
+}: {
+  nextMatch: Pick<Match, 'datetime'>
+}) {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -51,8 +56,8 @@ export function CountdownTimer({ nextMatch }: { nextMatch: any }) {
           { value: timeLeft.hours, label: 'Hours' },
           { value: timeLeft.minutes, label: 'Minutes' },
           { value: timeLeft.seconds, label: 'Seconds' },
-        ].map((item, index) => (
-          <div key={index}>
+        ].map((item) => (
+          <div key={item.label}>
             <div className='relative flex flex-col items-center justify-center rounded-lg border bg-card p-3 shadow-sm md:p-4'>
               <span className='font-bold text-2xl tabular-nums md:text-4xl lg:text-5xl'>
                 {item.value.toString().padStart(2, '0')}

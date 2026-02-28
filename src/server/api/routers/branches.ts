@@ -5,8 +5,8 @@ import {
 } from '@/server/api/trpc'
 import { db } from '@/server/db'
 import { branches } from '@/server/db/schema'
-import { z } from 'zod'
 import { eq } from 'drizzle-orm'
+import { z } from 'zod'
 
 export const branchesRouter = createTRPCRouter({
   getBranches: publicProcedure.query(async () => {
@@ -31,7 +31,10 @@ export const branchesRouter = createTRPCRouter({
         return res[0]
       } catch (error) {
         // Handle unique constraint violation
-        if (error instanceof Error && error.message.includes('unique constraint')) {
+        if (
+          error instanceof Error &&
+          error.message.includes('unique constraint')
+        ) {
           throw new Error('Branch with this name already exists')
         }
         throw error
@@ -44,9 +47,7 @@ export const branchesRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      await db
-        .delete(branches)
-        .where(eq(branches.id, input.id))
+      await db.delete(branches).where(eq(branches.id, input.id))
 
       return { success: true }
     }),

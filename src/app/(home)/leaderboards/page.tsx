@@ -1,4 +1,5 @@
 import { LeaderboardPage } from '@/app/_components/leaderboard'
+import type { PaginationOptions } from '@/server/services/leaderboard'
 import {
   LEGACY_QUEUE_ID,
   OLD_RANKED_CHANNEL,
@@ -44,7 +45,8 @@ export default async function Home({
   const sortOrder = params.sortOrder as 'asc' | 'desc' | undefined
 
   const getChannelId = (type: string, season: Season) => {
-    const isOldSeason = season === 'season1' || season === 'season2' || season === 'season3'
+    const isOldSeason =
+      season === 'season1' || season === 'season2' || season === 'season3'
     if (type === 'smallworld') {
       return isOldSeason ? OLD_SMALLWORLD_CHANNEL : SMALLWORLD_QUEUE_ID
     }
@@ -67,7 +69,7 @@ export default async function Home({
     search: search || undefined,
     minGames,
     maxGames,
-    sortBy: sortBy as any,
+    sortBy: sortBy as PaginationOptions['sortBy'],
     sortOrder,
   })
 

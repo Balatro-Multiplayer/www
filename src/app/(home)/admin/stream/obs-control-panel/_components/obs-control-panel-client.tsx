@@ -84,6 +84,7 @@ export function ObsControlPanelClient() {
       commentator2: '',
     },
   })
+  const { setValue } = form
   const { data: player1Games } = api.history.user_games.useQuery(
     {
       user_id: value1 ?? '',
@@ -146,30 +147,30 @@ export function ObsControlPanelClient() {
     if (!isConnected) return
 
     if (player1Data) {
-      form.setValue('player1Name', player1Data.username)
-      form.setValue('player1Mmr', player1Data.mmr.toString())
-      form.setValue('player1Games', player1Data.games.toString())
-      form.setValue('player1Wins', player1Data.wins.toString())
-      form.setValue('player1Losses', player1Data.losses.toString())
-      form.setValue('player1Rank', player1Data.rank.toString())
-      form.setValue('player1WinRate', `${player1Data.winRate.toString()}%`)
+      setValue('player1Name', player1Data.username)
+      setValue('player1Mmr', player1Data.mmr.toString())
+      setValue('player1Games', player1Data.games.toString())
+      setValue('player1Wins', player1Data.wins.toString())
+      setValue('player1Losses', player1Data.losses.toString())
+      setValue('player1Rank', player1Data.rank.toString())
+      setValue('player1WinRate', `${player1Data.winRate.toString()}%`)
     }
-  }, [player1Data, isConnected])
+  }, [isConnected, player1Data, setValue])
 
   // Effect to update Player 2 form fields when player2 selection or data changes
   useEffect(() => {
     if (!isConnected) return
 
     if (player2Data) {
-      form.setValue('player2Name', player2Data.username)
-      form.setValue('player2Mmr', player2Data.mmr.toString())
-      form.setValue('player2Games', player2Data.games.toString())
-      form.setValue('player2Wins', player2Data.wins.toString())
-      form.setValue('player2Losses', player2Data.losses.toString())
-      form.setValue('player2Rank', player2Data.rank.toString())
-      form.setValue('player2WinRate', `${player2Data.winRate.toString()}%`)
+      setValue('player2Name', player2Data.username)
+      setValue('player2Mmr', player2Data.mmr.toString())
+      setValue('player2Games', player2Data.games.toString())
+      setValue('player2Wins', player2Data.wins.toString())
+      setValue('player2Losses', player2Data.losses.toString())
+      setValue('player2Rank', player2Data.rank.toString())
+      setValue('player2WinRate', `${player2Data.winRate.toString()}%`)
     }
-  }, [player2Data, isConnected])
+  }, [isConnected, player2Data, setValue])
 
   const [mappings] = useLocalStorage<FieldMapping[]>('obs-field-mappings', [])
 
@@ -182,7 +183,7 @@ export function ObsControlPanelClient() {
 
           const sanitizedValue = value
             .toString()
-            .replace(/[^\x00-\x7F]/g, '')
+            .replace(/[^\p{ASCII}]/gu, '')
             .trim()
 
           return obs.updateText(mapping.obsSource, sanitizedValue)
@@ -357,6 +358,7 @@ export function ObsControlPanelClient() {
 }
 
 type FieldMapping = {
+  id: string
   formField: string
   obsSource: string
 }
@@ -376,6 +378,15 @@ function Settings() {
   const [mappings, setMappings] = useLocalStorage<FieldMapping[]>(
     'obs-field-mappings',
     []
+  )
+  const normalizedMappings = useMemo(
+    () =>
+      mappings.map((mapping) => ({
+        id: mapping.id || v4(),
+        formField: mapping.formField,
+        obsSource: mapping.obsSource,
+      })),
+    [mappings]
   )
   const formFields: FormField[] = [
     { id: 'player1Name', label: 'Player 1 - Name' },
@@ -427,21 +438,24 @@ function Settings() {
   }, [])
 
   const addMapping = () => {
-    setMappings([...mappings, { formField: '', obsSource: '' }])
+    setMappings([
+      ...normalizedMappings,
+      { id: v4(), formField: '', obsSource: '' },
+    ])
   }
 
-  const removeMapping = (index: number) => {
-    setMappings(mappings.filter((_, i) => i !== index))
+  const removeMapping = (id: string) => {
+    setMappings(normalizedMappings.filter((mapping) => mapping.id !== id))
   }
 
   const updateMapping = (
-    index: number,
+    id: string,
     field: 'formField' | 'obsSource',
     value: string
   ) => {
-    const newMappings = [...mappings]
-    // @ts-ignore
-    newMappings[index] = { ...newMappings[index], [field]: value }
+    const newMappings = normalizedMappings.map((mapping) =>
+      mapping.id === id ? { ...mapping, [field]: value } : mapping
+    )
     setMappings(newMappings)
   }
 
@@ -459,12 +473,12 @@ function Settings() {
       </div>
       <ScrollArea className='h-[500px] p-4'>
         <div className='space-y-2'>
-          {mappings.map((mapping, index) => (
-            <div key={index} className='flex items-center gap-2'>
+          {normalizedMappings.map((mapping) => (
+            <div key={mapping.id} className='flex items-center gap-2'>
               <Select
                 value={mapping.formField}
                 onValueChange={(value) =>
-                  updateMapping(index, 'formField', value)
+                  updateMapping(mapping.id, 'formField', value)
                 }
               >
                 <SelectTrigger className='w-[200px]'>
@@ -485,7 +499,7 @@ function Settings() {
               <Select
                 value={mapping.obsSource}
                 onValueChange={(value) =>
-                  updateMapping(index, 'obsSource', value)
+                  updateMapping(mapping.id, 'obsSource', value)
                 }
               >
                 <SelectTrigger className='w-[200px]'>
@@ -503,7 +517,7 @@ function Settings() {
               <Button
                 variant='destructive'
                 size='icon'
-                onClick={() => removeMapping(index)}
+                onClick={() => removeMapping(mapping.id)}
               >
                 <X className='h-4 w-4' />
               </Button>
@@ -511,7 +525,7 @@ function Settings() {
           ))}
         </div>
 
-        {mappings.length === 0 && (
+        {normalizedMappings.length === 0 && (
           <div className='py-4 text-center text-muted-foreground'>
             No mappings configured. Add one to get started.
           </div>
