@@ -17,7 +17,7 @@ import { Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useEffect, useState } from 'react'
-import { useDebounceValue } from 'usehooks-ts'
+import { useDebounceCallback } from 'usehooks-ts'
 
 type LogFile = {
   id: number
@@ -61,17 +61,9 @@ export function LogsClient() {
 
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
-
-  const [searchInput, setSearchInput] = useState(search || '')
-  const [debouncedSearch] = useDebounceValue(searchInput, 400)
-
-  useEffect(() => {
-    setSearchInput(search || '')
-  }, [search])
-
-  useEffect(() => {
-    setQueryParams({ search: debouncedSearch || null, page: 1 })
-  }, [debouncedSearch, setQueryParams])
+  const updateSearch = useDebounceCallback((nextSearch: string) => {
+    setQueryParams({ search: nextSearch || null, page: 1 })
+  }, 400)
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -158,9 +150,10 @@ export function LogsClient() {
     <div className='flex w-full flex-col gap-4'>
       <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
         <Input
+          key={search ?? ''}
           placeholder='Search by file or user'
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
+          defaultValue={search ?? ''}
+          onChange={(e) => updateSearch(e.target.value)}
           className='w-full sm:max-w-sm'
         />
       </div>

@@ -17,8 +17,8 @@ import { formatDate } from '@/lib/utils'
 import { api } from '@/trpc/react'
 import Link from 'next/link'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useEffect, useState } from 'react'
-import { useDebounceValue } from 'usehooks-ts'
+import { useCallback } from 'react'
+import { useDebounceCallback } from 'usehooks-ts'
 
 type SortBy = 'createdAt' | 'title' | 'published'
 
@@ -43,17 +43,9 @@ export function AdminBlogClient() {
   const sortOrder = (queryParams.sortOrder === 'asc' ? 'asc' : 'desc') as
     | 'asc'
     | 'desc'
-
-  const [searchInput, setSearchInput] = useState(search || '')
-  const [debouncedSearch] = useDebounceValue(searchInput, 400)
-
-  useEffect(() => {
-    setSearchInput(search || '')
-  }, [search])
-
-  useEffect(() => {
-    setQueryParams({ search: debouncedSearch || null, page: 1 })
-  }, [debouncedSearch, setQueryParams])
+  const updateSearch = useDebounceCallback((nextSearch: string) => {
+    setQueryParams({ search: nextSearch || null, page: 1 })
+  }, 400)
 
   const postsQ = api.blog.adminList.useQuery(
     {
@@ -82,9 +74,10 @@ export function AdminBlogClient() {
   return (
     <div className='space-y-4'>
       <Input
+        key={search ?? ''}
         placeholder='Search title/slug/author...'
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
+        defaultValue={search ?? ''}
+        onChange={(e) => updateSearch(e.target.value)}
         className='w-full sm:max-w-sm'
       />
 

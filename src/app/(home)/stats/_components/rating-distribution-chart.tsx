@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select'
 import { type Season, getSeasonDisplayName } from '@/shared/seasons'
 import { type RouterOutputs, api } from '@/trpc/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { resolveStatsSeason } from '../search-params.constants'
 
@@ -91,12 +91,6 @@ export function RatingDistributionChart({
   const [season, setSeason] = useState<Season>(defaultSeason)
   const [queueType, setQueueType] = useState('ranked')
 
-  useEffect(() => {
-    setSeason((currentSeason) =>
-      statsSeasons.includes(currentSeason) ? currentSeason : defaultSeason
-    )
-  }, [defaultSeason, statsSeasons])
-
   const resolvedSeason = resolveStatsSeason(season, statsSeasons, defaultSeason)
   const seasonId = getSeasonId(resolvedSeason)
   const [snapshots] = api.seasons.list_snapshots.useSuspenseQuery({ seasonId })
@@ -120,12 +114,6 @@ export function RatingDistributionChart({
     }
   )
   const mmrValues = mmrQuery.data ?? []
-
-  useEffect(() => {
-    if (queueType === resolvedQueueType) return
-
-    setQueueType(resolvedQueueType)
-  }, [queueType, resolvedQueueType])
 
   const chartData = computeBellCurve(mmrValues)
   const totalPlayers = mmrValues.length

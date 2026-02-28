@@ -15,8 +15,8 @@ import {
 } from '@/components/ui/table'
 import { api } from '@/trpc/react'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useEffect, useState } from 'react'
-import { useDebounceValue } from 'usehooks-ts'
+import { useCallback } from 'react'
+import { useDebounceCallback } from 'usehooks-ts'
 
 const roles: Array<'user' | 'helper' | 'admin' | 'owner'> = [
   'user',
@@ -58,17 +58,9 @@ export function RolesClient() {
   const sortOrder = (queryParams.sortOrder === 'desc' ? 'desc' : 'asc') as
     | 'asc'
     | 'desc'
-
-  const [searchInput, setSearchInput] = useState(search || '')
-  const [debouncedSearch] = useDebounceValue(searchInput, 400)
-
-  useEffect(() => {
-    setSearchInput(search || '')
-  }, [search])
-
-  useEffect(() => {
-    setQueryParams({ search: debouncedSearch || null, page: 1 })
-  }, [debouncedSearch, setQueryParams])
+  const updateSearch = useDebounceCallback((nextSearch: string) => {
+    setQueryParams({ search: nextSearch || null, page: 1 })
+  }, 400)
 
   const usersQ = api.users.listUsers.useQuery(
     {
@@ -105,9 +97,10 @@ export function RolesClient() {
     <div className='flex w-full flex-col gap-4'>
       <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
         <Input
+          key={search ?? ''}
           placeholder='Search by name, email, or Discord ID'
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
+          defaultValue={search ?? ''}
+          onChange={(e) => updateSearch(e.target.value)}
           className='w-full sm:max-w-sm'
         />
         {updateRole.isError && (

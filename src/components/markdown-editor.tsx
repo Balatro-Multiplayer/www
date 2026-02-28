@@ -2,7 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 
 interface MarkdownEditorProps {
@@ -19,12 +19,6 @@ export function MarkdownEditor({
   minHeight = '400px',
 }: MarkdownEditorProps) {
   const [activeTab, setActiveTab] = useState<string>('write')
-  const [previewContent, setPreviewContent] = useState<string>(value)
-
-  // Always update preview content when value changes
-  useEffect(() => {
-    setPreviewContent(value)
-  }, [value])
 
   return (
     <div className='w-full'>
@@ -56,8 +50,8 @@ export function MarkdownEditor({
               className='prose prose-sm dark:prose-invert w-full max-w-none rounded-md border p-4'
               style={{ minHeight }}
             >
-              {previewContent ? (
-                <ReactMarkdown>{previewContent}</ReactMarkdown>
+              {value ? (
+                <ReactMarkdown>{value}</ReactMarkdown>
               ) : (
                 <p className='text-muted-foreground'>Nothing to preview</p>
               )}
@@ -84,8 +78,8 @@ export function MarkdownEditor({
             className='prose prose-sm dark:prose-invert w-full max-w-none rounded-md border p-4'
             style={{ minHeight }}
           >
-            {previewContent ? (
-              <ReactMarkdown>{previewContent}</ReactMarkdown>
+            {value ? (
+              <ReactMarkdown>{value}</ReactMarkdown>
             ) : (
               <p className='text-muted-foreground'>Nothing to preview</p>
             )}

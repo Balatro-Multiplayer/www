@@ -2,7 +2,7 @@
 
 import type React from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useDebounceValue } from 'usehooks-ts'
+import { useDebounceCallback } from 'usehooks-ts'
 
 import { PaginationControls } from '@/app/_components/pagination-controls'
 import { SortableHeader } from '@/app/_components/sortable-header'
@@ -289,22 +289,9 @@ export function LeaderboardPage({
     setQueryParams({ season: value, page: 1 })
   }
 
-  // Handle search change with debounce
-  const [searchInput, setSearchInput] = useState(searchQuery || '')
-  const [debouncedSearch] = useDebounceValue(searchInput, 500)
-
-  // Sync local state with query param when it changes externally
-  useEffect(() => {
-    setSearchInput(searchQuery || '')
-  }, [searchQuery])
-
-  useEffect(() => {
-    setQueryParams({ search: debouncedSearch || null, page: 1 })
-  }, [debouncedSearch, setQueryParams])
-
-  const handleSearchChange = (value: string) => {
-    setSearchInput(value)
-  }
+  const updateSearch = useDebounceCallback((nextSearch: string) => {
+    setQueryParams({ search: nextSearch || null, page: 1 })
+  }, 500)
 
   // Handle games filter change
   const [sliderValue, setSliderValue] = useState([0, 100])
@@ -435,10 +422,11 @@ export function LeaderboardPage({
                   <div className='relative w-full sm:w-auto'>
                     <Search className='absolute top-2.5 left-2.5 h-4 w-4 text-gray-400 dark:text-zinc-400' />
                     <Input
+                      key={searchQuery ?? ''}
                       placeholder='Search players...'
                       className='w-full border-gray-200 bg-white pl-9 dark:border-zinc-700 dark:bg-zinc-900'
-                      value={searchInput}
-                      onChange={(e) => handleSearchChange(e.target.value)}
+                      defaultValue={searchQuery ?? ''}
+                      onChange={(e) => updateSearch(e.target.value)}
                     />
                   </div>
                 </div>
