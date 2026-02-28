@@ -417,7 +417,7 @@ export class LeaderboardService {
     minioKey: string
   ): Promise<LeaderboardEntry[]> {
     const objectStream = await minioClient.getObject(
-      env.MINIO_BUCKET_NAME,
+      env.MINIO_LEADERBOARD_BUCKET_NAME,
       minioKey
     )
     const payload = await streamToString(objectStream)

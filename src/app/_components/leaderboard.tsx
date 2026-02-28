@@ -1,15 +1,7 @@
 'use client'
 
 import type React from 'react'
-import {
-  Fragment,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDebounceValue } from 'usehooks-ts'
 
 import { PaginationControls } from '@/app/_components/pagination-controls'
@@ -44,22 +36,13 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import {
-  LEGACY_QUEUE_ID,
-  OLD_RANKED_CHANNEL,
-  OLD_SMALLWORLD_CHANNEL,
-  OLD_VANILLA_CHANNEL,
-  RANKED_QUEUE_ID,
-  SMALLWORLD_QUEUE_ID,
-  VANILLA_QUEUE_ID,
-} from '@/shared/constants'
 import { getRankData } from '@/shared/ranks'
 import {
   type Season,
   SeasonSchema,
   getSeasonDisplayName,
 } from '@/shared/seasons'
-import { api } from '@/trpc/react'
+import { type RouterOutputs, api } from '@/trpc/react'
 import { ArrowDown, ArrowUp, Flame, Search, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
@@ -103,11 +86,56 @@ const getMedal = (rank: number, mmr: number, queueType?: string) => {
   )
 }
 
-export function LeaderboardPage() {
+type LeaderboardSeasonRow = RouterOutputs['seasons']['list'][number]
+type LeaderboardSnapshotRow = RouterOutputs['seasons']['list_snapshots'][number]
+
+type LeaderboardPageProps = {
+  activeSeason: Season
+  initialSeason: Season
+  initialSeasons: RouterOutputs['seasons']['list']
+  initialSnapshots: RouterOutputs['seasons']['list_snapshots']
+}
+
+function getSeasonId(season: Season): number {
+  const match = /^season(\d+)$/.exec(season)
+  return Number(match?.[1] ?? 0)
+}
+
+function getDefaultQueueType(snapshots: LeaderboardSnapshotRow[]): string {
+  return (
+    snapshots.find((snapshot) => snapshot.queueType === 'ranked')?.queueType ??
+    snapshots[0]?.queueType ??
+    'ranked'
+  )
+}
+
+function getQueueLabel(queueType: string): string {
+  if (queueType === 'ranked') return 'Standard Ranked'
+  if (queueType === 'smallworld') return 'Smallworld'
+  if (queueType === 'vanilla') return 'Vanilla'
+  if (queueType === 'legacy') return 'Legacy Ranked'
+
+  return queueType
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function sortSeasons(seasons: LeaderboardSeasonRow[]) {
+  return [...seasons].sort((a, b) => b.id - a.id)
+}
+
+export function LeaderboardPage({
+  activeSeason,
+  initialSeason,
+  initialSeasons,
+  initialSnapshots,
+}: LeaderboardPageProps) {
   const [queryParams, setQueryParams] = useQueryStates(
     {
-      type: parseAsString.withDefault('ranked'),
-      season: parseAsString.withDefault('season6'),
+      type: parseAsString.withDefault(getDefaultQueueType(initialSnapshots)),
+      season: parseAsString.withDefault(initialSeason),
       page: parseAsInteger.withDefault(1),
       search: parseAsString,
       minGames: parseAsInteger,
@@ -121,7 +149,7 @@ export function LeaderboardPage() {
   )
 
   const {
-    type: leaderboardType,
+    type: rawType,
     season: rawSeason,
     page,
     search: searchQuery,
@@ -131,41 +159,68 @@ export function LeaderboardPage() {
     sortOrder,
   } = queryParams
 
-  // Validate season
-  const season = SeasonSchema.safeParse(rawSeason).success
-    ? (rawSeason as Season)
-    : 'season6'
+  const seasonsQuery = api.seasons.list.useQuery(undefined, {
+    initialData: initialSeasons,
+  })
+  const seasons = useMemo(
+    () => sortSeasons(seasonsQuery.data ?? initialSeasons),
+    [initialSeasons, seasonsQuery.data]
+  )
+  const availableSeasons = useMemo(
+    () => new Set(seasons.map((entry) => `season${entry.id}`)),
+    [seasons]
+  )
+
+  const latestSeason = ((seasons[0] && `season${seasons[0].id}`) ||
+    activeSeason) as Season
+  const season = useMemo(() => {
+    if (
+      SeasonSchema.safeParse(rawSeason).success &&
+      availableSeasons.has(rawSeason)
+    ) {
+      return rawSeason as Season
+    }
+
+    return availableSeasons.has(initialSeason) ? initialSeason : latestSeason
+  }, [availableSeasons, initialSeason, latestSeason, rawSeason])
+  const seasonId = getSeasonId(season)
+
+  const snapshotsQuery = api.seasons.list_snapshots.useQuery(
+    { seasonId },
+    {
+      enabled: seasonId > 0,
+      initialData: season === initialSeason ? initialSnapshots : undefined,
+    }
+  )
+  const snapshots = useMemo(() => {
+    if (snapshotsQuery.data) return snapshotsQuery.data
+    if (season === initialSeason) return initialSnapshots
+    return []
+  }, [initialSeason, initialSnapshots, season, snapshotsQuery.data])
 
   const [gamesAmount, setGamesAmount] = useState([
     minGames ?? 0,
     maxGames ?? 100,
   ])
 
+  const leaderboardType = useMemo(() => {
+    if (snapshots.some((snapshot) => snapshot.queueType === rawType)) {
+      return rawType
+    }
+
+    return getDefaultQueueType(snapshots)
+  }, [rawType, snapshots])
+
+  const selectedSnapshot = useMemo(
+    () =>
+      snapshots.find((snapshot) => snapshot.queueType === leaderboardType) ??
+      snapshots[0],
+    [leaderboardType, snapshots]
+  )
+
   // Derive sort column and direction from query params with defaults
-  const sortColumn =
-    sortBy ||
-    ([
-      'season1',
-      'season2',
-      'season3',
-      'season4',
-      'season5',
-      'season6',
-    ].includes(season)
-      ? 'mmr'
-      : 'rank')
-  const sortDirection =
-    (sortOrder as 'asc' | 'desc') ||
-    ([
-      'season1',
-      'season2',
-      'season3',
-      'season4',
-      'season5',
-      'season6',
-    ].includes(season)
-      ? 'desc'
-      : 'asc')
+  const sortColumn = sortBy || 'mmr'
+  const sortDirection = (sortOrder as 'asc' | 'desc') || 'desc'
 
   // Track previous season to only reset sort when season actually changes
   const prevSeasonRef = useRef(season)
@@ -176,43 +231,25 @@ export function LeaderboardPage() {
 
     // Only reset sort if season actually changed AND user hasn't explicitly set a sort
     if (seasonChanged && !sortBy) {
-      if (
-        [
-          'season1',
-          'season2',
-          'season3',
-          'season4',
-          'season5',
-          'season6',
-        ].includes(season)
-      ) {
-        setQueryParams({ sortBy: 'mmr', sortOrder: 'desc' })
-      } else {
-        setQueryParams({ sortBy: 'rank', sortOrder: 'asc' })
-      }
+      setQueryParams({ sortBy: 'mmr', sortOrder: 'desc' })
     }
   }, [season, sortBy, setQueryParams])
 
-  // Determine channel ID based on leaderboard type and season
-  const channelId = useMemo(() => {
-    const isOldSeason =
-      season === 'season1' || season === 'season2' || season === 'season3'
-    if (leaderboardType === 'vanilla') {
-      return isOldSeason ? OLD_VANILLA_CHANNEL : VANILLA_QUEUE_ID
+  useEffect(() => {
+    if (rawSeason === season && rawType === leaderboardType) {
+      return
     }
-    if (leaderboardType === 'legacy') {
-      return LEGACY_QUEUE_ID
-    }
-    if (leaderboardType === 'smallworld') {
-      return isOldSeason ? OLD_SMALLWORLD_CHANNEL : SMALLWORLD_QUEUE_ID
-    }
-    return isOldSeason ? OLD_RANKED_CHANNEL : RANKED_QUEUE_ID
-  }, [leaderboardType, season])
 
-  // Fetch leaderboard data with pagination (use queue id if season 4+, use old channel id otherwise)
-  const [currentLeaderboardResult] =
-    api.leaderboard.get_leaderboard.useSuspenseQuery({
-      channel_id: channelId,
+    setQueryParams({
+      season,
+      type: leaderboardType,
+      page: 1,
+    })
+  }, [leaderboardType, rawSeason, rawType, season, setQueryParams])
+
+  const currentLeaderboardQuery = api.leaderboard.get_leaderboard.useQuery(
+    {
+      channel_id: selectedSnapshot?.queueId ?? '',
       season,
       page,
       pageSize: 50,
@@ -221,9 +258,14 @@ export function LeaderboardPage() {
       maxGames: maxGames ?? undefined,
       sortBy: sortColumn as LeaderboardSortBy,
       sortOrder: sortDirection,
-    })
+    },
+    {
+      enabled: Boolean(selectedSnapshot?.queueId),
+    }
+  )
 
-  const currentLeaderboard = currentLeaderboardResult.data
+  const currentLeaderboardResult = currentLeaderboardQuery.data
+  const currentLeaderboard = currentLeaderboardResult?.data ?? []
 
   // Calculate max games for slider
   const maxGamesAmount = useMemo(
@@ -317,7 +359,7 @@ export function LeaderboardPage() {
     <div className='flex flex-1 flex-col overflow-hidden'>
       <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col'>
         <div className='flex flex-1 flex-col overflow-hidden border-none'>
-          {currentLeaderboardResult.isStale && (
+          {currentLeaderboardResult?.isStale && (
             <Alert className='my-4 border-amber-500 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300'>
               <AlertTitle>Stale Data</AlertTitle>
               <AlertDescription>
@@ -336,10 +378,14 @@ export function LeaderboardPage() {
             <div className='mb-6 flex w-full flex-col items-start justify-between gap-4 md:items-center lg:flex-row'>
               <div className='flex flex-col gap-4 md:flex-row md:items-center'>
                 <TabsList className='border border-gray-200 border-b bg-gray-50 dark:border-zinc-800 dark:bg-zinc-800/50'>
-                  <TabsTrigger value='ranked'>Standard Ranked</TabsTrigger>
-                  <TabsTrigger value='smallworld'>Smallworld</TabsTrigger>
-                  <TabsTrigger value='vanilla'>Vanilla</TabsTrigger>
-                  <TabsTrigger value='legacy'>Legacy Ranked</TabsTrigger>
+                  {snapshots.map((snapshot) => (
+                    <TabsTrigger
+                      key={snapshot.queueType}
+                      value={snapshot.queueType}
+                    >
+                      {getQueueLabel(snapshot.queueType)}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
 
                 <div className='flex items-center gap-2'>
@@ -356,24 +402,14 @@ export function LeaderboardPage() {
                       <SelectValue placeholder='Select season' />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value='season6'>
-                        {getSeasonDisplayName('season6')}
-                      </SelectItem>
-                      <SelectItem value='season5'>
-                        {getSeasonDisplayName('season5')}
-                      </SelectItem>
-                      <SelectItem value='season4'>
-                        {getSeasonDisplayName('season4')}
-                      </SelectItem>
-                      <SelectItem value='season3'>
-                        {getSeasonDisplayName('season3')}
-                      </SelectItem>
-                      <SelectItem value='season2'>
-                        {getSeasonDisplayName('season2')}
-                      </SelectItem>
-                      <SelectItem value='season1'>
-                        {getSeasonDisplayName('season1')}
-                      </SelectItem>
+                      {seasons.map((seasonOption) => {
+                        const value = `season${seasonOption.id}` as Season
+                        return (
+                          <SelectItem key={value} value={value}>
+                            {getSeasonDisplayName(value)}
+                          </SelectItem>
+                        )
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -415,25 +451,37 @@ export function LeaderboardPage() {
 
             <div className='m-0 flex flex-1 flex-col'>
               <TableShell className='flex flex-1 flex-col overflow-hidden'>
-                <div className='overflow-x-auto'>
-                  <LeaderboardTable
-                    leaderboard={currentLeaderboard}
-                    queueType={leaderboardType}
-                    sortColumn={sortColumn as LeaderboardSortBy}
-                    sortDirection={sortDirection}
-                    onSort={handleSort}
-                    getMedal={getMedal}
-                  />
-                </div>
-                <PaginationControls
-                  currentPage={page}
-                  totalPages={currentLeaderboardResult.totalPages ?? 1}
-                  total={currentLeaderboardResult.total ?? 0}
-                  pageSize={50}
-                  itemLabel='players'
-                  onPageChange={handlePageChange}
-                  className='rounded-none border-0 border-t bg-background'
-                />
+                {!selectedSnapshot ? (
+                  <div className='flex min-h-[240px] items-center justify-center px-6 text-center text-fd-muted-foreground'>
+                    No queues configured for this season yet.
+                  </div>
+                ) : currentLeaderboardQuery.isLoading ? (
+                  <div className='flex min-h-[240px] items-center justify-center px-6 text-center text-fd-muted-foreground'>
+                    Loading leaderboard...
+                  </div>
+                ) : (
+                  <>
+                    <div className='overflow-x-auto'>
+                      <LeaderboardTable
+                        leaderboard={currentLeaderboard}
+                        queueType={leaderboardType}
+                        sortColumn={sortColumn as LeaderboardSortBy}
+                        sortDirection={sortDirection}
+                        onSort={handleSort}
+                        getMedal={getMedal}
+                      />
+                    </div>
+                    <PaginationControls
+                      currentPage={page}
+                      totalPages={currentLeaderboardResult?.totalPages ?? 1}
+                      total={currentLeaderboardResult?.total ?? 0}
+                      pageSize={50}
+                      itemLabel='players'
+                      onPageChange={handlePageChange}
+                      className='rounded-none border-0 border-t bg-background'
+                    />
+                  </>
+                )}
               </TableShell>
             </div>
           </Tabs>

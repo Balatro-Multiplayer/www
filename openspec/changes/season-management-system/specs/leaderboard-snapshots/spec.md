@@ -14,7 +14,7 @@ For each past season and queue combination, a `season_snapshots` table row SHALL
 ---
 
 ### Requirement: Leaderboard JSON stored in MinIO
-Snapshot JSON files SHALL be uploaded to MinIO under the prefix `leaderboard-snapshots/season{N}/{queueId}-{timestamp}.json` within the existing bucket.
+Snapshot JSON files SHALL be uploaded to MinIO under the prefix `leaderboard-snapshots/season{N}/{queueId}-{timestamp}.json` within the dedicated `MINIO_LEADERBOARD_BUCKET_NAME` bucket.
 
 #### Scenario: File stored at correct path
 - **WHEN** a snapshot is uploaded for season 4, queue `ranked`

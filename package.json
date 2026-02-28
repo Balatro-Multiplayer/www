@@ -12,13 +12,15 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
+    "db:seed:past-seasons": "bun run scripts/seed-past-season-snapshots.ts",
     "db:seed:seasons": "bun run scripts/seed-seasons.ts",
     "db:studio": "drizzle-kit studio",
     "dev": "next dev --turbo",
     "migrate:season": "bun run  scripts/migrate-add-season-column.ts",
     "preview": "next build && next start",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:season-management": "bun run scripts/verify-season-management.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.2",

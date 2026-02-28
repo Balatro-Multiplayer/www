@@ -173,7 +173,7 @@ async function removeMinioObjectIfExists(minioKey: string | null) {
   if (!minioKey) return
 
   try {
-    await minioClient.removeObject(env.MINIO_BUCKET_NAME, minioKey)
+    await minioClient.removeObject(env.MINIO_LEADERBOARD_BUCKET_NAME, minioKey)
   } catch (error) {
     console.error(`Failed deleting MinIO object ${minioKey}:`, error)
   }
@@ -376,9 +376,9 @@ export const seasonsRouter = createTRPCRouter({
 
       const objectKey = `leaderboard-snapshots/season${season.id}/${input.queueType}-${Date.now()}.json`
 
-      await ensureBucketExists()
+      await ensureBucketExists(env.MINIO_LEADERBOARD_BUCKET_NAME)
       await minioClient.putObject(
-        env.MINIO_BUCKET_NAME,
+        env.MINIO_LEADERBOARD_BUCKET_NAME,
         objectKey,
         buffer,
         buffer.length,

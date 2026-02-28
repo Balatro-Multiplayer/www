@@ -20,19 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  OLD_RANKED_CHANNEL,
-  OLD_SMALLWORLD_CHANNEL,
-  OLD_VANILLA_CHANNEL,
-  RANKED_QUEUE_ID,
-  SMALLWORLD_QUEUE_ID,
-  VANILLA_QUEUE_ID,
-} from '@/shared/constants'
 import { type Season, getSeasonDisplayName } from '@/shared/seasons'
-import { api } from '@/trpc/react'
-import { useState } from 'react'
+import { type RouterOutputs, api } from '@/trpc/react'
+import { useEffect, useMemo, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
-import { STATS_SEASONS } from '../search-params'
+import { resolveStatsSeason } from '../search-params.constants'
 
 const chartConfig = {
   count: {
@@ -41,22 +33,35 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-const QUEUE_TYPES = [
-  { value: 'ranked', label: 'Ranked' },
-  { value: 'vanilla', label: 'Vanilla' },
-  { value: 'smallworld', label: 'Small World' },
-] as const
+type SnapshotRow = RouterOutputs['seasons']['list_snapshots'][number]
+type RatingDistributionChartProps = {
+  defaultSeason: Season
+  statsSeasons: Season[]
+}
 
-function getChannelId(type: string, season: Season): string {
-  const isOldSeason =
-    season === 'season1' || season === 'season2' || season === 'season3'
-  if (type === 'smallworld') {
-    return isOldSeason ? OLD_SMALLWORLD_CHANNEL : SMALLWORLD_QUEUE_ID
-  }
-  if (type === 'vanilla') {
-    return isOldSeason ? OLD_VANILLA_CHANNEL : VANILLA_QUEUE_ID
-  }
-  return isOldSeason ? OLD_RANKED_CHANNEL : RANKED_QUEUE_ID
+function getSeasonId(season: Season): number {
+  const match = /^season(\d+)$/.exec(season)
+  return Number(match?.[1] ?? 0)
+}
+
+function getDefaultQueueType(snapshots: SnapshotRow[]) {
+  return (
+    snapshots.find((snapshot) => snapshot.queueType === 'ranked')?.queueType ??
+    snapshots[0]?.queueType ??
+    'ranked'
+  )
+}
+
+function getQueueLabel(queueType: string) {
+  if (queueType === 'ranked') return 'Ranked'
+  if (queueType === 'vanilla') return 'Vanilla'
+  if (queueType === 'smallworld') return 'Small World'
+
+  return queueType
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 function computeBellCurve(mmrValues: number[], binSize = 50) {
@@ -83,16 +88,48 @@ function computeBellCurve(mmrValues: number[], binSize = 50) {
     .sort((a, b) => a.rating - b.rating)
 }
 
-export function RatingDistributionChart() {
-  const [season, setSeason] = useState<Season>('season6')
+export function RatingDistributionChart({
+  defaultSeason,
+  statsSeasons,
+}: RatingDistributionChartProps) {
+  const [season, setSeason] = useState<Season>(defaultSeason)
   const [queueType, setQueueType] = useState('ranked')
 
-  const channelId = getChannelId(queueType, season)
+  useEffect(() => {
+    setSeason((currentSeason) =>
+      statsSeasons.includes(currentSeason) ? currentSeason : defaultSeason
+    )
+  }, [defaultSeason, statsSeasons])
 
-  const [mmrValues] = api.leaderboard.rating_distribution.useSuspenseQuery({
-    channel_id: channelId,
-    season,
-  })
+  const resolvedSeason = resolveStatsSeason(season, statsSeasons, defaultSeason)
+  const seasonId = getSeasonId(resolvedSeason)
+  const [snapshots] = api.seasons.list_snapshots.useSuspenseQuery({ seasonId })
+  const resolvedQueueType = useMemo(() => {
+    if (snapshots.some((snapshot) => snapshot.queueType === queueType)) {
+      return queueType
+    }
+
+    return getDefaultQueueType(snapshots)
+  }, [queueType, snapshots])
+  const selectedSnapshot =
+    snapshots.find((snapshot) => snapshot.queueType === resolvedQueueType) ??
+    snapshots[0]
+  const mmrQuery = api.leaderboard.rating_distribution.useQuery(
+    {
+      channel_id: selectedSnapshot?.queueId ?? '',
+      season: resolvedSeason,
+    },
+    {
+      enabled: Boolean(selectedSnapshot?.queueId),
+    }
+  )
+  const mmrValues = mmrQuery.data ?? []
+
+  useEffect(() => {
+    if (queueType === resolvedQueueType) return
+
+    setQueueType(resolvedQueueType)
+  }, [queueType, resolvedQueueType])
 
   const chartData = computeBellCurve(mmrValues)
   const totalPlayers = mmrValues.length
@@ -117,12 +154,15 @@ export function RatingDistributionChart() {
           </CardDescription>
         </div>
         <div className='flex gap-2'>
-          <Select value={season} onValueChange={(v) => setSeason(v as Season)}>
+          <Select
+            value={resolvedSeason}
+            onValueChange={(v) => setSeason(v as Season)}
+          >
             <SelectTrigger className='w-[180px]'>
               <SelectValue placeholder='Select season' />
             </SelectTrigger>
             <SelectContent>
-              {STATS_SEASONS.map((s) => (
+              {statsSeasons.map((s) => (
                 <SelectItem key={s} value={s}>
                   {getSeasonDisplayName(s)}
                 </SelectItem>
@@ -130,14 +170,14 @@ export function RatingDistributionChart() {
             </SelectContent>
           </Select>
 
-          <Select value={queueType} onValueChange={setQueueType}>
+          <Select value={resolvedQueueType} onValueChange={setQueueType}>
             <SelectTrigger className='w-[160px]'>
               <SelectValue placeholder='Select queue' />
             </SelectTrigger>
             <SelectContent>
-              {QUEUE_TYPES.map((q) => (
-                <SelectItem key={q.value} value={q.value}>
-                  {q.label}
+              {snapshots.map((snapshot) => (
+                <SelectItem key={snapshot.queueType} value={snapshot.queueType}>
+                  {getQueueLabel(snapshot.queueType)}
                 </SelectItem>
               ))}
             </SelectContent>

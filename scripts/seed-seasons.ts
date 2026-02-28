@@ -9,6 +9,7 @@ import {
   SEASON_5_START_DATE,
   SEASON_6_START_DATE,
 } from '@/shared/seasons'
+import { sql } from 'drizzle-orm'
 
 async function seedSeasons() {
   console.log('Seeding seasons...')
@@ -72,6 +73,14 @@ async function seedSeasons() {
         },
       })
   }
+
+  await db.execute(sql`
+    select setval(
+      pg_get_serial_sequence('seasons', 'id'),
+      coalesce((select max(id) from seasons), 1),
+      true
+    )
+  `)
 
   await redis.set('config:active_season', '6')
 

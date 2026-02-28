@@ -106,11 +106,11 @@ season_snapshots {
 
 ---
 
-### D6: Separate MinIO bucket prefix, same bucket
+### D6: Dedicated MinIO bucket for leaderboard snapshots
 
-**Decision**: Store snapshot files at `leaderboard-snapshots/season{N}/{queueType}-{timestamp}.json` within the existing `MINIO_BUCKET_NAME` bucket. `queueType` (not `queueId`) used in path for human readability.
+**Decision**: Store snapshot files at `leaderboard-snapshots/season{N}/{queueType}-{timestamp}.json` within a dedicated `MINIO_LEADERBOARD_BUCKET_NAME` bucket. `queueType` (not `queueId`) used in path for human readability.
 
-**Rationale**: Avoids needing a new `MINIO_BUCKET_NAME` env var or bucket provisioning. Prefix-scoped paths keep leaderboard data organized separately from releases.
+**Rationale**: The existing `MINIO_BUCKET_NAME` bucket is already used for unrelated assets. A dedicated leaderboard bucket avoids mixing lifecycle and access concerns.
 
 ### D7: Leaderboard tabs driven by season_snapshots, no hardcoded queue types
 

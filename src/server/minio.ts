@@ -10,10 +10,10 @@ export const minioClient = new Client({
 })
 
 // Function to check if bucket exists and create it if it doesn't
-export async function ensureBucketExists() {
-  const bucketExists = await minioClient.bucketExists(env.MINIO_BUCKET_NAME)
+export async function ensureBucketExists(bucketName = env.MINIO_BUCKET_NAME) {
+  const bucketExists = await minioClient.bucketExists(bucketName)
   if (!bucketExists) {
-    await minioClient.makeBucket(env.MINIO_BUCKET_NAME, 'us-east-1')
+    await minioClient.makeBucket(bucketName, 'us-east-1')
   }
 }
 
@@ -21,23 +21,20 @@ export async function ensureBucketExists() {
 export async function uploadFile(
   file: Buffer,
   fileName: string,
-  contentType: string
+  contentType: string,
+  bucketName = env.MINIO_BUCKET_NAME
 ) {
-  await ensureBucketExists()
+  await ensureBucketExists(bucketName)
 
   // Generate a unique object name to avoid collisions
   const objectName = `${Date.now()}-${fileName}`
 
   // Upload the file to MinIO
-  await minioClient.putObject(
-    env.MINIO_BUCKET_NAME,
-    objectName,
-    file,
-    file.length,
-    { 'Content-Type': contentType }
-  )
+  await minioClient.putObject(bucketName, objectName, file, file.length, {
+    'Content-Type': contentType,
+  })
 
   // Construct and return the URL to the uploaded file
   const protocol = env.MINIO_USE_SSL === 'true' ? 'https' : 'http'
-  return `${protocol}://${env.MINIO_ENDPOINT}/${env.MINIO_BUCKET_NAME}/${objectName}`
+  return `${protocol}://${env.MINIO_ENDPOINT}/${bucketName}/${objectName}`
 }

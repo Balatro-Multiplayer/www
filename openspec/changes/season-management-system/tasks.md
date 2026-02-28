@@ -52,12 +52,12 @@
 
 ## 7. Frontend Season Selectors
 
-- [ ] 7.1 Update `src/app/(home)/leaderboards/page.tsx`: read active season from `getActiveSeasonNumber()` (Redis), fetch queue list for selected season from `seasons.list_snapshots`, pass both as props to `LeaderboardPage`
-- [ ] 7.2 Update `src/app/_components/leaderboard.tsx`: season selector from DB list, tabs from snapshot queue entries (dynamic, no hardcoded tab values), `channelId` resolved from snapshot row's `queueId` — remove all `isOldSeason` logic and queue ID constants
-- [ ] 7.3 Update `src/app/(home)/stats/search-params.constants.ts` `STATS_SEASONS` to be derived from DB at request time
+- [x] 7.1 Update `src/app/(home)/leaderboards/page.tsx`: read active season from `getActiveSeasonNumber()` (Redis), fetch queue list for selected season from `seasons.list_snapshots`, pass both as props to `LeaderboardPage`
+- [x] 7.2 Update `src/app/_components/leaderboard.tsx`: season selector from DB list, tabs from snapshot queue entries (dynamic, no hardcoded tab values), `channelId` resolved from snapshot row's `queueId` — remove all `isOldSeason` logic and queue ID constants
+- [x] 7.3 Update `src/app/(home)/stats/search-params.constants.ts` `STATS_SEASONS` to be derived from DB at request time
 
 ## 8. Environment & Infra
 
-- [ ] 8.1 Verify `MINIO_BUCKET_NAME` env var is available; confirm existing bucket is used with `leaderboard-snapshots/` prefix (no new bucket needed)
-- [ ] 8.2 Run migration on staging, verify `seasons` seed data correct
-- [ ] 8.3 Smoke test full leaderboard load path: active season (bot API) and a past season (Redis miss → MinIO → cache)
+- [x] 8.1 Verify `MINIO_LEADERBOARD_BUCKET_NAME` env var is available; confirm snapshot uploads use the dedicated leaderboard bucket
+- [x] 8.2 Run migration on staging, verify `seasons` seed data correct
+- [x] 8.3 Smoke test full leaderboard load path: active season (bot API) and a past season (Redis miss → MinIO → cache)

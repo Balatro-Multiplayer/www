@@ -41,7 +41,7 @@ import { api } from '@/trpc/react'
 import { format } from 'date-fns'
 import { BarChart3, CalendarIcon, PieChartIcon } from 'lucide-react'
 import { parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -57,9 +57,9 @@ import {
 import {
   type STATS_FILTER_MODES,
   type STATS_QUEUES,
-  STATS_SEASONS,
-  statsSearchParamsParsers,
+  createStatsSearchParamsParsers,
 } from '../search-params'
+import { resolveStatsSeason } from '../search-params.constants'
 
 const PIE_COLORS = [
   'var(--color-emerald-500)',
@@ -89,6 +89,10 @@ const QUEUE_TYPES = [
   { value: CASUAL_QUEUE_ID, label: 'Casual' },
 ] as const
 type FilterMode = (typeof STATS_FILTER_MODES)[number]
+type StakePopularityChartProps = {
+  defaultSeason: Season
+  statsSeasons: Season[]
+}
 type PieActiveShapeProps = {
   cx: number
   cy: number
@@ -129,9 +133,16 @@ function renderActiveShape(props: unknown) {
   )
 }
 
-export function StakePopularityChart() {
+export function StakePopularityChart({
+  defaultSeason,
+  statsSeasons,
+}: StakePopularityChartProps) {
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar')
   const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined)
+  const statsSearchParamsParsers = useMemo(
+    () => createStatsSearchParamsParsers(defaultSeason),
+    [defaultSeason]
+  )
   const [queryParams, setQueryParams] = useQueryStates({
     stakeMode: statsSearchParamsParsers.stakeMode,
     stakeSeason: statsSearchParamsParsers.stakeSeason,
@@ -141,8 +152,18 @@ export function StakePopularityChart() {
   })
 
   const filterMode = queryParams.stakeMode as FilterMode
-  const season = queryParams.stakeSeason as Season
+  const season = resolveStatsSeason(
+    queryParams.stakeSeason,
+    statsSeasons,
+    defaultSeason
+  )
   const queueId = queryParams.stakeQueueId
+
+  useEffect(() => {
+    if (queryParams.stakeSeason === season) return
+
+    setQueryParams({ stakeSeason: season })
+  }, [queryParams.stakeSeason, season, setQueryParams])
 
   const dateRange = useMemo(() => {
     const from = queryParams.stakeStartDate
@@ -218,7 +239,7 @@ export function StakePopularityChart() {
               value={season}
               onValueChange={(v) => {
                 setQueryParams({
-                  stakeSeason: v as (typeof STATS_SEASONS)[number],
+                  stakeSeason: v as Season,
                 })
               }}
             >
@@ -226,7 +247,7 @@ export function StakePopularityChart() {
                 <SelectValue placeholder='Select season' />
               </SelectTrigger>
               <SelectContent>
-                {STATS_SEASONS.map((s) => (
+                {statsSeasons.map((s) => (
                   <SelectItem key={s} value={s}>
                     {getSeasonDisplayName(s)}
                   </SelectItem>
