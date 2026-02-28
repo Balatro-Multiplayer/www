@@ -30,8 +30,8 @@ export default async function BlogPostPage({ params }: Props) {
     const post = await api.blog.getBySlug({ slug: (await params).slug })
 
     return (
-      <div className='container py-10'>
-        <article className='prose prose-lg dark:prose-invert mx-auto'>
+      <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col py-8'>
+        <article className='prose prose-lg dark:prose-invert w-full max-w-3xl self-center'>
           <h1>{post.title}</h1>
 
           <div className='flex items-center gap-2 text-muted-foreground text-sm'>

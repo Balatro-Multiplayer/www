@@ -9,7 +9,7 @@ export default async function ReleasesPage() {
   console.log(session)
   if (!isAdmin) {
     return (
-      <div className={'container mx-auto pt-8'}>
+      <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col py-8'>
         <div className={'prose'}>
           <h1>Forbidden</h1>
         </div>
@@ -32,7 +32,7 @@ export default async function ReleasesPage() {
       <HydrateClient>
         <div
           className={
-            'mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-4 pt-16'
+            'mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-4 pt-16 pb-8'
           }
         >
           <ReleasesClient />

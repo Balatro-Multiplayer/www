@@ -13,8 +13,8 @@ export default async function AdminBlogPage() {
   }
 
   return (
-    <div className='container py-10'>
-      <div className='mb-8 flex items-center justify-between'>
+    <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-4 py-8'>
+      <div className='flex items-center justify-between'>
         <h1 className='font-bold text-4xl'>Manage Blog Posts</h1>
         <Button asChild>
           <Link href='/admin/blog/new'>Create New Post</Link>

@@ -12,7 +12,7 @@ export default async function BlogPage() {
   const posts = await api.blog.getAllPublished()
 
   return (
-    <div className='container py-10'>
+    <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col py-8'>
       <h1 className='mb-8 font-bold text-4xl'>Blog</h1>
 
       {posts.length === 0 ? (

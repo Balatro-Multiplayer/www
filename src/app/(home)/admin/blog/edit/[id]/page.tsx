@@ -127,8 +127,8 @@ export default function EditBlogPostPage() {
 
   if (isLoading || isFetching) {
     return (
-      <div className='container py-10'>
-        <h1 className='mb-8 font-bold text-4xl'>Edit Blog Post</h1>
+      <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-8 py-8'>
+        <h1 className='font-bold text-4xl'>Edit Blog Post</h1>
         <div className='flex items-center justify-center p-8'>
           <p>Loading...</p>
         </div>
@@ -137,8 +137,8 @@ export default function EditBlogPostPage() {
   }
 
   return (
-    <div className='container py-10'>
-      <div className='mb-8 flex items-center justify-between'>
+    <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-8 py-8'>
+      <div className='flex items-center justify-between'>
         <h1 className='font-bold text-4xl'>Edit Blog Post</h1>
 
         <AlertDialog>

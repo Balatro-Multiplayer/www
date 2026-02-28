@@ -68,8 +68,8 @@ export default function NewBlogPostPage() {
   }
 
   return (
-    <div className='container py-10'>
-      <h1 className='mb-8 font-bold text-4xl'>Create New Blog Post</h1>
+    <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-8 py-8'>
+      <h1 className='font-bold text-4xl'>Create New Blog Post</h1>
 
       <form onSubmit={handleSubmit} className='space-y-8'>
         <div className='space-y-2'>

@@ -11,7 +11,7 @@ import Link from 'next/link'
 
 export default async function SupportUsPage() {
   return (
-    <div className={'container mx-auto py-12'}>
+    <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col py-8'>
       <div className={'mb-10 text-center'}>
         <h1 className={'font-bold text-4xl tracking-tight'}>Support Us</h1>
         <p className={'mt-4 text-lg text-muted-foreground'}>

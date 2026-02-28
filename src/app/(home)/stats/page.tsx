@@ -88,7 +88,7 @@ export default async function StatsPage({
   ])
 
   return (
-    <div className='container mx-auto py-8'>
+    <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col py-8'>
       <h1 className='mb-6 font-bold text-3xl'>Stats</h1>
       <Suspense>
         <HydrateClient>
