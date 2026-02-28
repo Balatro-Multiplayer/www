@@ -158,6 +158,12 @@
   padding-inline: 2rem;
 }
 
+@layer utilities {
+  .max-w-fd-container {
+    max-width: 1400px;
+  }
+}
+
 @utility no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

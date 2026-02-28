@@ -43,13 +43,15 @@ export function Navbar(props: HTMLAttributes<HTMLElement>) {
             'bg-fd-background/80 backdrop-blur-lg'
           )}
         >
-          <NavigationMenuList
-            className='flex h-14 w-full flex-row items-center px-4 lg:h-12'
-            asChild
-          >
-            <nav>{props.children}</nav>
-          </NavigationMenuList>
-          <NavigationMenuViewport />
+          <div className='*:mx-auto *:max-w-(--fd-layout-width)'>
+            <NavigationMenuList
+              className='flex h-14 w-full flex-row items-center px-4 lg:h-12'
+              asChild
+            >
+              <nav>{props.children}</nav>
+            </NavigationMenuList>
+            <NavigationMenuViewport />
+          </div>
         </header>
       </div>
     </NavigationMenu>
