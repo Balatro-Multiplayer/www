@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 import {
   type ChartConfig,
   ChartContainer,
@@ -128,21 +122,21 @@ export function RatingDistributionChart({
       : 0
 
   return (
-    <Card className='w-full'>
-      <CardHeader className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+    <ChartCard>
+      <ChartCardHeader className='sm:flex-row sm:items-center sm:justify-between'>
         <div>
-          <CardTitle>Rating Distribution</CardTitle>
-          <CardDescription>
+          <h3 className='font-semibold leading-none'>Rating Distribution</h3>
+          <p className='text-muted-foreground text-sm'>
             {totalPlayers.toLocaleString()} players &middot; Avg: {avgMmr}{' '}
             &middot; Median: {medianMmr}
-          </CardDescription>
+          </p>
         </div>
-        <div className='flex gap-2'>
+        <div className='flex flex-wrap gap-2'>
           <Select
             value={resolvedSeason}
             onValueChange={(v) => setSeason(v as Season)}
           >
-            <SelectTrigger className='w-[180px]'>
+            <SelectTrigger className='w-full sm:w-[180px]'>
               <SelectValue placeholder='Select season' />
             </SelectTrigger>
             <SelectContent>
@@ -155,7 +149,7 @@ export function RatingDistributionChart({
           </Select>
 
           <Select value={resolvedQueueType} onValueChange={setQueueType}>
-            <SelectTrigger className='w-[160px]'>
+            <SelectTrigger className='w-full sm:w-[160px]'>
               <SelectValue placeholder='Select queue' />
             </SelectTrigger>
             <SelectContent>
@@ -167,68 +161,120 @@ export function RatingDistributionChart({
             </SelectContent>
           </Select>
         </div>
-      </CardHeader>
-      <CardContent className='h-[500px] w-full p-2'>
+      </ChartCardHeader>
+      <ChartCardContent>
         {chartData.length === 0 ? (
-          <div className='flex h-full items-center justify-center text-fd-muted-foreground'>
+          <div className='flex h-[350px] items-center justify-center text-fd-muted-foreground sm:h-[500px]'>
             No data available for this season and queue type.
           </div>
         ) : (
-          <ChartContainer config={chartConfig} className='h-full w-full'>
-            <AreaChart
-              data={chartData}
-              margin={{
-                top: 20,
-                right: 30,
-                left: 20,
-                bottom: 60,
-              }}
-            >
-              <defs>
-                <linearGradient id='fillCount' x1='0' y1='0' x2='0' y2='1'>
-                  <stop
-                    offset='5%'
-                    stopColor='var(--color-count)'
-                    stopOpacity={0.8}
+          <>
+            {/* Mobile */}
+            <div className='h-[300px] w-full sm:hidden'>
+              <ChartContainer config={chartConfig} className='h-full w-full'>
+                <AreaChart
+                  data={chartData}
+                  margin={{ top: 10, right: 5, left: 0, bottom: 40 }}
+                >
+                  <defs>
+                    <linearGradient id='fillCountMobile' x1='0' y1='0' x2='0' y2='1'>
+                      <stop
+                        offset='5%'
+                        stopColor='var(--color-count)'
+                        stopOpacity={0.8}
+                      />
+                      <stop
+                        offset='95%'
+                        stopColor='var(--color-count)'
+                        stopOpacity={0.1}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray='3 3' />
+                  <XAxis
+                    dataKey='rating'
+                    angle={-45}
+                    textAnchor='end'
+                    height={40}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(value) => `${value}`}
                   />
-                  <stop
-                    offset='95%'
-                    stopColor='var(--color-count)'
-                    stopOpacity={0.1}
+                  <YAxis tick={{ fontSize: 10 }} width={30} />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => `${value} players`}
+                        labelFormatter={(_label, payload) => {
+                          const rating = payload?.[0]?.payload?.rating
+                          return `Rating: ${rating} - ${Number(rating) + 50}`
+                        }}
+                      />
+                    }
                   />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray='3 3' />
-              <XAxis
-                dataKey='rating'
-                angle={-45}
-                textAnchor='end'
-                height={60}
-                tickFormatter={(value) => `${value}`}
-              />
-              <YAxis />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value) => `${value} players`}
-                    labelFormatter={(_label, payload) => {
-                      const rating = payload?.[0]?.payload?.rating
-                      return `Rating: ${rating} - ${Number(rating) + 50}`
-                    }}
+                  <Area
+                    type='monotone'
+                    dataKey='count'
+                    stroke='var(--color-count)'
+                    fill='url(#fillCountMobile)'
+                    strokeWidth={2}
                   />
-                }
-              />
-              <Area
-                type='monotone'
-                dataKey='count'
-                stroke='var(--color-count)'
-                fill='url(#fillCount)'
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ChartContainer>
+                </AreaChart>
+              </ChartContainer>
+            </div>
+            {/* Desktop */}
+            <div className='hidden h-[500px] w-full sm:block'>
+              <ChartContainer config={chartConfig} className='h-full w-full'>
+                <AreaChart
+                  data={chartData}
+                  margin={{ top: 20, right: 10, left: 0, bottom: 60 }}
+                >
+                  <defs>
+                    <linearGradient id='fillCount' x1='0' y1='0' x2='0' y2='1'>
+                      <stop
+                        offset='5%'
+                        stopColor='var(--color-count)'
+                        stopOpacity={0.8}
+                      />
+                      <stop
+                        offset='95%'
+                        stopColor='var(--color-count)'
+                        stopOpacity={0.1}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray='3 3' />
+                  <XAxis
+                    dataKey='rating'
+                    angle={-45}
+                    textAnchor='end'
+                    height={60}
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <YAxis />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => `${value} players`}
+                        labelFormatter={(_label, payload) => {
+                          const rating = payload?.[0]?.payload?.rating
+                          return `Rating: ${rating} - ${Number(rating) + 50}`
+                        }}
+                      />
+                    }
+                  />
+                  <Area
+                    type='monotone'
+                    dataKey='count'
+                    stroke='var(--color-count)'
+                    fill='url(#fillCount)'
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ChartContainer>
+            </div>
+          </>
         )}
-      </CardContent>
-    </Card>
+      </ChartCardContent>
+    </ChartCard>
   )
 }

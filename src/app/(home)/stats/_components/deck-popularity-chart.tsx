@@ -3,13 +3,7 @@
 import { DECK_IMAGES } from '@/app/(home)/players/[id]/_components/deck-stake-stats-chart'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 import {
   type ChartConfig,
   ChartContainer,
@@ -41,7 +35,7 @@ import { api } from '@/trpc/react'
 import { format } from 'date-fns'
 import { BarChart3, CalendarIcon, PieChartIcon } from 'lucide-react'
 import { parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -144,6 +138,12 @@ export function DeckPopularityChart({
   statsSeasons,
 }: DeckPopularityChartProps) {
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar')
+  const chartTypeInitialized = useRef(false)
+  useEffect(() => {
+    if (chartTypeInitialized.current) return
+    chartTypeInitialized.current = true
+    if (window.innerWidth < 640) setChartType('pie')
+  }, [])
   const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined)
   const statsSearchParamsParsers = useMemo(
     () => createStatsSearchParamsParsers(defaultSeason),
@@ -202,13 +202,13 @@ export function DeckPopularityChart({
   const onPieLeave = useCallback(() => setActiveIndex(undefined), [])
 
   return (
-    <Card className='w-full'>
-      <CardHeader className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+    <ChartCard>
+      <ChartCardHeader className='sm:flex-row sm:items-center sm:justify-between'>
         <div>
-          <CardTitle>Deck Popularity</CardTitle>
-          <CardDescription>
+          <h3 className='font-semibold leading-none'>Deck Popularity</h3>
+          <p className='text-muted-foreground text-sm'>
             {totalGames.toLocaleString()} total games across {data.length} decks
-          </CardDescription>
+          </p>
         </div>
         <div className='flex flex-wrap gap-2'>
           <ToggleGroup
@@ -231,7 +231,7 @@ export function DeckPopularityChart({
               setQueryParams({ deckMode: v as FilterMode })
             }}
           >
-            <SelectTrigger className='w-[180px]'>
+            <SelectTrigger className='w-full sm:w-[180px]'>
               <SelectValue placeholder='Filter mode' />
             </SelectTrigger>
             <SelectContent>
@@ -248,7 +248,7 @@ export function DeckPopularityChart({
                 })
               }}
             >
-              <SelectTrigger className='w-[180px]'>
+              <SelectTrigger className='w-full sm:w-[180px]'>
                 <SelectValue placeholder='Select season' />
               </SelectTrigger>
               <SelectContent>
@@ -266,7 +266,7 @@ export function DeckPopularityChart({
                   id='deck-date'
                   variant='outline'
                   className={cn(
-                    'w-[280px] justify-start text-left font-normal',
+                    'w-full justify-start text-left font-normal sm:w-[280px]',
                     !dateRange?.from && 'text-muted-foreground'
                   )}
                 >
@@ -302,7 +302,7 @@ export function DeckPopularityChart({
                       deckEndDate: value?.to ? value.to.toISOString() : null,
                     })
                   }}
-                  numberOfMonths={2}
+                  numberOfMonths={1}
                 />
               </PopoverContent>
             </Popover>
@@ -315,7 +315,7 @@ export function DeckPopularityChart({
               })
             }}
           >
-            <SelectTrigger className='w-[160px]'>
+            <SelectTrigger className='w-full sm:w-[160px]'>
               <SelectValue placeholder='Select queue' />
             </SelectTrigger>
             <SelectContent>
@@ -327,83 +327,135 @@ export function DeckPopularityChart({
             </SelectContent>
           </Select>
         </div>
-      </CardHeader>
-      <CardContent className='h-[500px] w-full p-2'>
+      </ChartCardHeader>
+      <ChartCardContent>
         {data.length === 0 ? (
-          <div className='flex h-full items-center justify-center text-fd-muted-foreground'>
+          <div className='flex h-[350px] items-center justify-center text-fd-muted-foreground sm:h-[500px]'>
             No data available for selected filters.
           </div>
         ) : chartType === 'bar' ? (
-          <ChartContainer config={chartConfig} className='h-full w-full'>
-            <BarChart
-              data={data}
-              margin={{ top: 30, right: 20, left: 20, bottom: 60 }}
-            >
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey='deck'
-                tickLine={false}
-                axisLine={false}
-                interval={0}
-                tick={(props) => {
-                  const { x, y, payload } = props
-                  const imagePath = DECK_IMAGES[payload.value]
-                  const itemCount = data.length
-                  const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
-                  return (
-                    <g transform={`translate(${x - imgSize / 2},${y + 10})`}>
-                      <title className='capitalize'>{payload.value}</title>
-                      {imagePath && (
-                        <image
-                          href={imagePath}
-                          width={imgSize}
-                          height={imgSize}
-                        />
-                      )}
-                      {itemCount <= 12 && (
-                        <text
-                          x={imgSize / 2}
-                          y={imgSize + 20}
-                          textAnchor='middle'
-                          fill='currentColor'
-                          fontSize='10'
-                          className='font-medium capitalize'
-                        >
-                          {payload.value}
-                        </text>
-                      )}
-                    </g>
-                  )
-                }}
-              />
-              <YAxis hide />
-              <ChartTooltip
-                cursor={false}
-                content={
-                  <ChartTooltipContent
-                    formatter={(value, name, item) => {
-                      const entry = item.payload
-                      return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
+          <>
+            {/* Desktop: vertical bars */}
+            <div className='hidden h-[500px] w-full sm:block'>
+              <ChartContainer config={chartConfig} className='h-full w-full'>
+                <BarChart
+                  data={data}
+                  margin={{ top: 30, right: 20, left: 20, bottom: 60 }}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey='deck'
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    tick={(props) => {
+                      const { x, y, payload } = props
+                      const imagePath = DECK_IMAGES[payload.value]
+                      const itemCount = data.length
+                      const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
+                      return (
+                        <g transform={`translate(${x - imgSize / 2},${y + 10})`}>
+                          <title className='capitalize'>{payload.value}</title>
+                          {imagePath && (
+                            <image
+                              href={imagePath}
+                              width={imgSize}
+                              height={imgSize}
+                            />
+                          )}
+                          {itemCount <= 12 && (
+                            <text
+                              x={imgSize / 2}
+                              y={imgSize + 20}
+                              textAnchor='middle'
+                              fill='currentColor'
+                              fontSize='10'
+                              className='font-medium capitalize'
+                            >
+                              {payload.value}
+                            </text>
+                          )}
+                        </g>
+                      )
                     }}
-                    labelFormatter={(label) => label}
                   />
-                }
-              />
-              <Bar dataKey='games' fill='var(--color-violet-500)' radius={4}>
-                <LabelList
-                  dataKey='pickRate'
-                  position='top'
-                  offset={8}
-                  className='fill-foreground'
-                  fontSize={10}
-                  formatter={(v: number) => `${v}%`}
-                />
-              </Bar>
-            </BarChart>
-          </ChartContainer>
+                  <YAxis hide />
+                  <ChartTooltip
+                    cursor={false}
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value, name, item) => {
+                          const entry = item.payload
+                          return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
+                        }}
+                        labelFormatter={(label) => label}
+                      />
+                    }
+                  />
+                  <Bar dataKey='games' fill='var(--color-violet-500)' radius={4}>
+                    <LabelList
+                      dataKey='pickRate'
+                      position='top'
+                      offset={8}
+                      className='fill-foreground'
+                      fontSize={10}
+                      formatter={(v: number) => `${v}%`}
+                    />
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </div>
+            {/* Mobile: horizontal bars, height scales with item count */}
+            <div
+              className='w-full sm:hidden'
+              style={{ height: Math.max(350, data.length * 32) }}
+            >
+              <ChartContainer config={chartConfig} className='h-full w-full'>
+                <BarChart
+                  data={data}
+                  layout='vertical'
+                  margin={{ top: 5, right: 35, left: 0, bottom: 5 }}
+                >
+                  <CartesianGrid horizontal={false} />
+                  <XAxis type='number' hide />
+                  <YAxis
+                    type='category'
+                    dataKey='deck'
+                    tickLine={false}
+                    axisLine={false}
+                    width={70}
+                    tick={{ fontSize: 12 }}
+                    className='capitalize'
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value, name, item) => {
+                          const entry = item.payload
+                          return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
+                        }}
+                        labelFormatter={(label) => label}
+                      />
+                    }
+                  />
+                  <Bar dataKey='games' fill='var(--color-violet-500)' radius={4}>
+                    <LabelList
+                      dataKey='pickRate'
+                      position='right'
+                      offset={8}
+                      className='fill-foreground'
+                      fontSize={10}
+                      formatter={(v: number) => `${v}%`}
+                    />
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </div>
+          </>
         ) : (
-          <div className='flex h-full gap-4'>
-            <ChartContainer config={chartConfig} className='h-full flex-1'>
+          <div className='flex h-[350px] flex-col gap-4 sm:h-[500px] sm:flex-row'>
+            <ChartContainer config={chartConfig} className='min-h-[200px] flex-1 sm:h-full'>
               <PieChart>
                 <ChartTooltip
                   content={
@@ -440,7 +492,7 @@ export function DeckPopularityChart({
                 </Pie>
               </PieChart>
             </ChartContainer>
-            <div className='flex w-40 flex-col gap-1 overflow-y-auto py-2 pr-2'>
+            <div className='grid grid-cols-2 gap-1 overflow-y-auto py-2 pr-2 sm:flex sm:w-40 sm:flex-col'>
               {data.map((entry, i) => (
                 <div
                   key={entry.deck}
@@ -467,7 +519,7 @@ export function DeckPopularityChart({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </ChartCardContent>
+    </ChartCard>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 import {
   type ChartConfig,
   ChartContainer,
@@ -86,15 +87,15 @@ export function SeasonOverviewChart() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Season Comparison</CardTitle>
-        </CardHeader>
-        <CardContent className='h-[400px] w-full p-2'>
+      <ChartCard>
+        <ChartCardHeader>
+          <h3 className='font-semibold leading-none'>Season Comparison</h3>
+        </ChartCardHeader>
+        <ChartCardContent className='h-[300px] sm:h-[400px]'>
           <ChartContainer config={chartConfig} className='h-full w-full'>
             <BarChart
               data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+              margin={{ top: 20, right: 10, left: 0, bottom: 20 }}
             >
               <CartesianGrid vertical={false} />
               <XAxis dataKey='name' tickLine={false} axisLine={false} />
@@ -125,8 +126,8 @@ export function SeasonOverviewChart() {
               />
             </BarChart>
           </ChartContainer>
-        </CardContent>
-      </Card>
+        </ChartCardContent>
+      </ChartCard>
     </div>
   )
 }

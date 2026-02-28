@@ -1,5 +1,12 @@
 'use client'
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Season } from '@/shared/seasons'
 import { useQueryState } from 'nuqs'
@@ -31,6 +38,42 @@ type StatsTabsProps = {
   statsSeasons: Season[]
 }
 
+function StatsContent({
+  tab,
+  defaultSeason,
+  statsSeasons,
+}: { tab: string; defaultSeason: Season; statsSeasons: Season[] }) {
+  switch (tab) {
+    case 'game-activity':
+      return <GameActivityChart />
+    case 'rating-distribution':
+      return (
+        <RatingDistributionChart
+          defaultSeason={defaultSeason}
+          statsSeasons={statsSeasons}
+        />
+      )
+    case 'deck-popularity':
+      return (
+        <DeckPopularityChart
+          defaultSeason={defaultSeason}
+          statsSeasons={statsSeasons}
+        />
+      )
+    case 'stake-popularity':
+      return (
+        <StakePopularityChart
+          defaultSeason={defaultSeason}
+          statsSeasons={statsSeasons}
+        />
+      )
+    case 'season-overview':
+      return <SeasonOverviewChart />
+    default:
+      return null
+  }
+}
+
 export function StatsTabs({ defaultSeason, statsSeasons }: StatsTabsProps) {
   const parsers = useMemo(
     () => createStatsSearchParamsParsers(defaultSeason),
@@ -39,51 +82,45 @@ export function StatsTabs({ defaultSeason, statsSeasons }: StatsTabsProps) {
   const [tab, setTab] = useQueryState('tab', parsers.tab)
 
   return (
-    <Tabs
-      value={tab}
-      onValueChange={(value) => setTab(value as (typeof STAT_TABS)[number])}
-    >
-      <TabsList className='flex w-full flex-wrap'>
-        {TABS.map((t) => (
-          <TabsTrigger key={t.value} value={t.value}>
-            {t.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      <TabsContent value='game-activity'>
-        <Suspense>
-          <GameActivityChart />
-        </Suspense>
-      </TabsContent>
-      <TabsContent value='rating-distribution'>
-        <Suspense>
-          <RatingDistributionChart
-            defaultSeason={defaultSeason}
-            statsSeasons={statsSeasons}
-          />
-        </Suspense>
-      </TabsContent>
-      <TabsContent value='deck-popularity'>
-        <Suspense>
-          <DeckPopularityChart
-            defaultSeason={defaultSeason}
-            statsSeasons={statsSeasons}
-          />
-        </Suspense>
-      </TabsContent>
-      <TabsContent value='stake-popularity'>
-        <Suspense>
-          <StakePopularityChart
-            defaultSeason={defaultSeason}
-            statsSeasons={statsSeasons}
-          />
-        </Suspense>
-      </TabsContent>
-      <TabsContent value='season-overview'>
-        <Suspense>
-          <SeasonOverviewChart />
-        </Suspense>
-      </TabsContent>
-    </Tabs>
+    <div className='flex flex-col gap-2'>
+      {/* Mobile: dropdown */}
+      <Select
+        value={tab}
+        onValueChange={(value) => setTab(value as (typeof STAT_TABS)[number])}
+      >
+        <SelectTrigger className='w-full sm:hidden'>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {TABS.map((t) => (
+            <SelectItem key={t.value} value={t.value}>
+              {t.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {/* Desktop: tabs */}
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as (typeof STAT_TABS)[number])}
+      >
+        <TabsList className='hidden w-full sm:inline-flex'>
+          {TABS.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      <Suspense>
+        <StatsContent
+          tab={tab}
+          defaultSeason={defaultSeason}
+          statsSeasons={statsSeasons}
+        />
+      </Suspense>
+    </div>
   )
 }

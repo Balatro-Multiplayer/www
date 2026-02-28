@@ -3,13 +3,6 @@
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
@@ -33,6 +26,7 @@ import { format } from 'date-fns'
 import { CalendarIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 
 const chartConfig = {
   count: {
@@ -98,20 +92,22 @@ export function GameActivityChart() {
   }
 
   return (
-    <Card className='w-full'>
-      <CardHeader className='flex flex-row items-center justify-between'>
+    <ChartCard>
+      <ChartCardHeader className='sm:flex-row sm:items-center sm:justify-between'>
         <div>
-          <CardTitle>{getTitleText()}</CardTitle>
-          <CardDescription>Number of games played over time</CardDescription>
+          <h3 className='font-semibold leading-none'>{getTitleText()}</h3>
+          <p className='text-muted-foreground text-sm'>
+            Number of games played over time
+          </p>
         </div>
-        <div className='flex gap-2'>
+        <div className='flex flex-wrap gap-2'>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 id='date'
                 variant={'outline'}
                 className={cn(
-                  'w-[280px] justify-start text-left font-normal',
+                  'w-full justify-start text-left font-normal sm:w-[280px]',
                   !dateRange?.from && 'text-muted-foreground'
                 )}
               >
@@ -140,7 +136,7 @@ export function GameActivityChart() {
                   to: dateRange?.to,
                 }}
                 onSelect={setDateRange}
-                numberOfMonths={2}
+                numberOfMonths={1}
               />
             </PopoverContent>
           </Popover>
@@ -149,7 +145,7 @@ export function GameActivityChart() {
             value={groupBy}
             onValueChange={(value) => setGroupBy(value as GroupByOption)}
           >
-            <SelectTrigger className='w-[180px]'>
+            <SelectTrigger className='w-full sm:w-[180px]'>
               <SelectValue placeholder='Select grouping' />
             </SelectTrigger>
             <SelectContent>
@@ -160,17 +156,12 @@ export function GameActivityChart() {
             </SelectContent>
           </Select>
         </div>
-      </CardHeader>
-      <CardContent className='h-[500px] w-full p-2'>
+      </ChartCardHeader>
+      <ChartCardContent className='h-[350px] sm:h-[500px]'>
         <ChartContainer config={chartConfig} className='h-full w-full'>
           <BarChart
             data={gamesData}
-            margin={{
-              top: 20,
-              right: 30,
-              left: 20,
-              bottom: 60,
-            }}
+            margin={{ top: 20, right: 10, left: 0, bottom: 60 }}
           >
             <CartesianGrid strokeDasharray='3 3' />
             <XAxis
@@ -189,7 +180,7 @@ export function GameActivityChart() {
             <Bar dataKey='count' fill='var(--color-count)' />
           </BarChart>
         </ChartContainer>
-      </CardContent>
-    </Card>
+      </ChartCardContent>
+    </ChartCard>
   )
 }
