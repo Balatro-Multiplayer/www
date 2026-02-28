@@ -188,7 +188,8 @@ function truncateMinioKey(value: string | null) {
 
 type SortableSnapshotRowProps = {
   row: SortableSnapshotTableRow
-  disabled: boolean
+  actionsDisabled: boolean
+  dragDisabled: boolean
   isDeleting: boolean
   isInvalidating: boolean
   isUploading: boolean
@@ -272,7 +273,7 @@ function SnapshotActions({
 
 function StaticSnapshotRow({
   row,
-  disabled,
+  actionsDisabled,
   isDeleting,
   isInvalidating,
   isUploading,
@@ -315,7 +316,7 @@ function StaticSnapshotRow({
       <TableCell>{getUploadDate(row.snapshot)}</TableCell>
       <TableCell>
         <SnapshotActions
-          disabled={disabled}
+          disabled={actionsDisabled}
           hasSnapshot={hasSnapshot}
           isDeleting={isDeleting}
           isInvalidating={isInvalidating}
@@ -333,7 +334,8 @@ function StaticSnapshotRow({
 
 function SortableSnapshotRow({
   row,
-  disabled,
+  actionsDisabled,
+  dragDisabled,
   isDeleting,
   isInvalidating,
   isUploading,
@@ -352,7 +354,7 @@ function SortableSnapshotRow({
     isDragging,
   } = useSortable({
     id: row.snapshot.id,
-    disabled,
+    disabled: dragDisabled,
   })
 
   const style = {
@@ -368,7 +370,7 @@ function SortableSnapshotRow({
       style={style}
       className={cn(
         isDragging && 'relative z-10 bg-muted/80 shadow-sm',
-        !disabled && 'transition-colors'
+        !dragDisabled && 'transition-colors'
       )}
     >
       <TableCell className='font-medium'>
@@ -378,7 +380,7 @@ function SortableSnapshotRow({
             variant='ghost'
             size='icon'
             className='h-7 w-7 cursor-grab text-muted-foreground active:cursor-grabbing'
-            disabled={disabled}
+            disabled={dragDisabled}
             aria-label={`Reorder ${row.label}`}
             {...attributes}
             {...listeners}
@@ -402,7 +404,7 @@ function SortableSnapshotRow({
       <TableCell>{getUploadDate(row.snapshot)}</TableCell>
       <TableCell>
         <SnapshotActions
-          disabled={disabled}
+          disabled={actionsDisabled}
           hasSnapshot={hasSnapshot}
           isDeleting={isDeleting}
           isInvalidating={isInvalidating}
@@ -785,7 +787,8 @@ export function SeasonDetailClient({
                       <SortableSnapshotRow
                         key={row.queueType}
                         row={row}
-                        disabled={
+                        actionsDisabled={reorderSnapshots.isPending}
+                        dragDisabled={
                           reorderSnapshots.isPending || sortableRows.length < 2
                         }
                         isUploading={isUploading}
@@ -917,7 +920,8 @@ export function SeasonDetailClient({
                   <StaticSnapshotRow
                     key={row.queueType}
                     row={row}
-                    disabled
+                    actionsDisabled={reorderSnapshots.isPending}
+                    dragDisabled
                     isUploading={isUploading}
                     isInvalidating={isInvalidating}
                     isDeleting={isDeleting}
