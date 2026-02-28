@@ -1,6 +1,6 @@
 import { db } from '@/server/db'
 import { player_games } from '@/server/db/schema'
-import { getSeasonForDate } from '@/shared/seasons'
+import { getSeasonForDate } from '@/server/seasons'
 import { sql } from 'drizzle-orm'
 
 async function migrateSeasonColumn() {

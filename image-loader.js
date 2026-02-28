@@ -12,16 +12,17 @@ const buildId =
     : Date.now().toString() + Math.random().toString(36).substring(2, 15)
 
 export default function bunnyLoader({ src, width, quality }) {
+  const params = new URLSearchParams()
+  params.set('width', width.toString())
+  params.set('quality', (quality || 100).toString())
+
   if (process.env.NODE_ENV === 'development') {
-    return src
+    return `${src}${src.includes('?') ? '&' : '?'}${params.toString()}`
   }
 
   if (!cdnUrl) {
     throw new Error('missing NEXT_PUBLIC_CDN_URL env variable.')
   }
-  const params = new URLSearchParams()
-  params.set('width', width.toString())
-  params.set('quality', (quality || 100).toString())
 
   // Add buildId as a query parameter for cache invalidation
   // This ensures each new build will have different URLs, forcing the CDN to fetch fresh content

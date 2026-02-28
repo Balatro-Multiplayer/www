@@ -11,6 +11,7 @@
 
 import { db } from '@/server/db'
 import { leaderboardSnapshots, player_games } from '@/server/db/schema'
+import { getSeasonForDate } from '@/server/seasons'
 import {
   CASUAL_QUEUE_ID,
   RANKED_QUEUE_ID,
@@ -18,7 +19,7 @@ import {
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
-import { SEASON_5_START_DATE, getSeasonForDate } from '@/shared/seasons'
+import { SEASON_5_START_DATE } from '@/shared/seasons'
 import { sql } from 'drizzle-orm'
 
 const BOTLATRO_URL = 'http://balatro.virtualized.dev:4931'
@@ -174,9 +175,16 @@ async function fetchPlayerMatches(userId: string): Promise<ApiPlayerMatch[]> {
   if (!res.ok) return []
 
   const json = (await res.json()) as { matches: ApiPlayerMatch[] }
-  return json.matches.filter(
-    (m) => getSeasonForDate(new Date(m.created_at)) === 'season5'
+  const matches = await Promise.all(
+    json.matches.map(async (match) => ({
+      match,
+      season: await getSeasonForDate(new Date(match.created_at)),
+    }))
   )
+
+  return matches
+    .filter((entry) => entry.season === 'season5')
+    .map((entry) => entry.match)
 }
 
 async function insertPlayerGames(

@@ -31,7 +31,7 @@ The admin UI SHALL provide a form to create a new season with name and start dat
 
 #### Scenario: Successful season creation
 - **WHEN** an owner submits the new season form with a valid name and start date
-- **THEN** a new row is inserted in the `seasons` table, `revalidateTag('seasons')` is called, and the list refreshes
+- **THEN** a new row is inserted in the `seasons` table, the Redis key `config:seasons` is invalidated or refreshed, and the list refreshes
 
 #### Scenario: Missing required fields rejected
 - **WHEN** the form is submitted without a name or start date

@@ -8,7 +8,7 @@
 ## 2. Season Config Refactor
 
 - [x] 2.1 Update `src/shared/seasons.ts`: replace `SeasonSchema` enum with `z.string().regex(/^season\d+$/)`, keep string format
-- [x] 2.2 Make `getSeasonForDate()` async, implement using DB query wrapped in `unstable_cache` with `'seasons'` revalidation tag
+- [x] 2.2 Make `getSeasonForDate()` async, implement using Redis-backed season config cache with DB fallback
 - [x] 2.3 Update `getSeasonDisplayName()` to derive number from string dynamically (no hardcoded cases)
 - [x] 2.4 Audit and update all callers of `getSeasonForDate()` and `SeasonSchema` to handle async / new type
 
@@ -26,8 +26,8 @@
 
 - [ ] 4.1 Create `src/server/api/routers/seasons.ts` with `ownerProcedure` for all mutations
 - [ ] 4.2 Implement `list` query — return all seasons from DB ordered by id
-- [ ] 4.3 Implement `create` mutation — insert season row, auto-create `season_snapshots` rows by copying queueType+queueId from previous season (minioKey null), set `config:active_season` in Redis if isActive, cache new season's queues at `config:season:{N}:queues`, call `revalidateTag('seasons')`
-- [ ] 4.4 Implement `update` mutation — update season row; when setting active=true: set all others inactive, write `config:active_season` to Redis; always call `revalidateTag('seasons')`
+- [ ] 4.3 Implement `create` mutation — insert season row, auto-create `season_snapshots` rows by copying queueType+queueId from previous season (minioKey null), set `config:active_season` in Redis if isActive, refresh or invalidate `config:seasons`, cache new season's queues at `config:season:{N}:queues`
+- [ ] 4.4 Implement `update` mutation — update season row; when setting active=true: set all others inactive, write `config:active_season` to Redis; always refresh or invalidate `config:seasons`
 - [ ] 4.5 Implement `list_snapshots` query — return `season_snapshots` rows for a seasonId (cached via `config:season:{N}:queues` in Redis)
 - [ ] 4.6 Implement `upsert_queue` mutation — add or update a queue entry (queueType, queueId) for a season; invalidate `config:season:{N}:queues` in Redis
 - [ ] 4.7 Implement `upload_snapshot` mutation — upload Buffer to MinIO under `leaderboard-snapshots/season{N}/{queueType}-{ts}.json`, delete old MinIO object if replacing, set `minioKey` on DB row, DEL Redis leaderboard key `season:{N}:leaderboard:{queueId}`, invalidate `config:season:{N}:queues`

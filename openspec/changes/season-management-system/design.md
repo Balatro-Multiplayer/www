@@ -86,11 +86,13 @@ season_snapshots {
 
 ### D4: `SeasonSchema` becomes loose regex, seasons loaded from DB
 
-**Decision**: Replace `z.enum([...])` with `z.string().regex(/^season\d+$/)`. `getSeasonForDate()` becomes async, using `unstable_cache` to avoid per-request DB hits.
+**Decision**: Replace `z.enum([...])` with `z.string().regex(/^season\d+$/)`. `getSeasonForDate()` becomes async, reading season config from Redis key `config:seasons` and falling back to DB on cache miss.
 
-**Rationale**: Enum can't represent an open-ended set of seasons. `unstable_cache` with a `'seasons'` tag provides memoization while allowing revalidation after admin creates a new season.
+**Rationale**: Enum can't represent an open-ended set of seasons. Redis keeps the cache usable from RSC, API routes, scripts, and webhooks with one shared code path. Season config changes rarely, so a persistent Redis entry is a better fit than framework-local caching.
 
 **Alternative considered**: Numeric season IDs in URLs. Rejected to avoid breaking existing bookmarks.
+
+**Alternative considered**: `unstable_cache` (Next.js). Rejected — cache scope is tied to Next.js runtime semantics and is not a good fit for scripts, webhooks, or non-RSC consumers.
 
 ---
 
@@ -123,7 +125,7 @@ season_snapshots {
 ## Risks / Trade-offs
 
 **Risk**: `getSeasonForDate()` going async breaks callers that expect sync.
-→ Mitigation: Use `unstable_cache` so it's still a simple `await` call; the underlying DB hit is memoized per request/revalidation cycle. Audit all call sites before shipping.
+→ Mitigation: Keep lookup behind a small server helper backed by Redis so callers only add `await`, and audit all call sites before shipping.
 
 **Risk**: Historical S1–S4 data unavailable until owner manually uploads snapshots.
 → Mitigation: Fall back to legacy static JSON files and `leaderboard_snapshots` table as before during the transition. Display a "snapshot not yet uploaded" state in admin UI.
@@ -146,6 +148,6 @@ season_snapshots {
 
 ## Open Questions
 
-- Should `getSeasonForDate()` cache be invalidated globally when a new season is created, or is a 60s `unstable_cache` TTL sufficient?
+- Should season create/update mutations always rewrite `config:seasons` immediately, or is deleting the key and letting the next read repopulate it sufficient?
 - Should the admin UI enforce that a season must have an `endDate` before allowing snapshot upload (to prevent uploading for a still-active season)?
 - Keep or drop the old `leaderboard_snapshots` table in this change, or leave for a future cleanup?

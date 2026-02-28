@@ -5,6 +5,7 @@ import {
 } from '@/server/api/trpc'
 import { player_games } from '@/server/db/schema'
 import type { SelectGames } from '@/server/db/types'
+import { getSeasonForDate } from '@/server/seasons'
 import {
   type PlayerMatch,
   botlatro_service,
@@ -22,7 +23,6 @@ import {
   SEASON_5_START_DATE,
   SEASON_6_START_DATE,
   SeasonSchema,
-  getSeasonForDate,
 } from '@/shared/seasons'
 import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm'
 import { z } from 'zod'

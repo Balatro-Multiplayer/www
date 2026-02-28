@@ -27,11 +27,11 @@ The system SHALL determine which season a game timestamp belongs to by querying 
 ---
 
 ### Requirement: Season config cached to avoid per-request DB hits
-Season configuration SHALL be cached using `unstable_cache` with a `'seasons'` revalidation tag. The cache SHALL be invalidated when a season is created or updated via the admin UI.
+Season configuration SHALL be cached in Redis under `config:seasons`. On cache miss, the system SHALL read from DB and repopulate Redis. The cache SHALL be invalidated or refreshed when a season is created or updated via the admin UI.
 
-#### Scenario: Cache revalidated after season update
+#### Scenario: Cache refreshed after season update
 - **WHEN** an owner creates or updates a season via the admin API
-- **THEN** `revalidateTag('seasons')` is called, causing the next request to re-fetch from DB
+- **THEN** the Redis key `config:seasons` is deleted or rewritten so the next read returns fresh season config
 
 ---
 
