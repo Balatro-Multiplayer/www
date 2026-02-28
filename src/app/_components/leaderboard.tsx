@@ -1,9 +1,19 @@
 'use client'
 
+import { keepPreviousData } from '@tanstack/react-query'
+import {
+  ArrowDown,
+  ArrowUp,
+  Flame,
+  ListFilter,
+  Search,
+  TrendingUp,
+} from 'lucide-react'
+import Link from 'next/link'
+import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 import type React from 'react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDebounceCallback } from 'usehooks-ts'
-
 import { PaginationControls } from '@/app/_components/pagination-controls'
 import { SortableHeader } from '@/app/_components/sortable-header'
 import { TableShell } from '@/app/_components/table-shell'
@@ -18,6 +28,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/mobile-tooltip'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -38,14 +53,11 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { getRankData } from '@/shared/ranks'
 import {
+  getSeasonDisplayName,
   type Season,
   SeasonSchema,
-  getSeasonDisplayName,
 } from '@/shared/seasons'
-import { type RouterOutputs, api } from '@/trpc/react'
-import { ArrowDown, ArrowUp, Flame, Search, TrendingUp } from 'lucide-react'
-import Link from 'next/link'
-import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
+import { api, type RouterOutputs } from '@/trpc/react'
 
 type LeaderboardSortBy =
   | 'rank'
@@ -122,6 +134,16 @@ function sortSeasons(seasons: LeaderboardSeasonRow[]) {
   return [...seasons].sort((a, b) => b.id - a.id)
 }
 
+function clampGamesRange(
+  value: [number, number],
+  max: number
+): [number, number] {
+  const upperBound = Math.max(max, 0)
+  const min = Math.min(Math.max(value[0] ?? 0, 0), upperBound)
+  const nextMax = Math.min(Math.max(value[1] ?? upperBound, min), upperBound)
+  return [min, nextMax]
+}
+
 export function LeaderboardPage({
   activeSeason,
   initialSeason,
@@ -157,6 +179,8 @@ export function LeaderboardPage({
 
   const seasonsQuery = api.seasons.list.useQuery(undefined, {
     initialData: initialSeasons,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
   })
   const seasons = useMemo(
     () => sortSeasons(seasonsQuery.data ?? initialSeasons),
@@ -186,6 +210,8 @@ export function LeaderboardPage({
     {
       enabled: seasonId > 0,
       initialData: season === initialSeason ? initialSnapshots : undefined,
+      placeholderData: keepPreviousData,
+      staleTime: 30_000,
     }
   )
   const snapshots = useMemo(() => {
@@ -193,11 +219,6 @@ export function LeaderboardPage({
     if (season === initialSeason) return initialSnapshots
     return []
   }, [initialSeason, initialSnapshots, season, snapshotsQuery.data])
-
-  const [gamesAmount, setGamesAmount] = useState([
-    minGames ?? 0,
-    maxGames ?? 100,
-  ])
 
   const leaderboardType = useMemo(() => {
     if (snapshots.some((snapshot) => snapshot.queueType === rawType)) {
@@ -257,27 +278,27 @@ export function LeaderboardPage({
     },
     {
       enabled: Boolean(selectedSnapshot?.queueId),
+      placeholderData: keepPreviousData,
+      staleTime: 30_000,
     }
   )
 
   const currentLeaderboardResult = currentLeaderboardQuery.data
   const currentLeaderboard = currentLeaderboardResult?.data ?? []
-
-  // Calculate max games for slider
-  const maxGamesAmount = useMemo(
-    () => Math.max(...currentLeaderboard.map((entry) => entry.totalgames), 100),
-    [currentLeaderboard]
+  const sliderMax = currentLeaderboardResult
+    ? currentLeaderboardResult.gamesRange.max
+    : Math.max(minGames ?? 0, maxGames ?? 0, 0)
+  const normalizedGamesRange = useMemo(
+    () => clampGamesRange([minGames ?? 0, maxGames ?? sliderMax], sliderMax),
+    [maxGames, minGames, sliderMax]
   )
 
-  const currentMaxGames = gamesAmount[1] ?? 0
-
-  // Update max games when it changes
-  useEffect(() => {
-    if (maxGamesAmount > currentMaxGames) {
-      setGamesAmount([0, maxGamesAmount])
-      setSliderValue([0, maxGamesAmount])
-    }
-  }, [currentMaxGames, maxGamesAmount])
+  const isNonDefaultSeason = season !== latestSeason
+  const isGamesFiltered =
+    (minGames ?? 0) > 0 || (maxGames != null && maxGames !== sliderMax)
+  const hasActiveFilters = isNonDefaultSeason || isGamesFiltered
+  const activeFilterCount =
+    (isNonDefaultSeason ? 1 : 0) + (isGamesFiltered ? 1 : 0)
 
   // Handle tab change
   const handleTabChange = (value: string) => {
@@ -293,16 +314,54 @@ export function LeaderboardPage({
     setQueryParams({ search: nextSearch || null, page: 1 })
   }, 500)
 
-  // Handle games filter change
-  const [sliderValue, setSliderValue] = useState([0, 100])
+  const [sliderValue, setSliderValue] =
+    useState<[number, number]>(normalizedGamesRange)
+
+  useEffect(() => {
+    setSliderValue((current) => {
+      if (
+        current[0] === normalizedGamesRange[0] &&
+        current[1] === normalizedGamesRange[1]
+      ) {
+        return current
+      }
+
+      return normalizedGamesRange
+    })
+  }, [normalizedGamesRange])
+
+  useEffect(() => {
+    const [nextMin, nextMax] = normalizedGamesRange
+    const normalizedMinParam = nextMin > 0 ? nextMin : null
+    const normalizedMaxParam = nextMax !== sliderMax ? nextMax : null
+
+    if (
+      (minGames ?? null) === normalizedMinParam &&
+      (maxGames ?? null) === normalizedMaxParam
+    ) {
+      return
+    }
+
+    setQueryParams({
+      minGames: normalizedMinParam,
+      maxGames: normalizedMaxParam,
+      page: 1,
+    })
+  }, [maxGames, minGames, normalizedGamesRange, setQueryParams, sliderMax])
+
   const handleGamesAmountSliderChange = (value: number[]) => {
-    setSliderValue(value)
+    setSliderValue(
+      clampGamesRange([value[0] ?? 0, value[1] ?? sliderMax], sliderMax)
+    )
   }
   const handleGamesAmountSliderCommit = (value: number[]) => {
-    setGamesAmount(value)
+    const [nextMin, nextMax] = clampGamesRange(
+      [value[0] ?? 0, value[1] ?? sliderMax],
+      sliderMax
+    )
     setQueryParams({
-      minGames: (value[0] ?? 0) > 0 ? value[0] : null,
-      maxGames: value[1] !== maxGamesAmount ? value[1] : null,
+      minGames: nextMin > 0 ? nextMin : null,
+      maxGames: nextMax !== sliderMax ? nextMax : null,
       page: 1,
     })
   }
@@ -340,7 +399,7 @@ export function LeaderboardPage({
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col'>
+      <div className='mx-auto flex w-full max-w-fd-container flex-1 flex-col'>
         <div className='flex flex-1 flex-col overflow-hidden border-none'>
           {currentLeaderboardResult?.isStale && (
             <Alert className='my-4 border-amber-500 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300'>
@@ -356,95 +415,137 @@ export function LeaderboardPage({
             defaultValue={leaderboardType}
             value={leaderboardType}
             onValueChange={handleTabChange}
-            className='flex flex-1 flex-col px-0 py-4 md:py-6'
+            className='flex flex-1 flex-col py-4 md:py-6'
           >
-            <div className='mb-6 flex w-full flex-col items-start justify-between gap-4 md:items-center lg:flex-row'>
-              <div className='flex flex-col gap-4 md:flex-row md:items-center'>
-                <TabsList className='border border-gray-200 border-b bg-gray-50 dark:border-zinc-800 dark:bg-zinc-800/50'>
+            <div className='mb-4 flex w-full flex-col gap-3 md:mb-6'>
+              <TabsList className='w-full border border-gray-200 bg-gray-50 md:hidden dark:border-zinc-800 dark:bg-zinc-800/50'>
+                {snapshots.map((snapshot) => (
+                  <TabsTrigger
+                    key={snapshot.queueType}
+                    value={snapshot.queueType}
+                    className='flex-1 whitespace-nowrap text-xs'
+                  >
+                    {getQueueLabel(snapshot.queueType)}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              <div className='flex items-center gap-2'>
+                <TabsList className='hidden border border-gray-200 bg-gray-50 md:inline-flex dark:border-zinc-800 dark:bg-zinc-800/50'>
                   {snapshots.map((snapshot) => (
                     <TabsTrigger
                       key={snapshot.queueType}
                       value={snapshot.queueType}
+                      className='whitespace-nowrap text-sm'
                     >
                       {getQueueLabel(snapshot.queueType)}
                     </TabsTrigger>
                   ))}
                 </TabsList>
-
-                <div className='flex items-center gap-2'>
-                  <Label htmlFor='season-select' className='text-sm'>
-                    Season:
-                  </Label>
-                  <Select
-                    value={season}
-                    onValueChange={(value) =>
-                      handleSeasonChange(value as Season)
-                    }
-                  >
-                    <SelectTrigger id='season-select' className='w-[180px]'>
-                      <SelectValue placeholder='Select season' />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {seasons.map((seasonOption) => {
-                        const value = `season${seasonOption.id}` as Season
-                        return (
-                          <SelectItem key={value} value={value}>
-                            {getSeasonDisplayName(value)}
-                          </SelectItem>
-                        )
-                      })}
-                    </SelectContent>
-                  </Select>
+                <div className='relative min-w-0 flex-1'>
+                  <Search className='absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground' />
+                  <Input
+                    key={searchQuery ?? ''}
+                    placeholder='Search players...'
+                    className='border-gray-200 bg-white pl-9 dark:border-zinc-700 dark:bg-zinc-900'
+                    defaultValue={searchQuery ?? ''}
+                    onChange={(e) => updateSearch(e.target.value)}
+                  />
                 </div>
-              </div>
-              <div
-                className={
-                  'flex w-full flex-col items-center justify-end gap-2 lg:w-fit lg:flex-row lg:gap-4'
-                }
-              >
-                <div className={'flex w-full flex-col gap-1 md:w-[300px]'}>
-                  <Label>Games</Label>
-                  <div className='flex w-full items-center gap-2'>
-                    <span>{gamesAmount[0]}</span>
-                    <Slider
-                      value={sliderValue}
-                      onValueCommit={handleGamesAmountSliderCommit}
-                      max={maxGamesAmount}
-                      onValueChange={handleGamesAmountSliderChange}
-                      step={1}
-                      className={cn('w-full')}
-                    />
-                    <span>{gamesAmount[1]}</span>
-                  </div>
-                </div>
-                <div className={'flex w-full flex-col gap-1 md:w-[250px]'}>
-                  <Label>Search players</Label>
-                  <div className='relative w-full sm:w-auto'>
-                    <Search className='absolute top-2.5 left-2.5 h-4 w-4 text-gray-400 dark:text-zinc-400' />
-                    <Input
-                      key={searchQuery ?? ''}
-                      placeholder='Search players...'
-                      className='w-full border-gray-200 bg-white pl-9 dark:border-zinc-700 dark:bg-zinc-900'
-                      defaultValue={searchQuery ?? ''}
-                      onChange={(e) => updateSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant='outline' className='shrink-0 gap-1.5'>
+                      <ListFilter className='h-4 w-4' />
+                      <span className='hidden sm:inline'>Filters</span>
+                      {hasActiveFilters && (
+                        <span className='flex h-4 min-w-4 items-center justify-center rounded-full bg-violet-500 px-1 font-medium text-[10px] text-white'>
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align='end' className='w-72 space-y-4'>
+                    <div className='space-y-1.5'>
+                      <Label className='font-medium text-muted-foreground text-xs'>
+                        Season
+                      </Label>
+                      <Select
+                        value={season}
+                        onValueChange={(value) =>
+                          handleSeasonChange(value as Season)
+                        }
+                      >
+                        <SelectTrigger className='w-full'>
+                          <SelectValue placeholder='Select season' />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {seasons.map((seasonOption) => {
+                            const value = `season${seasonOption.id}` as Season
+                            return (
+                              <SelectItem key={value} value={value}>
+                                {getSeasonDisplayName(value)}
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className='space-y-1.5'>
+                      <Label className='font-medium text-muted-foreground text-xs'>
+                        Games played
+                      </Label>
+                      <Slider
+                        value={sliderValue}
+                        onValueCommit={handleGamesAmountSliderCommit}
+                        max={sliderMax}
+                        onValueChange={handleGamesAmountSliderChange}
+                        step={1}
+                      />
+                      <div className='flex justify-between text-muted-foreground text-xs tabular-nums'>
+                        <span>{sliderValue[0]}</span>
+                        <span>{sliderValue[1]}</span>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
             <div className='m-0 flex flex-1 flex-col'>
-              <TableShell className='flex flex-1 flex-col overflow-hidden'>
-                {!selectedSnapshot ? (
+              {!selectedSnapshot ? (
+                <TableShell className='flex flex-1 flex-col overflow-hidden'>
                   <div className='flex min-h-[240px] items-center justify-center px-6 text-center text-fd-muted-foreground'>
                     No queues configured for this season yet.
                   </div>
-                ) : currentLeaderboardQuery.isLoading ? (
+                </TableShell>
+              ) : currentLeaderboardQuery.isLoading &&
+                !currentLeaderboardResult ? (
+                <TableShell className='flex flex-1 flex-col overflow-hidden'>
                   <div className='flex min-h-[240px] items-center justify-center px-6 text-center text-fd-muted-foreground'>
                     Loading leaderboard...
                   </div>
-                ) : (
-                  <>
+                </TableShell>
+              ) : (
+                <>
+                  {/* Mobile card layout */}
+                  <div className='flex flex-col gap-2 md:hidden'>
+                    {currentLeaderboard.length > 0 ? (
+                      currentLeaderboard.map((entry) => (
+                        <LeaderboardCard
+                          key={entry.id}
+                          entry={entry}
+                          queueType={leaderboardType}
+                        />
+                      ))
+                    ) : (
+                      <div className='rounded-lg border bg-background py-12 text-center text-muted-foreground'>
+                        No players found
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Desktop table layout */}
+                  <TableShell className='hidden flex-1 flex-col overflow-hidden md:flex'>
                     <div className='overflow-x-auto'>
                       <LeaderboardTable
                         leaderboard={currentLeaderboard}
@@ -455,25 +556,107 @@ export function LeaderboardPage({
                         getMedal={getMedal}
                       />
                     </div>
-                    {(currentLeaderboardResult?.totalPages ?? 1) > 1 && (
-                      <PaginationControls
-                        currentPage={page}
-                        totalPages={currentLeaderboardResult?.totalPages ?? 1}
-                        total={currentLeaderboardResult?.total ?? 0}
-                        pageSize={50}
-                        itemLabel='players'
-                        onPageChange={handlePageChange}
-                        className='rounded-none border-0 border-t bg-background'
-                      />
-                    )}
-                  </>
-                )}
-              </TableShell>
+                  </TableShell>
+
+                  {(currentLeaderboardResult?.totalPages ?? 1) > 1 && (
+                    <PaginationControls
+                      currentPage={page}
+                      totalPages={currentLeaderboardResult?.totalPages ?? 1}
+                      total={currentLeaderboardResult?.total ?? 0}
+                      pageSize={50}
+                      itemLabel='players'
+                      onPageChange={handlePageChange}
+                      className='mt-2 rounded-lg border md:mt-0 md:rounded-none md:rounded-b-lg md:border-0 md:border-t'
+                    />
+                  )}
+                </>
+              )}
             </div>
           </Tabs>
         </div>
       </div>
     </div>
+  )
+}
+
+function LeaderboardCard({
+  entry,
+  queueType,
+}: {
+  entry: LeaderboardRow
+  queueType: string
+}) {
+  const winrate = entry.winrate * 100
+
+  return (
+    <Link
+      prefetch={false}
+      href={`/players/${entry.id}`}
+      className='group rounded-lg border bg-background p-3 transition-colors active:bg-muted/50'
+    >
+      <div className='flex items-center justify-between gap-3'>
+        <div className='flex min-w-0 items-center gap-2.5'>
+          <div className='flex shrink-0 items-center gap-1.5'>
+            <span className='w-6 text-right font-medium text-muted-foreground text-sm tabular-nums'>
+              {entry.rank}
+            </span>
+            {getMedal(entry.rank, entry.mmr, queueType)}
+          </div>
+          <span className='truncate font-medium group-hover:underline'>
+            {entry.name}
+          </span>
+          {entry.streak >= 3 && (
+            <Badge className='shrink-0 bg-orange-500 text-white'>
+              <Flame className='h-3 w-3' />
+            </Badge>
+          )}
+        </div>
+        <span className='shrink-0 text-right font-semibold text-lg tabular-nums'>
+          {Math.round(entry.mmr)}
+        </span>
+      </div>
+      <div className='mt-2 flex items-center gap-3 text-muted-foreground text-xs'>
+        <Badge
+          variant='outline'
+          className={cn(
+            'font-normal text-[10px]',
+            winrate > 60
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+              : winrate < 40
+                ? 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                : ''
+          )}
+        >
+          {Math.round(winrate)}% WR
+        </Badge>
+        <span>
+          <span className='text-emerald-600 dark:text-emerald-400'>
+            {entry.wins}W
+          </span>{' '}
+          <span className='text-rose-600 dark:text-rose-400'>
+            {entry.losses}L
+          </span>
+        </span>
+        <span className='tabular-nums'>{entry.totalgames}G</span>
+        {entry.streak !== 0 && (
+          <span
+            className={cn(
+              'flex items-center tabular-nums',
+              entry.streak > 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-600 dark:text-rose-400'
+            )}
+          >
+            {entry.streak > 0 ? (
+              <ArrowUp className='mr-0.5 h-3 w-3' />
+            ) : (
+              <ArrowDown className='mr-0.5 h-3 w-3' />
+            )}
+            {Math.abs(entry.streak)}
+          </span>
+        )}
+      </div>
+    </Link>
   )
 }
 
@@ -542,7 +725,10 @@ function RawLeaderboardTable({
               onSort={onSort}
             />
           </TableHead>
-          <TableHead className='text-right' align={'right'}>
+          <TableHead
+            className='hidden text-right xl:table-cell'
+            align={'right'}
+          >
             <SortableHeader
               className='w-full justify-end'
               column='peak_mmr'
@@ -572,7 +758,7 @@ function RawLeaderboardTable({
               onSort={onSort}
             />
           </TableHead>
-          <TableHead className='text-right'>
+          <TableHead className='hidden text-right lg:table-cell'>
             <SortableHeader
               className='w-full justify-end'
               column='losses'
@@ -602,7 +788,7 @@ function RawLeaderboardTable({
               onSort={onSort}
             />
           </TableHead>
-          <TableHead className='text-right'>
+          <TableHead className='hidden text-right xl:table-cell'>
             <SortableHeader
               className='w-full justify-end'
               column='peak_streak'
@@ -650,7 +836,7 @@ function RawLeaderboardTable({
                 <TableCell className='pr-7 text-right font-medium font-mono'>
                   {Math.round(entry.mmr)}
                 </TableCell>
-                <TableCell className='text-right font-mono'>
+                <TableCell className='hidden text-right font-mono xl:table-cell'>
                   <div className='flex items-center justify-end gap-1'>
                     {Math.round(entry.peak_mmr)}
                     <TrendingUp className='h-3.5 w-3.5 text-violet-400' />
@@ -660,7 +846,7 @@ function RawLeaderboardTable({
                   <Badge
                     variant='outline'
                     className={cn(
-                      'font-normal ',
+                      'font-normal',
                       winrate > 60
                         ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                         : winrate < 40
@@ -674,7 +860,7 @@ function RawLeaderboardTable({
                 <TableCell className='text-right text-emerald-600 dark:text-emerald-400'>
                   {entry.wins}
                 </TableCell>
-                <TableCell className='text-right text-rose-600 dark:text-rose-400'>
+                <TableCell className='hidden text-right text-rose-600 lg:table-cell dark:text-rose-400'>
                   {entry.losses}
                 </TableCell>
                 <TableCell className='text-right font-mono text-slate-600 dark:text-slate-400'>
@@ -697,7 +883,7 @@ function RawLeaderboardTable({
                     <span>0</span>
                   )}
                 </TableCell>
-                <TableCell className='text-right'>
+                <TableCell className='hidden text-right xl:table-cell'>
                   <span className='flex items-center justify-end font-mono'>
                     {entry.peak_streak}
                   </span>
@@ -707,7 +893,7 @@ function RawLeaderboardTable({
           })
         ) : (
           <TableRow>
-            <TableCell colSpan={11} className='h-24 text-center'>
+            <TableCell colSpan={99} className='h-24 text-center'>
               <p className='text-gray-500 dark:text-zinc-400'>
                 No players found
               </p>

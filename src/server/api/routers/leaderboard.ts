@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import {
   adminProcedure,
   createTRPCRouter,
@@ -8,7 +9,6 @@ import type { LeaderboardEntry } from '@/server/services/botlatro.service'
 import type { PaginationOptions } from '@/server/services/leaderboard'
 import { LeaderboardService } from '@/server/services/leaderboard'
 import { SeasonSchema } from '@/shared/seasons'
-import { z } from 'zod'
 
 const service = new LeaderboardService()
 
@@ -33,6 +33,18 @@ function getStaticLeaderboardResponse(
     filtered = filtered.filter((entry) =>
       entry.name.toLowerCase().includes(searchLower)
     )
+  }
+
+  const gamesRange = filtered.reduce(
+    (range, entry) => ({
+      min: Math.min(range.min, entry.totalgames),
+      max: Math.max(range.max, entry.totalgames),
+    }),
+    { min: Number.POSITIVE_INFINITY, max: 0 }
+  )
+  const resolvedGamesRange = {
+    min: Number.isFinite(gamesRange.min) ? gamesRange.min : 0,
+    max: gamesRange.max,
   }
 
   if (input.minGames !== undefined) {
@@ -65,6 +77,7 @@ function getStaticLeaderboardResponse(
     page: input.page,
     pageSize: input.pageSize,
     totalPages: Math.ceil(total / input.pageSize),
+    gamesRange: resolvedGamesRange,
     isStale: false,
   }
 }

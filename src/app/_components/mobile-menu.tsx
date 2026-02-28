@@ -127,7 +127,7 @@ export function MobileMenu({
         )}
 
         {/* Navigation */}
-        <div className='flex flex-1 flex-col overflow-y-auto'>
+        <div className='min-h-0 flex-1 overflow-y-auto'>
           <nav className='flex flex-col gap-0.5 px-3 py-3'>
             <MobileMenuLink
               href='/docs'
@@ -281,29 +281,29 @@ export function MobileMenu({
             </>
           )}
 
-          {/* Footer */}
-          <div className='mt-auto border-t px-3 py-3'>
-            <div className='flex items-center justify-between px-3'>
-              <span className='text-fd-muted-foreground text-xs'>Theme</span>
-              {renderThemeSwitch(
-                themeSwitch,
-                <ModeToggle />
-              )}
-            </div>
-            {isAuthenticated && (
-              <button
-                type='button'
-                onClick={() => {
-                  close()
-                  signOut()
-                }}
-                className='mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-destructive text-sm transition-colors hover:bg-destructive/10 active:bg-destructive/20'
-              >
-                <LogOut className='size-4' />
-                Sign out
-              </button>
+        </div>
+
+        <div className='border-t px-3 py-3'>
+          <div className='flex items-center justify-between px-3'>
+            <span className='text-fd-muted-foreground text-xs'>Theme</span>
+            {renderThemeSwitch(
+              themeSwitch,
+              <ModeToggle />
             )}
           </div>
+          {isAuthenticated && (
+            <button
+              type='button'
+              onClick={() => {
+                close()
+                signOut()
+              }}
+              className='mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-destructive text-sm transition-colors hover:bg-destructive/10 active:bg-destructive/20'
+            >
+              <LogOut className='size-4' />
+              Sign out
+            </button>
+          )}
         </div>
       </SheetContent>
     </Sheet>
