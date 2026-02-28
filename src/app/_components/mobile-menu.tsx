@@ -46,7 +46,7 @@ function MobileMenuLink({
     <Link
       href={href}
       onClick={onClick}
-      className='flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground active:bg-fd-accent/80'
+      className='flex items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-fd-muted-foreground text-sm transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground active:bg-fd-accent/80'
     >
       {icon}
       {children}
@@ -96,10 +96,8 @@ export function MobileMenu({
               </AvatarFallback>
             </Avatar>
             <div className='flex flex-col'>
-              <span className='text-sm font-semibold'>
-                {session.user.name}
-              </span>
-              <span className='text-xs text-fd-muted-foreground'>
+              <span className='font-semibold text-sm'>{session.user.name}</span>
+              <span className='text-fd-muted-foreground text-xs'>
                 Signed in
               </span>
             </div>
@@ -165,7 +163,7 @@ export function MobileMenu({
 
           {/* Tools */}
           <div className='px-3 py-3'>
-            <p className='mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground'>
+            <p className='mb-1 px-3 font-semibold text-fd-muted-foreground text-xs uppercase tracking-wider'>
               Tools
             </p>
             <MobileMenuLink
@@ -189,7 +187,7 @@ export function MobileMenu({
             <>
               <Separator />
               <div className='px-3 py-3'>
-                <p className='mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground'>
+                <p className='mb-1 px-3 font-semibold text-fd-muted-foreground text-xs uppercase tracking-wider'>
                   Account
                 </p>
                 <MobileMenuLink
@@ -222,7 +220,7 @@ export function MobileMenu({
             <>
               <Separator />
               <div className='px-3 py-3'>
-                <p className='mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-fd-muted-foreground'>
+                <p className='mb-1 px-3 font-semibold text-fd-muted-foreground text-xs uppercase tracking-wider'>
                   <Shield className='mr-1 inline size-3' />
                   Admin
                 </p>
@@ -279,7 +277,7 @@ export function MobileMenu({
           {/* Footer */}
           <div className='mt-auto border-t px-3 py-3'>
             <div className='flex items-center justify-between px-3'>
-              <span className='text-xs text-fd-muted-foreground'>Theme</span>
+              <span className='text-fd-muted-foreground text-xs'>Theme</span>
               {replaceOrDefault(
                 themeSwitch,
                 <ThemeToggle mode={themeSwitch?.mode} />
@@ -292,7 +290,7 @@ export function MobileMenu({
                   close()
                   signOut()
                 }}
-                className='mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/20'
+                className='mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 font-medium text-destructive text-sm transition-colors hover:bg-destructive/10 active:bg-destructive/20'
               >
                 <LogOut className='size-4' />
                 Sign out

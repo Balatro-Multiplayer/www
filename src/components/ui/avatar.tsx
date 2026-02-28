@@ -29,7 +29,7 @@ function AvatarImage({
 }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
   const isDev = process.env.NODE_ENV === 'development'
   let finalSrc = src
-  if (src?.startsWith('/') && !isDev) {
+  if (typeof src === 'string' && src.startsWith('/') && !isDev) {
     finalSrc = `${CDN_URL}${src}`
   }
   return (

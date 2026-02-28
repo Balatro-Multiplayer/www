@@ -1,6 +1,5 @@
 'use client'
 
-import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 import {
   type ChartConfig,
   ChartContainer,
@@ -19,6 +18,7 @@ import { type RouterOutputs, api } from '@/trpc/react'
 import { useMemo, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { resolveStatsSeason } from '../search-params.constants'
+import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 
 const chartConfig = {
   count: {
@@ -177,7 +177,13 @@ export function RatingDistributionChart({
                   margin={{ top: 10, right: 5, left: 0, bottom: 40 }}
                 >
                   <defs>
-                    <linearGradient id='fillCountMobile' x1='0' y1='0' x2='0' y2='1'>
+                    <linearGradient
+                      id='fillCountMobile'
+                      x1='0'
+                      y1='0'
+                      x2='0'
+                      y2='1'
+                    >
                       <stop
                         offset='5%'
                         stopColor='var(--color-count)'

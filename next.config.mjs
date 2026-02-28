@@ -7,6 +7,37 @@ import { createMDX } from 'fumadocs-mdx/next'
 import createNextIntlPlugin from 'next-intl/plugin'
 
 const withMDX = createMDX()
+
+function normalizeTurbopackConfig(nextConfig) {
+  const { turbo: legacyTurbo, ...experimental } = nextConfig.experimental ?? {}
+  if (!legacyTurbo) {
+    return nextConfig
+  }
+
+  const normalizedConfig = {
+    ...nextConfig,
+    turbopack: {
+      ...legacyTurbo,
+      ...nextConfig.turbopack,
+      resolveAlias: {
+        ...legacyTurbo.resolveAlias,
+        ...nextConfig.turbopack?.resolveAlias,
+      },
+      rules: {
+        ...legacyTurbo.rules,
+        ...nextConfig.turbopack?.rules,
+      },
+    },
+  }
+
+  if (Object.keys(experimental).length > 0) {
+    normalizedConfig.experimental = experimental
+  } else {
+    normalizedConfig.experimental = undefined
+  }
+
+  return normalizedConfig
+}
 /** @type {import("next").NextConfig} */
 const config = {
   output: 'standalone',
@@ -62,4 +93,4 @@ const config = {
   },
 }
 const withNextIntl = createNextIntlPlugin()
-export default withNextIntl(withMDX(config))
+export default normalizeTurbopackConfig(withNextIntl(withMDX(config)))

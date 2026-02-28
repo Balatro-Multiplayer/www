@@ -1,7 +1,6 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 import {
   type ChartConfig,
   ChartContainer,
@@ -19,6 +18,7 @@ import {
 } from '@/shared/seasons'
 import { api } from '@/trpc/react'
 import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from 'recharts'
+import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 
 const fmt = (d: Date) =>
   d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })

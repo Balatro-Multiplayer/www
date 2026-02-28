@@ -3,7 +3,6 @@
 import { DECK_IMAGES } from '@/app/(home)/players/[id]/_components/deck-stake-stats-chart'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
-import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 import {
   type ChartConfig,
   ChartContainer,
@@ -54,6 +53,7 @@ import {
   createStatsSearchParamsParsers,
 } from '../search-params'
 import { resolveStatsSeason } from '../search-params.constants'
+import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 
 const PIE_COLORS = [
   'var(--color-violet-500)',
@@ -352,9 +352,14 @@ export function DeckPopularityChart({
                       const { x, y, payload } = props
                       const imagePath = DECK_IMAGES[payload.value]
                       const itemCount = data.length
-                      const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
+                      const imgSize = Math.max(
+                        20,
+                        Math.min(40, 600 / itemCount)
+                      )
                       return (
-                        <g transform={`translate(${x - imgSize / 2},${y + 10})`}>
+                        <g
+                          transform={`translate(${x - imgSize / 2},${y + 10})`}
+                        >
                           <title className='capitalize'>{payload.value}</title>
                           {imagePath && (
                             <image
@@ -392,7 +397,11 @@ export function DeckPopularityChart({
                       />
                     }
                   />
-                  <Bar dataKey='games' fill='var(--color-violet-500)' radius={4}>
+                  <Bar
+                    dataKey='games'
+                    fill='var(--color-violet-500)'
+                    radius={4}
+                  >
                     <LabelList
                       dataKey='pickRate'
                       position='top'
@@ -439,7 +448,11 @@ export function DeckPopularityChart({
                       />
                     }
                   />
-                  <Bar dataKey='games' fill='var(--color-violet-500)' radius={4}>
+                  <Bar
+                    dataKey='games'
+                    fill='var(--color-violet-500)'
+                    radius={4}
+                  >
                     <LabelList
                       dataKey='pickRate'
                       position='right'
@@ -455,7 +468,10 @@ export function DeckPopularityChart({
           </>
         ) : (
           <div className='flex h-[350px] flex-col gap-4 sm:h-[500px] sm:flex-row'>
-            <ChartContainer config={chartConfig} className='min-h-[200px] flex-1 sm:h-full'>
+            <ChartContainer
+              config={chartConfig}
+              className='min-h-[200px] flex-1 sm:h-full'
+            >
               <PieChart>
                 <ChartTooltip
                   content={
