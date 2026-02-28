@@ -467,15 +467,17 @@ export function LeaderboardPage({
                         getMedal={getMedal}
                       />
                     </div>
-                    <PaginationControls
-                      currentPage={page}
-                      totalPages={currentLeaderboardResult?.totalPages ?? 1}
-                      total={currentLeaderboardResult?.total ?? 0}
-                      pageSize={50}
-                      itemLabel='players'
-                      onPageChange={handlePageChange}
-                      className='rounded-none border-0 border-t bg-background'
-                    />
+                    {(currentLeaderboardResult?.totalPages ?? 1) > 1 && (
+                      <PaginationControls
+                        currentPage={page}
+                        totalPages={currentLeaderboardResult?.totalPages ?? 1}
+                        total={currentLeaderboardResult?.total ?? 0}
+                        pageSize={50}
+                        itemLabel='players'
+                        onPageChange={handlePageChange}
+                        className='rounded-none border-0 border-t bg-background'
+                      />
+                    )}
                   </>
                 )}
               </TableShell>
