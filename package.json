@@ -23,7 +23,7 @@
     "verify:season-management": "bun run scripts/verify-season-management.ts"
   },
   "dependencies": {
-    "@auth/drizzle-adapter": "^1.7.2",
+    "@auth/drizzle-adapter": "1.11.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -78,7 +78,7 @@
     "lucide-react": "^0.487.0",
     "minio": "^8.0.5",
     "next": "16.1.6",
-    "next-auth": "5.0.0-beta.25",
+    "next-auth": "5.0.0-beta.30",
     "next-intl": "^4.0.2",
     "next-plausible": "^3.12.4",
     "next-themes": "^0.4.6",
