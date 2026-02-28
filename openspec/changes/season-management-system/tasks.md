@@ -24,16 +24,16 @@
 
 ## 4. tRPC Seasons Router
 
-- [ ] 4.1 Create `src/server/api/routers/seasons.ts` with `ownerProcedure` for all mutations
-- [ ] 4.2 Implement `list` query — return all seasons from DB ordered by id
-- [ ] 4.3 Implement `create` mutation — insert season row, auto-create `season_snapshots` rows by copying queueType+queueId from previous season (minioKey null), set `config:active_season` in Redis if isActive, refresh or invalidate `config:seasons`, cache new season's queues at `config:season:{N}:queues`
-- [ ] 4.4 Implement `update` mutation — update season row; when setting active=true: set all others inactive, write `config:active_season` to Redis; always refresh or invalidate `config:seasons`
-- [ ] 4.5 Implement `list_snapshots` query — return `season_snapshots` rows for a seasonId (cached via `config:season:{N}:queues` in Redis)
-- [ ] 4.6 Implement `upsert_queue` mutation — add or update a queue entry (queueType, queueId) for a season; invalidate `config:season:{N}:queues` in Redis
-- [ ] 4.7 Implement `upload_snapshot` mutation — upload Buffer to MinIO under `leaderboard-snapshots/season{N}/{queueType}-{ts}.json`, delete old MinIO object if replacing, set `minioKey` on DB row, DEL Redis leaderboard key `season:{N}:leaderboard:{queueId}`, invalidate `config:season:{N}:queues`
-- [ ] 4.8 Implement `delete_queue` mutation — remove `season_snapshots` row, delete MinIO object if exists, DEL Redis leaderboard and queue-list keys
-- [ ] 4.9 Implement `invalidate_cache` mutation — DEL `season:{N}:leaderboard:{queueId}` from Redis
-- [ ] 4.9 Register seasons router in `src/server/api/root.ts`
+- [x] 4.1 Create `src/server/api/routers/seasons.ts` with `ownerProcedure` for all mutations
+- [x] 4.2 Implement `list` query — return all seasons from DB ordered by id
+- [x] 4.3 Implement `create` mutation — insert season row, auto-create `season_snapshots` rows by copying queueType+queueId from previous season (minioKey null), set `config:active_season` in Redis if isActive, refresh or invalidate `config:seasons`, cache new season's queues at `config:season:{N}:queues`
+- [x] 4.4 Implement `update` mutation — update season row; when setting active=true: set all others inactive, write `config:active_season` to Redis; always refresh or invalidate `config:seasons`
+- [x] 4.5 Implement `list_snapshots` query — return `season_snapshots` rows for a seasonId (cached via `config:season:{N}:queues` in Redis)
+- [x] 4.6 Implement `upsert_queue` mutation — add or update a queue entry (queueType, queueId) for a season; invalidate `config:season:{N}:queues` in Redis
+- [x] 4.7 Implement `upload_snapshot` mutation — upload Buffer to MinIO under `leaderboard-snapshots/season{N}/{queueType}-{ts}.json`, delete old MinIO object if replacing, set `minioKey` on DB row, DEL Redis leaderboard key `season:{N}:leaderboard:{queueId}`, invalidate `config:season:{N}:queues`
+- [x] 4.8 Implement `delete_queue` mutation — remove `season_snapshots` row, delete MinIO object if exists, DEL Redis leaderboard and queue-list keys
+- [x] 4.9 Implement `invalidate_cache` mutation — DEL `season:{N}:leaderboard:{queueId}` from Redis
+- [x] 4.9 Register seasons router in `src/server/api/root.ts`
 
 ## 5. Admin UI — Season List Page
 

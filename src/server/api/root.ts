@@ -6,6 +6,7 @@ import { leaderboard_router } from '@/server/api/routers/leaderboard'
 import { playerStateRouter } from '@/server/api/routers/player-state'
 import { profileRouter } from '@/server/api/routers/profile'
 import { releasesRouter } from '@/server/api/routers/releases'
+import { seasonsRouter } from '@/server/api/routers/seasons'
 import { stats_router } from '@/server/api/routers/stats'
 import { usersRouter } from '@/server/api/routers/users'
 import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc'
@@ -24,6 +25,7 @@ export const appRouter = createTRPCRouter({
   playerState: playerStateRouter,
   profile: profileRouter,
   releases: releasesRouter,
+  seasons: seasonsRouter,
   stats: stats_router,
   users: usersRouter,
 })
