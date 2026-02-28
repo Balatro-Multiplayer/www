@@ -45,11 +45,7 @@ function getSeasonId(season: Season): number {
 }
 
 function getDefaultQueueType(snapshots: SnapshotRow[]) {
-  return (
-    snapshots.find((snapshot) => snapshot.queueType === 'ranked')?.queueType ??
-    snapshots[0]?.queueType ??
-    'ranked'
-  )
+  return snapshots[0]?.queueType ?? 'ranked'
 }
 
 function getQueueLabel(queueType: string) {

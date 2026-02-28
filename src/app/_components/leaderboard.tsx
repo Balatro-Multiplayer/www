@@ -102,11 +102,7 @@ function getSeasonId(season: Season): number {
 }
 
 function getDefaultQueueType(snapshots: LeaderboardSnapshotRow[]): string {
-  return (
-    snapshots.find((snapshot) => snapshot.queueType === 'ranked')?.queueType ??
-    snapshots[0]?.queueType ??
-    'ranked'
-  )
+  return snapshots[0]?.queueType ?? 'ranked'
 }
 
 function getQueueLabel(queueType: string): string {

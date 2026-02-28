@@ -90,7 +90,10 @@ export async function POST(req: NextRequest) {
         console.log('-----JOIN QUEUE-----')
         console.dir(payload, { depth: null })
         console.log(normalizedUserId)
-        await redis.set(PLAYER_STATE_KEY(normalizedUserId), JSON.stringify(state))
+        await redis.set(
+          PLAYER_STATE_KEY(normalizedUserId),
+          JSON.stringify(state)
+        )
         globalEmitter.emit(`state-change:${normalizedUserId}`, state)
         break
       }

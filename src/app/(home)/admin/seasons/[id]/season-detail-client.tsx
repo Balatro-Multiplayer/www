@@ -300,6 +300,9 @@ function StaticSnapshotRow({
             <GripVertical className='h-4 w-4' />
           </Button>
           <span>{row.label}</span>
+          {row.snapshot.sortOrder === 0 ? (
+            <Badge variant='secondary'>Default</Badge>
+          ) : null}
         </div>
       </TableCell>
       <TableCell>
@@ -388,6 +391,9 @@ function SortableSnapshotRow({
             <GripVertical className='h-4 w-4' />
           </Button>
           <span>{row.label}</span>
+          {row.snapshot.sortOrder === 0 ? (
+            <Badge variant='secondary'>Default</Badge>
+          ) : null}
         </div>
       </TableCell>
       <TableCell>
@@ -747,8 +753,9 @@ export function SeasonDetailClient({
         <div className='border-b px-4 py-3'>
           <h2 className='font-semibold text-lg'>Snapshots</h2>
           <p className='text-muted-foreground text-sm'>
-            Drag rows to set leaderboard tab order. Upload season-end
-            leaderboard JSON, invalidate cache, or remove a stored snapshot.
+            Drag rows to set leaderboard tab order and default leaderboard. The
+            first row is the default. Upload season-end leaderboard JSON,
+            invalidate cache, or remove a stored snapshot.
           </p>
         </div>
 

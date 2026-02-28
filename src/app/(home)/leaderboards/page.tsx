@@ -9,11 +9,7 @@ import { type Season, SeasonSchema } from '@/shared/seasons'
 import { HydrateClient, api } from '@/trpc/server'
 
 function getDefaultQueueType(snapshots: Array<{ queueType: string }>) {
-  return (
-    snapshots.find((snapshot) => snapshot.queueType === 'ranked')?.queueType ??
-    snapshots[0]?.queueType ??
-    'ranked'
-  )
+  return snapshots[0]?.queueType ?? 'ranked'
 }
 
 export default async function Home({
