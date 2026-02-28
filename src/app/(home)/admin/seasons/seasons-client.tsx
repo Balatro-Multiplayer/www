@@ -155,11 +155,8 @@ export function SeasonsClient({ seasons }: { seasons: SeasonListRow[] }) {
                   </TableCell>
                   <TableCell>{season.snapshotCount}</TableCell>
                   <TableCell>
-                    <div className='flex gap-2'>
+                    <div className='flex'>
                       <Button variant='outline' size='sm' asChild>
-                        <Link href={`/admin/seasons/${season.id}`}>Edit</Link>
-                      </Button>
-                      <Button variant='ghost' size='sm' asChild>
                         <Link href={`/admin/seasons/${season.id}`}>Manage</Link>
                       </Button>
                     </div>
