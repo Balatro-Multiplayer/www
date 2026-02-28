@@ -41,6 +41,7 @@ type SnapshotCacheRow = {
   seasonId: number
   queueType: string
   queueId: string
+  sortOrder: number
   minioKey: string | null
   uploadedBy: string | null
   createdAt: string
@@ -61,7 +62,14 @@ function serializeSnapshots(rows: SnapshotCacheRow[]) {
 }
 
 function deserializeSnapshots(value: string): SnapshotCacheRow[] {
-  return JSON.parse(value) as SnapshotCacheRow[]
+  return (
+    JSON.parse(value) as Array<
+      Omit<SnapshotCacheRow, 'sortOrder'> & { sortOrder?: number }
+    >
+  ).map((row, index) => ({
+    ...row,
+    sortOrder: row.sortOrder ?? index,
+  }))
 }
 
 function toSnapshotCacheRow(row: {
@@ -69,6 +77,7 @@ function toSnapshotCacheRow(row: {
   seasonId: number
   queueType: string
   queueId: string
+  sortOrder: number
   minioKey: string | null
   uploadedBy: string | null
   createdAt: Date
@@ -78,10 +87,25 @@ function toSnapshotCacheRow(row: {
     seasonId: row.seasonId,
     queueType: row.queueType,
     queueId: row.queueId,
+    sortOrder: row.sortOrder,
     minioKey: row.minioKey,
     uploadedBy: row.uploadedBy,
     createdAt: row.createdAt.toISOString(),
   }
+}
+
+async function getNextSnapshotSortOrder(db: DbClient, seasonId: number) {
+  const lastSnapshot = await db
+    .select({
+      sortOrder: seasonSnapshots.sortOrder,
+    })
+    .from(seasonSnapshots)
+    .where(eq(seasonSnapshots.seasonId, seasonId))
+    .orderBy(desc(seasonSnapshots.sortOrder), desc(seasonSnapshots.id))
+    .limit(1)
+    .then((rows) => rows[0] ?? null)
+
+  return (lastSnapshot?.sortOrder ?? -1) + 1
 }
 
 async function getSeasonByIdOrThrow(db: DbClient, seasonId: number) {
@@ -152,7 +176,7 @@ async function loadSeasonSnapshotsForCache(db: DbClient, seasonId: number) {
     .select()
     .from(seasonSnapshots)
     .where(eq(seasonSnapshots.seasonId, seasonId))
-    .orderBy(asc(seasonSnapshots.queueType), asc(seasonSnapshots.id))
+    .orderBy(asc(seasonSnapshots.sortOrder), asc(seasonSnapshots.id))
 
   return rows.map(toSnapshotCacheRow)
 }
@@ -222,9 +246,11 @@ export const seasonsRouter = createTRPCRouter({
             .select({
               queueType: seasonSnapshots.queueType,
               queueId: seasonSnapshots.queueId,
+              sortOrder: seasonSnapshots.sortOrder,
             })
             .from(seasonSnapshots)
             .where(eq(seasonSnapshots.seasonId, previousSeason.id))
+            .orderBy(asc(seasonSnapshots.sortOrder), asc(seasonSnapshots.id))
 
           if (previousQueues.length > 0) {
             await tx.insert(seasonSnapshots).values(
@@ -232,6 +258,7 @@ export const seasonsRouter = createTRPCRouter({
                 seasonId: created.id,
                 queueType: queue.queueType,
                 queueId: queue.queueId,
+                sortOrder: queue.sortOrder,
                 minioKey: null,
                 uploadedBy: null,
               }))
@@ -324,6 +351,7 @@ export const seasonsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       await getSeasonByIdOrThrow(ctx.db, input.seasonId)
+      const sortOrder = await getNextSnapshotSortOrder(ctx.db, input.seasonId)
 
       const [snapshot] = await ctx.db
         .insert(seasonSnapshots)
@@ -331,6 +359,7 @@ export const seasonsRouter = createTRPCRouter({
           seasonId: input.seasonId,
           queueType: input.queueType,
           queueId: input.queueId,
+          sortOrder,
         })
         .onConflictDoUpdate({
           target: [seasonSnapshots.seasonId, seasonSnapshots.queueType],
@@ -370,6 +399,9 @@ export const seasonsRouter = createTRPCRouter({
         input.seasonId,
         input.queueType
       )
+      const nextSortOrder = existingSnapshot
+        ? existingSnapshot.sortOrder
+        : await getNextSnapshotSortOrder(ctx.db, input.seasonId)
 
       const buffer = toBuffer(input.buffer)
       JSON.parse(buffer.toString('utf-8'))
@@ -412,6 +444,7 @@ export const seasonsRouter = createTRPCRouter({
               seasonId: input.seasonId,
               queueType: input.queueType,
               queueId: resolvedQueueId,
+              sortOrder: nextSortOrder,
               minioKey: objectKey,
               uploadedBy: ctx.session.user.id,
             })
@@ -486,6 +519,61 @@ export const seasonsRouter = createTRPCRouter({
       await redis.del(getSeasonQueuesCacheKey(input.seasonId))
 
       return { success: true }
+    }),
+
+  reorder_snapshots: ownerProcedure
+    .input(
+      z.object({
+        seasonId: z.number().int().positive(),
+        snapshotIds: z.array(z.number().int().positive()).min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await getSeasonByIdOrThrow(ctx.db, input.seasonId)
+
+      const existingSnapshots = await ctx.db
+        .select({
+          id: seasonSnapshots.id,
+        })
+        .from(seasonSnapshots)
+        .where(eq(seasonSnapshots.seasonId, input.seasonId))
+        .orderBy(asc(seasonSnapshots.sortOrder), asc(seasonSnapshots.id))
+
+      if (existingSnapshots.length !== input.snapshotIds.length) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Snapshot order is stale. Refresh and try again.',
+        })
+      }
+
+      const expectedIds = new Set(
+        existingSnapshots.map((snapshot) => snapshot.id)
+      )
+      const submittedIds = new Set(input.snapshotIds)
+
+      if (
+        submittedIds.size !== input.snapshotIds.length ||
+        existingSnapshots.some((snapshot) => !submittedIds.has(snapshot.id)) ||
+        input.snapshotIds.some((snapshotId) => !expectedIds.has(snapshotId))
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Snapshot order is stale. Refresh and try again.',
+        })
+      }
+
+      await ctx.db.transaction(async (tx) => {
+        await Promise.all(
+          input.snapshotIds.map((snapshotId, index) =>
+            tx
+              .update(seasonSnapshots)
+              .set({ sortOrder: index })
+              .where(eq(seasonSnapshots.id, snapshotId))
+          )
+        )
+      })
+
+      return refreshSeasonSnapshotsCache(ctx.db, input.seasonId)
     }),
 
   invalidate_cache: ownerProcedure

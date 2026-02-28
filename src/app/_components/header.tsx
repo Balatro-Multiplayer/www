@@ -91,6 +91,14 @@ export function Header({
                   </p>
                 </NavbarMenuLink>
               )}
+              {isOwner && (
+                <NavbarMenuLink href='/admin/seasons'>
+                  <p className='-mb-1 font-medium text-sm'>Seasons</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Manage seasons and snapshots
+                  </p>
+                </NavbarMenuLink>
+              )}
               <NavbarMenuLink href='/admin/blog'>
                 <p className='-mb-1 font-medium text-sm'>Blog</p>
                 <p className='text-[13px] text-fd-muted-foreground'>
@@ -237,6 +245,11 @@ export function Header({
                   {isOwner && (
                     <Link href='/admin/roles' className='px-3 py-1 text-sm'>
                       Role Manager
+                    </Link>
+                  )}
+                  {isOwner && (
+                    <Link href='/admin/seasons' className='px-3 py-1 text-sm'>
+                      Seasons
                     </Link>
                   )}
                   <Link href='/admin/blog' className='px-3 py-1 text-sm'>

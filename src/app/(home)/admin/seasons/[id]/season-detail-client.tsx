@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatDate } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 import {
   LEGACY_QUEUE_ID,
   RANKED_QUEUE_ID,
@@ -32,11 +32,30 @@ import {
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
 import { api } from '@/trpc/react'
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import {
   type ChangeEvent,
   type FormEvent,
   startTransition,
+  useEffect,
   useRef,
   useState,
 } from 'react'
@@ -55,6 +74,7 @@ export type SeasonSnapshotPageData = {
   seasonId: number
   queueType: string
   queueId: string
+  sortOrder: number
   minioKey: string | null
   uploadedBy: string | null
   createdAt: string
@@ -68,6 +88,10 @@ type QueueConfig = {
 
 type SnapshotTableRow = QueueConfig & {
   snapshot: SeasonSnapshotPageData | null
+}
+
+type SortableSnapshotTableRow = QueueConfig & {
+  snapshot: SeasonSnapshotPageData
 }
 
 const KNOWN_QUEUES: QueueConfig[] = [
@@ -93,24 +117,40 @@ function buildSnapshotRows(
     snapshots.map((snapshot) => [snapshot.queueType, snapshot] as const)
   )
 
-  const knownRows = KNOWN_QUEUES.map((queue) => ({
-    ...queue,
-    snapshot: snapshotMap.get(queue.queueType) ?? null,
+  const orderedSnapshotRows = snapshots.map((snapshot) => ({
+    queueType: snapshot.queueType,
+    label: getQueueLabel(snapshot.queueType),
+    queueId: snapshot.queueId,
+    snapshot,
   }))
 
-  const extraRows = snapshots
-    .filter(
-      (snapshot) =>
-        !KNOWN_QUEUES.some((queue) => queue.queueType === snapshot.queueType)
-    )
-    .map((snapshot) => ({
-      queueType: snapshot.queueType,
-      label: snapshot.queueType,
-      queueId: snapshot.queueId,
-      snapshot,
-    }))
+  const missingKnownRows = KNOWN_QUEUES.filter(
+    (queue) => !snapshotMap.has(queue.queueType)
+  ).map((queue) => ({
+    ...queue,
+    snapshot: null,
+  }))
 
-  return [...knownRows, ...extraRows]
+  return [...orderedSnapshotRows, ...missingKnownRows]
+}
+
+function getQueueLabel(queueType: string) {
+  const knownQueue = KNOWN_QUEUES.find((queue) => queue.queueType === queueType)
+  if (knownQueue) {
+    return knownQueue.label
+  }
+
+  return queueType
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function isSortableSnapshotRow(
+  row: SnapshotTableRow
+): row is SortableSnapshotTableRow {
+  return row.snapshot !== null
 }
 
 function getUploadDate(snapshot: SeasonSnapshotPageData | null) {
@@ -145,6 +185,238 @@ function truncateMinioKey(value: string | null) {
   return `${value.slice(0, 24)}...${value.slice(-16)}`
 }
 
+type SortableSnapshotRowProps = {
+  row: SortableSnapshotTableRow
+  disabled: boolean
+  isDeleting: boolean
+  isInvalidating: boolean
+  isUploading: boolean
+  onDelete: () => void
+  onInvalidate: () => void
+  onUpload: (event: ChangeEvent<HTMLInputElement>) => void
+  onUploadInputRef: (node: HTMLInputElement | null) => void
+  onUploadSelect: () => void
+}
+
+type SnapshotActionState = {
+  disabled: boolean
+  isDeleting: boolean
+  isInvalidating: boolean
+  isUploading: boolean
+}
+
+type SnapshotActionsProps = SnapshotActionState & {
+  hasSnapshot: boolean
+  onDelete: () => void
+  onInvalidate: () => void
+  onUpload: (event: ChangeEvent<HTMLInputElement>) => void
+  onUploadInputRef: (node: HTMLInputElement | null) => void
+  onUploadSelect: () => void
+}
+
+function SnapshotActions({
+  disabled,
+  hasSnapshot,
+  isDeleting,
+  isInvalidating,
+  isUploading,
+  onDelete,
+  onInvalidate,
+  onUpload,
+  onUploadInputRef,
+  onUploadSelect,
+}: SnapshotActionsProps) {
+  return (
+    <div className='flex flex-wrap gap-2'>
+      <input
+        ref={onUploadInputRef}
+        type='file'
+        accept='.json,application/json'
+        className='hidden'
+        onChange={onUpload}
+      />
+
+      <Button
+        type='button'
+        variant='outline'
+        size='sm'
+        onClick={onUploadSelect}
+        disabled={isUploading || disabled}
+      >
+        {isUploading ? 'Uploading...' : hasSnapshot ? 'Replace' : 'Upload'}
+      </Button>
+
+      <Button
+        type='button'
+        variant='secondary'
+        size='sm'
+        onClick={onInvalidate}
+        disabled={isInvalidating || disabled}
+      >
+        {isInvalidating ? 'Invalidating...' : 'Invalidate Cache'}
+      </Button>
+
+      <Button
+        type='button'
+        variant='destructive'
+        size='sm'
+        onClick={onDelete}
+        disabled={!hasSnapshot || isDeleting || disabled}
+      >
+        {isDeleting ? 'Deleting...' : 'Delete'}
+      </Button>
+    </div>
+  )
+}
+
+function StaticSnapshotRow({
+  row,
+  disabled,
+  isDeleting,
+  isInvalidating,
+  isUploading,
+  onDelete,
+  onInvalidate,
+  onUpload,
+  onUploadInputRef,
+  onUploadSelect,
+}: SortableSnapshotRowProps) {
+  const hasSnapshot = Boolean(row.snapshot.minioKey)
+
+  return (
+    <TableRow>
+      <TableCell className='font-medium'>
+        <div className='flex items-center gap-2'>
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            className='h-7 w-7 text-muted-foreground'
+            disabled
+            aria-label={`Reorder ${row.label}`}
+          >
+            <GripVertical className='h-4 w-4' />
+          </Button>
+          <span>{row.label}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        {hasSnapshot ? (
+          <Badge>Uploaded</Badge>
+        ) : (
+          <Badge variant='outline'>Not uploaded</Badge>
+        )}
+      </TableCell>
+      <TableCell>{row.snapshot.queueId}</TableCell>
+      <TableCell className='max-w-[260px] truncate font-mono text-xs'>
+        {truncateMinioKey(row.snapshot.minioKey)}
+      </TableCell>
+      <TableCell>{getUploadDate(row.snapshot)}</TableCell>
+      <TableCell>
+        <SnapshotActions
+          disabled={disabled}
+          hasSnapshot={hasSnapshot}
+          isDeleting={isDeleting}
+          isInvalidating={isInvalidating}
+          isUploading={isUploading}
+          onDelete={onDelete}
+          onInvalidate={onInvalidate}
+          onUpload={onUpload}
+          onUploadInputRef={onUploadInputRef}
+          onUploadSelect={onUploadSelect}
+        />
+      </TableCell>
+    </TableRow>
+  )
+}
+
+function SortableSnapshotRow({
+  row,
+  disabled,
+  isDeleting,
+  isInvalidating,
+  isUploading,
+  onDelete,
+  onInvalidate,
+  onUpload,
+  onUploadInputRef,
+  onUploadSelect,
+}: SortableSnapshotRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: row.snapshot.id,
+    disabled,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  const hasSnapshot = Boolean(row.snapshot.minioKey)
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        isDragging && 'relative z-10 bg-muted/80 shadow-sm',
+        !disabled && 'transition-colors'
+      )}
+    >
+      <TableCell className='font-medium'>
+        <div className='flex items-center gap-2'>
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            className='h-7 w-7 cursor-grab text-muted-foreground active:cursor-grabbing'
+            disabled={disabled}
+            aria-label={`Reorder ${row.label}`}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className='h-4 w-4' />
+          </Button>
+          <span>{row.label}</span>
+        </div>
+      </TableCell>
+      <TableCell>
+        {hasSnapshot ? (
+          <Badge>Uploaded</Badge>
+        ) : (
+          <Badge variant='outline'>Not uploaded</Badge>
+        )}
+      </TableCell>
+      <TableCell>{row.snapshot.queueId}</TableCell>
+      <TableCell className='max-w-[260px] truncate font-mono text-xs'>
+        {truncateMinioKey(row.snapshot.minioKey)}
+      </TableCell>
+      <TableCell>{getUploadDate(row.snapshot)}</TableCell>
+      <TableCell>
+        <SnapshotActions
+          disabled={disabled}
+          hasSnapshot={hasSnapshot}
+          isDeleting={isDeleting}
+          isInvalidating={isInvalidating}
+          isUploading={isUploading}
+          onDelete={onDelete}
+          onInvalidate={onInvalidate}
+          onUpload={onUpload}
+          onUploadInputRef={onUploadInputRef}
+          onUploadSelect={onUploadSelect}
+        />
+      </TableCell>
+    </TableRow>
+  )
+}
+
 export function SeasonDetailClient({
   season,
   snapshots,
@@ -168,8 +440,26 @@ export function SeasonDetailClient({
   const [deleteTarget, setDeleteTarget] = useState<SnapshotTableRow | null>(
     null
   )
+  const [rows, setRows] = useState(() => buildSnapshotRows(snapshots))
+  const [isHydrated, setIsHydrated] = useState(false)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
-  const rows = buildSnapshotRows(snapshots)
+  useEffect(() => {
+    setRows(buildSnapshotRows(snapshots))
+  }, [snapshots])
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   const updateSeason = api.seasons.update.useMutation({
     onSuccess: () => {
@@ -220,6 +510,11 @@ export function SeasonDetailClient({
       toast.error(error.message)
     },
   })
+
+  const reorderSnapshots = api.seasons.reorder_snapshots.useMutation()
+
+  const sortableRows = rows.filter(isSortableSnapshotRow)
+  const placeholderRows = rows.filter((row) => !isSortableSnapshotRow(row))
 
   function handleSeasonSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -299,6 +594,50 @@ export function SeasonDetailClient({
       seasonId: season.id,
       queueType: deleteTarget.queueType,
     })
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+
+    if (!over || active.id === over.id || reorderSnapshots.isPending) {
+      return
+    }
+
+    const previousRows = rows
+    const oldIndex = sortableRows.findIndex(
+      (row) => row.snapshot.id === active.id
+    )
+    const newIndex = sortableRows.findIndex(
+      (row) => row.snapshot.id === over.id
+    )
+
+    if (oldIndex < 0 || newIndex < 0) {
+      return
+    }
+
+    const nextSortableRows = arrayMove(sortableRows, oldIndex, newIndex)
+    const nextRows = [...nextSortableRows, ...placeholderRows]
+
+    setRows(nextRows)
+
+    try {
+      await reorderSnapshots.mutateAsync({
+        seasonId: season.id,
+        snapshotIds: nextSortableRows.map((row) => row.snapshot.id),
+      })
+
+      toast.success('Snapshot order updated')
+      startTransition(() => {
+        router.refresh()
+      })
+    } catch (error) {
+      setRows(previousRows)
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed updating snapshot order'
+      )
+    }
   }
 
   return (
@@ -382,102 +721,282 @@ export function SeasonDetailClient({
         <div className='border-b px-4 py-3'>
           <h2 className='font-semibold text-lg'>Snapshots</h2>
           <p className='text-muted-foreground text-sm'>
-            Upload season-end leaderboard JSON, invalidate cache, or remove a
-            stored snapshot.
+            Drag rows to set leaderboard tab order. Upload season-end
+            leaderboard JSON, invalidate cache, or remove a stored snapshot.
           </p>
         </div>
 
-        <Table>
-          <TableHeader className='bg-muted/50'>
-            <TableRow>
-              <TableHead>Queue</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Queue ID</TableHead>
-              <TableHead>MinIO key</TableHead>
-              <TableHead>Uploaded</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => {
-              const hasSnapshot = Boolean(row.snapshot?.minioKey)
-              const isUploading = uploadingQueueType === row.queueType
-              const isInvalidating = invalidatingQueueType === row.queueType
-              const isDeleting =
-                deleteSnapshot.isPending &&
-                deleteTarget?.queueType === row.queueType
+        {isHydrated ? (
+          <DndContext
+            id={`season-snapshots-${season.id}`}
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <Table>
+              <TableHeader className='bg-muted/50'>
+                <TableRow>
+                  <TableHead>Queue</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Queue ID</TableHead>
+                  <TableHead>MinIO key</TableHead>
+                  <TableHead>Uploaded</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <SortableContext
+                  items={sortableRows.map((row) => row.snapshot.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {sortableRows.map((row) => {
+                    const isUploading = uploadingQueueType === row.queueType
+                    const isInvalidating =
+                      invalidatingQueueType === row.queueType
+                    const isDeleting =
+                      deleteSnapshot.isPending &&
+                      deleteTarget?.queueType === row.queueType
 
-              return (
-                <TableRow key={row.queueType}>
-                  <TableCell className='font-medium'>{row.label}</TableCell>
-                  <TableCell>
-                    {hasSnapshot ? (
-                      <Badge>Uploaded</Badge>
-                    ) : (
-                      <Badge variant='outline'>Not uploaded</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{row.snapshot?.queueId ?? row.queueId}</TableCell>
-                  <TableCell className='max-w-[260px] truncate font-mono text-xs'>
-                    {truncateMinioKey(row.snapshot?.minioKey ?? null)}
-                  </TableCell>
-                  <TableCell>{getUploadDate(row.snapshot)}</TableCell>
-                  <TableCell>
-                    <div className='flex flex-wrap gap-2'>
-                      <input
-                        ref={(node) => {
+                    return (
+                      <SortableSnapshotRow
+                        key={row.queueType}
+                        row={row}
+                        disabled={
+                          reorderSnapshots.isPending || sortableRows.length < 2
+                        }
+                        isUploading={isUploading}
+                        isInvalidating={isInvalidating}
+                        isDeleting={isDeleting}
+                        onUpload={(event) => handleUpload(row, event)}
+                        onUploadInputRef={(node) => {
                           uploadInputsRef.current[row.queueType] = node
                         }}
-                        type='file'
-                        accept='.json,application/json'
-                        className='hidden'
-                        onChange={(event) => handleUpload(row, event)}
-                      />
-
-                      <Button
-                        type='button'
-                        variant='outline'
-                        size='sm'
-                        onClick={() =>
+                        onUploadSelect={() =>
                           uploadInputsRef.current[row.queueType]?.click()
                         }
-                        disabled={isUploading}
-                      >
-                        {isUploading
-                          ? 'Uploading...'
-                          : hasSnapshot
-                            ? 'Replace'
-                            : 'Upload'}
-                      </Button>
+                        onInvalidate={() => handleInvalidate(row)}
+                        onDelete={() => setDeleteTarget(row)}
+                      />
+                    )
+                  })}
+                </SortableContext>
 
-                      <Button
-                        type='button'
-                        variant='secondary'
-                        size='sm'
-                        onClick={() => handleInvalidate(row)}
-                        disabled={isInvalidating}
-                      >
-                        {isInvalidating
-                          ? 'Invalidating...'
-                          : 'Invalidate Cache'}
-                      </Button>
+                {placeholderRows.map((row) => {
+                  const hasSnapshot = Boolean(row.snapshot?.minioKey)
+                  const isUploading = uploadingQueueType === row.queueType
+                  const isInvalidating = invalidatingQueueType === row.queueType
+                  const isDeleting =
+                    deleteSnapshot.isPending &&
+                    deleteTarget?.queueType === row.queueType
 
-                      <Button
-                        type='button'
-                        variant='destructive'
-                        size='sm'
-                        onClick={() => setDeleteTarget(row)}
-                        disabled={!hasSnapshot || isDeleting}
-                      >
-                        {isDeleting ? 'Deleting...' : 'Delete'}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+                  return (
+                    <TableRow key={row.queueType}>
+                      <TableCell className='font-medium'>{row.label}</TableCell>
+                      <TableCell>
+                        {hasSnapshot ? (
+                          <Badge>Uploaded</Badge>
+                        ) : (
+                          <Badge variant='outline'>Not uploaded</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {row.snapshot?.queueId ?? row.queueId}
+                      </TableCell>
+                      <TableCell className='max-w-[260px] truncate font-mono text-xs'>
+                        {truncateMinioKey(row.snapshot?.minioKey ?? null)}
+                      </TableCell>
+                      <TableCell>{getUploadDate(row.snapshot)}</TableCell>
+                      <TableCell>
+                        <div className='flex flex-wrap gap-2'>
+                          <input
+                            ref={(node) => {
+                              uploadInputsRef.current[row.queueType] = node
+                            }}
+                            type='file'
+                            accept='.json,application/json'
+                            className='hidden'
+                            onChange={(event) => handleUpload(row, event)}
+                          />
+
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={() =>
+                              uploadInputsRef.current[row.queueType]?.click()
+                            }
+                            disabled={isUploading || reorderSnapshots.isPending}
+                          >
+                            {isUploading
+                              ? 'Uploading...'
+                              : hasSnapshot
+                                ? 'Replace'
+                                : 'Upload'}
+                          </Button>
+
+                          <Button
+                            type='button'
+                            variant='secondary'
+                            size='sm'
+                            onClick={() => handleInvalidate(row)}
+                            disabled={
+                              isInvalidating || reorderSnapshots.isPending
+                            }
+                          >
+                            {isInvalidating
+                              ? 'Invalidating...'
+                              : 'Invalidate Cache'}
+                          </Button>
+
+                          <Button
+                            type='button'
+                            variant='destructive'
+                            size='sm'
+                            onClick={() => setDeleteTarget(row)}
+                            disabled={
+                              !hasSnapshot ||
+                              isDeleting ||
+                              reorderSnapshots.isPending
+                            }
+                          >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </DndContext>
+        ) : (
+          <Table>
+            <TableHeader className='bg-muted/50'>
+              <TableRow>
+                <TableHead>Queue</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Queue ID</TableHead>
+                <TableHead>MinIO key</TableHead>
+                <TableHead>Uploaded</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortableRows.map((row) => {
+                const isUploading = uploadingQueueType === row.queueType
+                const isInvalidating = invalidatingQueueType === row.queueType
+                const isDeleting =
+                  deleteSnapshot.isPending &&
+                  deleteTarget?.queueType === row.queueType
+
+                return (
+                  <StaticSnapshotRow
+                    key={row.queueType}
+                    row={row}
+                    disabled
+                    isUploading={isUploading}
+                    isInvalidating={isInvalidating}
+                    isDeleting={isDeleting}
+                    onUpload={(event) => handleUpload(row, event)}
+                    onUploadInputRef={(node) => {
+                      uploadInputsRef.current[row.queueType] = node
+                    }}
+                    onUploadSelect={() =>
+                      uploadInputsRef.current[row.queueType]?.click()
+                    }
+                    onInvalidate={() => handleInvalidate(row)}
+                    onDelete={() => setDeleteTarget(row)}
+                  />
+                )
+              })}
+              {placeholderRows.map((row) => {
+                const hasSnapshot = Boolean(row.snapshot?.minioKey)
+                const isUploading = uploadingQueueType === row.queueType
+                const isInvalidating = invalidatingQueueType === row.queueType
+                const isDeleting =
+                  deleteSnapshot.isPending &&
+                  deleteTarget?.queueType === row.queueType
+
+                return (
+                  <TableRow key={row.queueType}>
+                    <TableCell className='font-medium'>{row.label}</TableCell>
+                    <TableCell>
+                      {hasSnapshot ? (
+                        <Badge>Uploaded</Badge>
+                      ) : (
+                        <Badge variant='outline'>Not uploaded</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {row.snapshot?.queueId ?? row.queueId}
+                    </TableCell>
+                    <TableCell className='max-w-[260px] truncate font-mono text-xs'>
+                      {truncateMinioKey(row.snapshot?.minioKey ?? null)}
+                    </TableCell>
+                    <TableCell>{getUploadDate(row.snapshot)}</TableCell>
+                    <TableCell>
+                      <div className='flex flex-wrap gap-2'>
+                        <input
+                          ref={(node) => {
+                            uploadInputsRef.current[row.queueType] = node
+                          }}
+                          type='file'
+                          accept='.json,application/json'
+                          className='hidden'
+                          onChange={(event) => handleUpload(row, event)}
+                        />
+
+                        <Button
+                          type='button'
+                          variant='outline'
+                          size='sm'
+                          onClick={() =>
+                            uploadInputsRef.current[row.queueType]?.click()
+                          }
+                          disabled={isUploading || reorderSnapshots.isPending}
+                        >
+                          {isUploading
+                            ? 'Uploading...'
+                            : hasSnapshot
+                              ? 'Replace'
+                              : 'Upload'}
+                        </Button>
+
+                        <Button
+                          type='button'
+                          variant='secondary'
+                          size='sm'
+                          onClick={() => handleInvalidate(row)}
+                          disabled={
+                            isInvalidating || reorderSnapshots.isPending
+                          }
+                        >
+                          {isInvalidating
+                            ? 'Invalidating...'
+                            : 'Invalidate Cache'}
+                        </Button>
+
+                        <Button
+                          type='button'
+                          variant='destructive'
+                          size='sm'
+                          onClick={() => setDeleteTarget(row)}
+                          disabled={
+                            !hasSnapshot ||
+                            isDeleting ||
+                            reorderSnapshots.isPending
+                          }
+                        >
+                          {isDeleting ? 'Deleting...' : 'Delete'}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        )}
       </TableShell>
 
       <AlertDialog

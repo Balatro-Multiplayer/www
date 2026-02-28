@@ -9,7 +9,7 @@ import {
 } from '@/server/db/schema'
 import { minioClient } from '@/server/minio'
 import { getActiveSeasonNumber, getSeasonConfig } from '@/server/seasons'
-import { and, desc, eq, gte, lt, or } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, lt, or } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import { redis } from '../redis'
 import { type LeaderboardEntry, botlatro_service } from './botlatro.service'
@@ -48,6 +48,7 @@ type CachedSeasonSnapshot = {
   seasonId: number
   queueType: string
   queueId: string
+  sortOrder: number
   minioKey: string | null
   uploadedBy: string | null
   createdAt: string
@@ -172,7 +173,14 @@ function serializeSeasonSnapshots(snapshots: CachedSeasonSnapshot[]) {
 }
 
 function deserializeSeasonSnapshots(value: string): CachedSeasonSnapshot[] {
-  return JSON.parse(value) as CachedSeasonSnapshot[]
+  return (
+    JSON.parse(value) as Array<
+      Omit<CachedSeasonSnapshot, 'sortOrder'> & { sortOrder?: number }
+    >
+  ).map((snapshot, index) => ({
+    ...snapshot,
+    sortOrder: snapshot.sortOrder ?? index,
+  }))
 }
 
 function toRedisLeaderboardEntry(
@@ -388,12 +396,14 @@ export class LeaderboardService {
       .select()
       .from(seasonSnapshots)
       .where(eq(seasonSnapshots.seasonId, seasonId))
+      .orderBy(asc(seasonSnapshots.sortOrder), asc(seasonSnapshots.id))
       .then((rows) =>
         rows.map((row) => ({
           id: row.id,
           seasonId: row.seasonId,
           queueType: row.queueType,
           queueId: row.queueId,
+          sortOrder: row.sortOrder,
           minioKey: row.minioKey,
           uploadedBy: row.uploadedBy,
           createdAt: row.createdAt.toISOString(),

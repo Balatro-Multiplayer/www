@@ -218,6 +218,7 @@ export const seasonSnapshots = pgTable(
       .notNull(),
     queueType: text('queue_type').notNull(),
     queueId: text('queue_id').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
     minioKey: text('minio_key'),
     uploadedBy: text('uploaded_by'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
