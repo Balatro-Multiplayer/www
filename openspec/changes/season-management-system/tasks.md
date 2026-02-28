@@ -14,13 +14,13 @@
 
 ## 3. Leaderboard Service Consolidation
 
-- [ ] 3.0 Add `getActiveSeasonNumber()` helper: reads `config:active_season` from Redis, falls back to DB on miss and re-populates Redis
-- [ ] 3.1 Add `getSeasonLeaderboard(seasonId: number, queueType: string)` to `src/server/services/leaderboard.ts`: look up `season_snapshots` row → if `minioKey` null: bot API via `queueId` (Redis 180s TTL); if `minioKey` set: Redis (no TTL) → MinIO → legacy fallback
-- [ ] 3.2 Add `getSeasonUserRank(seasonId: number, queueId: string, userId: string)` method using same data path
-- [ ] 3.3 Update `src/server/api/routers/leaderboard.ts` `get_leaderboard` and `get_user_rank` to call new methods; extract season number from `season{N}` string
-- [ ] 3.4 Update `src/server/api/routers/stats.ts` season branching (`DB_SEASONS` logic) to use DB-loaded season config
-- [ ] 3.5 Update `refreshLeaderboard()` in leaderboard service to call `getActiveSeasonNumber()` instead of hardcoded `6` when building the season Redis key to DEL
-- [ ] 3.6 Remove per-season methods `getSeason1()`…`getSeason6()` after all callers are migrated
+- [x] 3.0 Add `getActiveSeasonNumber()` helper: reads `config:active_season` from Redis, falls back to DB on miss and re-populates Redis
+- [x] 3.1 Add `getSeasonLeaderboard(seasonId: number, queueType: string)` to `src/server/services/leaderboard.ts`: look up `season_snapshots` row → if `minioKey` null: bot API via `queueId` (Redis 180s TTL); if `minioKey` set: Redis (no TTL) → MinIO → legacy fallback
+- [x] 3.2 Add `getSeasonUserRank(seasonId: number, queueId: string, userId: string)` method using same data path
+- [x] 3.3 Update `src/server/api/routers/leaderboard.ts` `get_leaderboard` and `get_user_rank` to call new methods; extract season number from `season{N}` string
+- [x] 3.4 Update `src/server/api/routers/stats.ts` season branching (`DB_SEASONS` logic) to use DB-loaded season config
+- [x] 3.5 Update `refreshLeaderboard()` in leaderboard service to call `getActiveSeasonNumber()` instead of hardcoded `6` when building the season Redis key to DEL
+- [x] 3.6 Remove per-season methods `getSeason1()`…`getSeason6()` after all callers are migrated
 
 ## 4. tRPC Seasons Router
 

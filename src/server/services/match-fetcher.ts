@@ -39,6 +39,14 @@ export const QUEUE_IDS = [
   CASUAL_QUEUE_ID,
 ]
 
+function getSeasonNumber(season: Season): number | null {
+  const match = /^season(\d+)$/.exec(season)
+  if (!match) return null
+
+  const seasonNumber = Number(match[1])
+  return Number.isInteger(seasonNumber) ? seasonNumber : null
+}
+
 export function getSeasonDateRange(season: Season): { start: Date; end: Date } {
   switch (season) {
     case 'season1':
@@ -67,11 +75,11 @@ export async function fetchMatches(
   if (cached) return JSON.parse(cached)
 
   let params: URLSearchParams
-  if (season === 'season5' || season === 'season6') {
-    const seasonNumber = season === 'season5' ? '5' : '6'
+  const seasonNumber = getSeasonNumber(season)
+  if (seasonNumber && seasonNumber >= 5) {
     params = new URLSearchParams({
       limit: '200000',
-      season: seasonNumber,
+      season: seasonNumber.toString(),
     })
   } else {
     const { start, end } = getSeasonDateRange(season)

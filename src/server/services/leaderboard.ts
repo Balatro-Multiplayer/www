@@ -1,9 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { env } from '@/env'
 import { db } from '@/server/db'
-import { leaderboardSnapshots, memoryLogs, metadata } from '@/server/db/schema'
-import { SEASON_3_START_DATE, SEASON_4_START_DATE } from '@/shared/seasons'
-import { and, desc, eq, gte, lt } from 'drizzle-orm'
+import {
+  leaderboardSnapshots,
+  metadata,
+  seasonSnapshots,
+} from '@/server/db/schema'
+import { minioClient } from '@/server/minio'
+import { getActiveSeasonNumber, getSeasonConfig } from '@/server/seasons'
+import { and, desc, eq, gte, lt, or } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 import { redis } from '../redis'
 import { type LeaderboardEntry, botlatro_service } from './botlatro.service'
@@ -37,6 +43,16 @@ type StoredLeaderboardSnapshot = {
   queue_id: string
 }
 
+type CachedSeasonSnapshot = {
+  id: number
+  seasonId: number
+  queueType: string
+  queueId: string
+  minioKey: string | null
+  uploadedBy: string | null
+  createdAt: string
+}
+
 function logMemory(label: string, metadata?: Record<string, unknown>) {
   if (!currentRunId) return
 
@@ -58,9 +74,8 @@ function logMemory(label: string, metadata?: Record<string, unknown>) {
   })
 }
 
-function mapSnapshotEntries(fileContent: string): LeaderboardEntry[] {
-  const data = JSON.parse(fileContent) as SnapshotFile
-  return data.alltime.map((entry) => ({
+function mapSnapshotEntries(fileContent: SnapshotFile): LeaderboardEntry[] {
+  return fileContent.alltime.map((entry) => ({
     id: entry.id,
     name: entry.name,
     mmr: entry.data.mmr,
@@ -73,6 +88,91 @@ function mapSnapshotEntries(fileContent: string): LeaderboardEntry[] {
     rank: entry.data.rank,
     winrate: entry.data.winrate,
   }))
+}
+
+function normalizeLeaderboardEntries(entries: unknown[]): LeaderboardEntry[] {
+  return entries.map((entry, index) => {
+    const data = entry as Partial<LeaderboardEntry>
+
+    const wins = Number(data.wins ?? 0)
+    const losses = Number(data.losses ?? 0)
+    const totalgames = Number(data.totalgames ?? wins + losses)
+
+    return {
+      id: String(data.id ?? ''),
+      name: String(data.name ?? data.id ?? ''),
+      mmr: Number(data.mmr ?? 0),
+      wins,
+      losses,
+      streak: Number(data.streak ?? 0),
+      totalgames,
+      decay: data.decay,
+      ign: data.ign,
+      peak_mmr: Number(data.peak_mmr ?? data.mmr ?? 0),
+      peak_streak: Number(data.peak_streak ?? data.streak ?? 0),
+      rank: Number(data.rank ?? index + 1),
+      winrate:
+        data.winrate !== undefined
+          ? Number(data.winrate)
+          : totalgames > 0
+            ? wins / totalgames
+            : 0,
+    }
+  })
+}
+
+function parseLeaderboardPayload(payload: unknown): LeaderboardEntry[] {
+  if (Array.isArray(payload)) {
+    return normalizeLeaderboardEntries(payload)
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return []
+  }
+
+  const maybeLeaderboard = (payload as { leaderboard?: unknown[] }).leaderboard
+  if (Array.isArray(maybeLeaderboard)) {
+    return normalizeLeaderboardEntries(maybeLeaderboard)
+  }
+
+  const maybeData = (payload as { data?: unknown[] }).data
+  if (Array.isArray(maybeData)) {
+    return normalizeLeaderboardEntries(maybeData)
+  }
+
+  const maybeAlltime = (payload as SnapshotFile).alltime
+  if (Array.isArray(maybeAlltime)) {
+    return mapSnapshotEntries({ alltime: maybeAlltime })
+  }
+
+  return []
+}
+
+function sortLeaderboard(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+  return [...entries]
+    .sort((a, b) => b.mmr - a.mmr)
+    .map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }))
+}
+
+async function streamToString(stream: NodeJS.ReadableStream): Promise<string> {
+  const chunks: Buffer[] = []
+
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+
+  return Buffer.concat(chunks).toString('utf-8')
+}
+
+function serializeSeasonSnapshots(snapshots: CachedSeasonSnapshot[]) {
+  return JSON.stringify(snapshots)
+}
+
+function deserializeSeasonSnapshots(value: string): CachedSeasonSnapshot[] {
+  return JSON.parse(value) as CachedSeasonSnapshot[]
 }
 
 function toRedisLeaderboardEntry(
@@ -137,337 +237,242 @@ export type UserRankResponse = {
 export class LeaderboardService {
   private static readonly LIVE_SEASON_CACHE_TTL_SECONDS = 180
 
-  private season1DataCache: Map<string, LeaderboardEntry[]> = new Map()
-  private season2DataCache: Map<string, LeaderboardEntry[]> = new Map()
-  private season3DataCache: Map<string, LeaderboardEntry[]> = new Map()
-  private season4DataCache: Map<string, LeaderboardEntry[]> = new Map()
-  private season5DataCache: Map<string, LeaderboardEntry[]> = new Map()
+  private legacySeasonDataCache = new Map<string, LeaderboardEntry[]>()
 
   private getZSetKey(queue_id: string) {
     return `zset:leaderboard:${queue_id}`
   }
 
-  // Load Season 1 data from the snapshot file
-  private loadSeason1Data(queue_id: string): LeaderboardEntry[] {
-    // Check if data is already cached
-    if (this.season1DataCache.has(queue_id)) {
-      const cached = this.season1DataCache.get(queue_id)
-      if (cached) return cached
-    }
+  private getLegacySeasonKey(seasonId: number, queue_id: string) {
+    return `legacy-season:${seasonId}:${queue_id}`
+  }
+
+  private getSeasonQueuesCacheKey(seasonId: number) {
+    return `config:season:${seasonId}:queues`
+  }
+
+  private readStaticSnapshot(
+    seasonId: number,
+    queue_id: string,
+    fileName: string
+  ): LeaderboardEntry[] {
+    const cacheKey = this.getLegacySeasonKey(seasonId, queue_id)
+    const cached = this.legacySeasonDataCache.get(cacheKey)
+    if (cached) return cached
 
     try {
-      // Path to the Season 1 snapshot file
-      const filePath = path.join(
-        process.cwd(),
-        'src',
-        'data',
-        'leaderboard-snapshot-eos1.json'
-      )
-
-      // Read and parse the file
+      const filePath = path.join(process.cwd(), 'src', 'data', fileName)
       const fileContent = fs.readFileSync(filePath, 'utf-8')
-      const entries = mapSnapshotEntries(fileContent)
-
-      // Cache the data for future requests
-      this.season1DataCache.set(queue_id, entries)
-
-      return entries
+      const entries = parseLeaderboardPayload(JSON.parse(fileContent))
+      const sortedEntries = sortLeaderboard(entries)
+      this.legacySeasonDataCache.set(cacheKey, sortedEntries)
+      return sortedEntries
     } catch (error) {
-      console.error('Error loading Season 2 data:', error)
+      console.error(`Error loading Season ${seasonId} data:`, error)
       return []
     }
   }
 
-  // Get Season 1 leaderboard data
-  async getSeason1Leaderboard(queue_id: string): Promise<LeaderboardEntry[]> {
-    const entries = this.loadSeason1Data(queue_id)
-
-    // Sort entries by MMR in descending order
-    const sortedEntries = [...entries].sort((a, b) => b.mmr - a.mmr)
-
-    // Recalculate ranks based on sorted order
-    return sortedEntries.map((entry, idx) => ({
-      ...entry,
-      rank: idx + 1,
-    }))
-  }
-
-  // Get Season 1 user rank data
-  async getSeason1UserRank(
-    queue_id: string,
-    user_id: string
-  ): Promise<LeaderboardEntry | null> {
-    // Get the sorted leaderboard with recalculated ranks
-    const sortedLeaderboard = await this.getSeason1Leaderboard(queue_id)
-
-    // Find the user entry in the sorted leaderboard
-    const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
-    return userEntry || null
-  }
-
-  // Load Season 2 data from the snapshot file
-  private loadSeason2Data(queue_id: string): LeaderboardEntry[] {
-    // Check if data is already cached
-    if (this.season2DataCache.has(queue_id)) {
-      const cached = this.season2DataCache.get(queue_id)
-      if (cached) return cached
-    }
+  private async loadSeason3LegacyData(
+    queue_id: string
+  ): Promise<LeaderboardEntry[]> {
+    const cacheKey = this.getLegacySeasonKey(3, queue_id)
+    const cached = this.legacySeasonDataCache.get(cacheKey)
+    if (cached) return cached
 
     try {
-      // Path to the Season 2 snapshot file
-      const filePath = path.join(
-        process.cwd(),
-        'src',
-        'data',
-        'leaderboard-snapshot-eos2.json'
-      )
+      const seasonConfig = await getSeasonConfig(3)
+      const conditions = [eq(leaderboardSnapshots.channelId, queue_id)]
 
-      // Read and parse the file
-      const fileContent = fs.readFileSync(filePath, 'utf-8')
-      const entries = mapSnapshotEntries(fileContent)
+      if (seasonConfig) {
+        conditions.push(
+          gte(leaderboardSnapshots.timestamp, seasonConfig.startDate)
+        )
+        if (seasonConfig.endDate) {
+          conditions.push(
+            lt(leaderboardSnapshots.timestamp, seasonConfig.endDate)
+          )
+        }
+      }
 
-      // Cache the data for future requests
-      this.season2DataCache.set(queue_id, entries)
-
-      return entries
-    } catch (error) {
-      console.error('Error loading Season 2 data:', error)
-      return []
-    }
-  }
-
-  // Get Season 2 leaderboard data
-  async getSeason2Leaderboard(queue_id: string): Promise<LeaderboardEntry[]> {
-    const entries = this.loadSeason2Data(queue_id)
-
-    // Sort entries by MMR in descending order
-    const sortedEntries = [...entries].sort((a, b) => b.mmr - a.mmr)
-
-    // Recalculate ranks based on sorted order
-    return sortedEntries.map((entry, idx) => ({
-      ...entry,
-      rank: idx + 1,
-    }))
-  }
-
-  // Get Season 2 user rank data
-  async getSeason2UserRank(
-    queue_id: string,
-    user_id: string
-  ): Promise<LeaderboardEntry | null> {
-    // Get the sorted leaderboard with recalculated ranks
-    const sortedLeaderboard = await this.getSeason2Leaderboard(queue_id)
-
-    // Find the user entry in the sorted leaderboard
-    const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
-    return userEntry || null
-  }
-
-  // Load Season 3 data from the database snapshot table
-  private async loadSeason3Data(queue_id: string): Promise<LeaderboardEntry[]> {
-    // Use cache if available
-    if (this.season3DataCache.has(queue_id)) {
-      return this.season3DataCache.get(queue_id) as LeaderboardEntry[]
-    }
-
-    try {
-      // Find the latest snapshot within the Season 3 window for the channel
       const snapshot = await db
         .select()
         .from(leaderboardSnapshots)
-        .where(
-          and(
-            eq(leaderboardSnapshots.channelId, queue_id),
-            gte(leaderboardSnapshots.timestamp, SEASON_3_START_DATE),
-            lt(leaderboardSnapshots.timestamp, SEASON_4_START_DATE)
-          )
-        )
+        .where(and(...conditions))
         .orderBy(desc(leaderboardSnapshots.timestamp))
         .limit(1)
         .then((rows) => rows[0])
 
       if (!snapshot) {
         console.warn(`No Season 3 snapshot found for channel ${queue_id}`)
-        this.season3DataCache.set(queue_id, [])
+        this.legacySeasonDataCache.set(cacheKey, [])
         return []
       }
 
-      const entries = (snapshot.data as LeaderboardEntry[]).map((e) => ({
-        ...e,
-        // Ensure number fields are numbers
-        mmr: Number(e.mmr),
-        wins: Number(e.wins),
-        losses: Number(e.losses),
-        totalgames: Number(e.totalgames),
-        peak_mmr: Number(e.peak_mmr),
-        peak_streak: Number(e.peak_streak),
-        winrate: Number(e.winrate),
-      }))
+      const sortedEntries = sortLeaderboard(
+        parseLeaderboardPayload(snapshot.data)
+      )
 
-      this.season3DataCache.set(queue_id, entries)
-      return entries
+      this.legacySeasonDataCache.set(cacheKey, sortedEntries)
+      return sortedEntries
     } catch (error) {
       console.error('Error loading Season 3 data from DB:', error)
       return []
     }
   }
 
-  // Get Season 3 leaderboard data
-  async getSeason3Leaderboard(queue_id: string): Promise<LeaderboardEntry[]> {
-    const entries = await this.loadSeason3Data(queue_id)
-
-    // Sort by MMR desc and recompute ranks
-    const sortedEntries = [...entries].sort((a, b) => b.mmr - a.mmr)
-    return sortedEntries.map((entry, idx) => ({
-      ...entry,
-      rank: idx + 1,
-    }))
-  }
-
-  // Get Season 3 user rank data
-  async getSeason3UserRank(
-    queue_id: string,
-    user_id: string
-  ): Promise<LeaderboardEntry | null> {
-    const sortedLeaderboard = await this.getSeason3Leaderboard(queue_id)
-    const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
-    return userEntry || null
-  }
-
-  // Load Season 4 data from the snapshot file
-  private loadSeason4Data(queue_id: string): LeaderboardEntry[] {
-    // Check if data is already cached
-    if (this.season4DataCache.has(queue_id)) {
-      const cached = this.season4DataCache.get(queue_id)
-      if (cached) return cached
-    }
-
-    try {
-      // Path to the Season 4 snapshot file (change depending on queue id)
-      // TODO: Make this better, this is kind of scuffed but I can't be bothered to figure out how to utilize the db
-      const filePath = path.join(
-        process.cwd(),
-        'src',
-        'data',
-        `leaderboard-snapshot-eos4-${queue_id}.json`
-      )
-
-      // Read and parse the file
-      const fileContent = fs.readFileSync(filePath, 'utf-8')
-      const entries = mapSnapshotEntries(fileContent)
-
-      // Cache the data for future requests
-      this.season4DataCache.set(queue_id, entries)
-
-      return entries
-    } catch (error) {
-      console.error('Error loading Season 4 data:', error)
-      return []
-    }
-  }
-
-  // Get Season 4 leaderboard data
-  async getSeason4Leaderboard(queue_id: string): Promise<LeaderboardEntry[]> {
-    const entries = this.loadSeason4Data(queue_id)
-
-    // Sort entries by MMR in descending order
-    const sortedEntries = [...entries].sort((a, b) => b.mmr - a.mmr)
-
-    // Recalculate ranks based on sorted order
-    return sortedEntries.map((entry, idx) => ({
-      ...entry,
-      rank: idx + 1,
-    }))
-  }
-
-  // Get Season 4 user rank data
-  async getSeason4UserRank(
-    queue_id: string,
-    user_id: string
-  ): Promise<LeaderboardEntry | null> {
-    const sortedLeaderboard = await this.getSeason4Leaderboard(queue_id)
-    const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
-    return userEntry || null
-  }
-
-  // Load Season 5 data from the bot using ?season=5
-  private async loadSeason5Data(queue_id: string): Promise<LeaderboardEntry[]> {
-    if (this.season5DataCache.has(queue_id)) {
-      return this.season5DataCache.get(queue_id) as LeaderboardEntry[]
-    }
-
-    try {
-      const entries = await botlatro_service.get_leaderboard(queue_id, 5)
-      this.season5DataCache.set(queue_id, entries)
-      return entries
-    } catch (error) {
-      console.error('Error loading Season 5 data from bot:', error)
-      return []
-    }
-  }
-
-  // Get Season 5 leaderboard data
-  async getSeason5Leaderboard(queue_id: string): Promise<LeaderboardEntry[]> {
-    const entries = await this.loadSeason5Data(queue_id)
-
-    const sortedEntries = [...entries].sort((a, b) => b.mmr - a.mmr)
-    return sortedEntries.map((entry, idx) => ({
-      ...entry,
-      rank: idx + 1,
-    }))
-  }
-
-  // Get Season 5 user rank data
-  async getSeason5UserRank(
-    queue_id: string,
-    user_id: string
-  ): Promise<LeaderboardEntry | null> {
-    const sortedLeaderboard = await this.getSeason5Leaderboard(queue_id)
-    const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
-    return userEntry || null
-  }
-
-  // Load Season 6 data from the bot using ?season=6
-  private async loadSeason6Data(queue_id: string): Promise<LeaderboardEntry[]> {
-    const cacheKey = this.getSeasonKey(queue_id, 6)
+  private async loadLiveSeasonData(
+    seasonId: number,
+    queue_id: string
+  ): Promise<LeaderboardEntry[]> {
+    const cacheKey = this.getSeasonKey(queue_id, seasonId)
     const cached = await redis.get(cacheKey)
     if (cached) {
-      return JSON.parse(cached) as LeaderboardEntry[]
+      return sortLeaderboard(parseLeaderboardPayload(JSON.parse(cached)))
     }
 
     try {
-      const entries = await botlatro_service.get_leaderboard(queue_id, 6)
+      const entries = await botlatro_service.get_leaderboard(queue_id, seasonId)
       await redis.setEx(
         cacheKey,
         LeaderboardService.LIVE_SEASON_CACHE_TTL_SECONDS,
         JSON.stringify(entries)
       )
-      return entries
+      return sortLeaderboard(entries)
     } catch (error) {
-      console.error('Error loading Season 6 data from bot:', error)
+      console.error(`Error loading Season ${seasonId} data from bot:`, error)
       return []
     }
   }
 
-  // Get Season 6 leaderboard data
-  async getSeason6Leaderboard(queue_id: string): Promise<LeaderboardEntry[]> {
-    const entries = await this.loadSeason6Data(queue_id)
-
-    const sortedEntries = [...entries].sort((a, b) => b.mmr - a.mmr)
-    return sortedEntries.map((entry, idx) => ({
-      ...entry,
-      rank: idx + 1,
-    }))
+  private async loadLegacySeasonData(
+    seasonId: number,
+    queue_id: string
+  ): Promise<LeaderboardEntry[]> {
+    switch (seasonId) {
+      case 1:
+        return this.readStaticSnapshot(
+          seasonId,
+          queue_id,
+          'leaderboard-snapshot-eos1.json'
+        )
+      case 2:
+        return this.readStaticSnapshot(
+          seasonId,
+          queue_id,
+          'leaderboard-snapshot-eos2.json'
+        )
+      case 3:
+        return this.loadSeason3LegacyData(queue_id)
+      case 4:
+        return this.readStaticSnapshot(
+          seasonId,
+          queue_id,
+          `leaderboard-snapshot-eos4-${queue_id}.json`
+        )
+      default:
+        return this.loadLiveSeasonData(seasonId, queue_id)
+    }
   }
 
-  // Get Season 6 user rank data
-  async getSeason6UserRank(
-    queue_id: string,
-    user_id: string
+  private async loadSeasonSnapshots(
+    seasonId: number
+  ): Promise<CachedSeasonSnapshot[]> {
+    const cacheKey = this.getSeasonQueuesCacheKey(seasonId)
+    const cached = await redis.get(cacheKey)
+    if (cached) {
+      return deserializeSeasonSnapshots(cached)
+    }
+
+    const snapshots = await db
+      .select()
+      .from(seasonSnapshots)
+      .where(eq(seasonSnapshots.seasonId, seasonId))
+      .then((rows) =>
+        rows.map((row) => ({
+          id: row.id,
+          seasonId: row.seasonId,
+          queueType: row.queueType,
+          queueId: row.queueId,
+          minioKey: row.minioKey,
+          uploadedBy: row.uploadedBy,
+          createdAt: row.createdAt.toISOString(),
+        }))
+      )
+
+    await redis.set(cacheKey, serializeSeasonSnapshots(snapshots))
+    return snapshots
+  }
+
+  private async getSeasonSnapshot(seasonId: number, queueIdentifier: string) {
+    const snapshots = await this.loadSeasonSnapshots(seasonId)
+    return snapshots.find(
+      (snapshot) =>
+        snapshot.queueType === queueIdentifier ||
+        snapshot.queueId === queueIdentifier
+    )
+  }
+
+  private async loadSnapshotFromMinio(
+    minioKey: string
+  ): Promise<LeaderboardEntry[]> {
+    const objectStream = await minioClient.getObject(
+      env.MINIO_BUCKET_NAME,
+      minioKey
+    )
+    const payload = await streamToString(objectStream)
+    return sortLeaderboard(parseLeaderboardPayload(JSON.parse(payload)))
+  }
+
+  async getActiveSeasonNumber(): Promise<number> {
+    return getActiveSeasonNumber()
+  }
+
+  async getSeasonLeaderboard(
+    seasonId: number,
+    queueType: string
+  ): Promise<LeaderboardEntry[]> {
+    const activeSeasonNumber = await this.getActiveSeasonNumber()
+    const snapshot = await this.getSeasonSnapshot(seasonId, queueType)
+    const queueId = snapshot?.queueId ?? queueType
+    const cacheKey = this.getSeasonKey(queueId, seasonId)
+
+    if (snapshot?.minioKey === null) {
+      return this.loadLiveSeasonData(seasonId, queueId)
+    }
+
+    if (snapshot?.minioKey) {
+      const cached = await redis.get(cacheKey)
+      if (cached) {
+        return sortLeaderboard(parseLeaderboardPayload(JSON.parse(cached)))
+      }
+
+      try {
+        const entries = await this.loadSnapshotFromMinio(snapshot.minioKey)
+        await redis.set(cacheKey, JSON.stringify(entries))
+        return entries
+      } catch (error) {
+        console.error(
+          `Error loading Season ${seasonId} snapshot ${snapshot.minioKey}:`,
+          error
+        )
+      }
+    }
+
+    if (seasonId === activeSeasonNumber) {
+      return this.loadLiveSeasonData(seasonId, queueId)
+    }
+
+    return this.loadLegacySeasonData(seasonId, queueId)
+  }
+
+  async getSeasonUserRank(
+    seasonId: number,
+    queueId: string,
+    userId: string
   ): Promise<LeaderboardEntry | null> {
-    const sortedLeaderboard = await this.getSeason6Leaderboard(queue_id)
-    const userEntry = sortedLeaderboard.find((entry) => entry.id === user_id)
-    return userEntry || null
+    const leaderboard = await this.getSeasonLeaderboard(seasonId, queueId)
+    return leaderboard.find((entry) => entry.id === userId) ?? null
   }
 
   private getRawKey(queue_id: string) {
@@ -486,10 +491,6 @@ export class LeaderboardService {
     return `season:${season}:leaderboard:${queue_id}`
   }
 
-  private getSnapshotKey(queue_id: string, timestamp: string): string {
-    return `snapshot_leaderboard_${queue_id}_${timestamp}`
-  }
-
   private getSnapshotPrefix(queue_id: string): string {
     return `snapshot_leaderboard_${queue_id}_`
   }
@@ -500,7 +501,6 @@ export class LeaderboardService {
   ): LeaderboardResponse {
     let filtered = data
 
-    // Apply filtering
     if (options.search) {
       const searchLower = options.search.toLowerCase()
       filtered = filtered.filter(
@@ -518,7 +518,6 @@ export class LeaderboardService {
       filtered = filtered.filter((entry) => entry.totalgames <= maxGames)
     }
 
-    // Apply sorting
     if (options.sortBy) {
       const sortBy = options.sortBy
       filtered = [...filtered].sort((a, b) => {
@@ -529,12 +528,11 @@ export class LeaderboardService {
       })
     }
 
-    // Apply pagination if page or pageSize is provided
     const total = filtered.length
 
     if (options.page !== undefined || options.pageSize !== undefined) {
-      const page = options.page ?? 1 // Default to page 1 if not provided
-      const pageSize = options.pageSize ?? 50 // Default to 50 if not provided
+      const page = options.page ?? 1
+      const pageSize = options.pageSize ?? 50
       const offset = (page - 1) * pageSize
       const paginated = filtered.slice(offset, offset + pageSize)
 
@@ -548,7 +546,6 @@ export class LeaderboardService {
       }
     }
 
-    // Return all filtered data without pagination
     return {
       data: filtered,
       total,
@@ -575,18 +572,17 @@ export class LeaderboardService {
       console.log('Updating Redis cache for leaderboard:', queue_id)
       const zsetKey = this.getZSetKey(queue_id)
       const rawKey = this.getRawKey(queue_id)
-      const season6Key = this.getSeasonKey(queue_id, 6)
-      const timestamp = new Date().toISOString()
+      const activeSeasonNumber = await this.getActiveSeasonNumber()
+      const activeSeasonKey = this.getSeasonKey(queue_id, activeSeasonNumber)
 
       logMemory('before_initial_pipeline')
       console.log('Clearing leaderboard caches:', {
         queue_id,
         rawKey,
         zsetKey,
-        season6Key,
+        activeSeasonKey,
       })
 
-      // Initial pipeline for cache setup
       const initialPipeline = redis.multi()
       initialPipeline.setEx(
         rawKey,
@@ -594,12 +590,11 @@ export class LeaderboardService {
         JSON.stringify(fresh)
       )
       initialPipeline.del(zsetKey)
-      initialPipeline.del(season6Key)
+      initialPipeline.del(activeSeasonKey)
       await initialPipeline.exec()
 
       logMemory('after_initial_pipeline')
 
-      // Batch process entries to prevent memory issues with large datasets
       const BATCH_SIZE = 1000
       for (let i = 0; i < fresh.length; i += BATCH_SIZE) {
         const batch = fresh.slice(i, i + BATCH_SIZE)
@@ -621,7 +616,6 @@ export class LeaderboardService {
         })
       }
 
-      // Set expiration after all batches complete
       await redis.expire(
         zsetKey,
         LeaderboardService.LIVE_SEASON_CACHE_TTL_SECONDS
@@ -650,7 +644,6 @@ export class LeaderboardService {
       logMemory('refresh_end')
       currentRunId = null
 
-      // Hint to GC if available
       if (global.gc) {
         global.gc()
       }
@@ -661,7 +654,6 @@ export class LeaderboardService {
       logMemory('refresh_error', { error: String(error) })
       currentRunId = null
 
-      // If botlatro fails, try to get the latest backup from the database
       const backupKey = this.getBackupKey(queue_id)
       const backup = await db
         .select()
@@ -678,7 +670,6 @@ export class LeaderboardService {
         return { data: parsedBackup.data as LeaderboardEntry[], isStale: true }
       }
 
-      // If no backup exists, return an empty array with isStale flag
       console.log(
         'No backup leaderboard data available for refreshLeaderboard, returning empty array'
       )
@@ -691,7 +682,6 @@ export class LeaderboardService {
     options?: PaginationOptions
   ): Promise<LeaderboardResponse> {
     try {
-      // Try to get from Redis cache first
       const cached = await redis.get(this.getRawKey(queue_id))
       let data: LeaderboardEntry[]
       let isStale = false
@@ -699,13 +689,11 @@ export class LeaderboardService {
       if (cached) {
         data = JSON.parse(cached) as LeaderboardEntry[]
       } else {
-        // If not in cache, try to refresh from botlatro
         const result = await this.refreshLeaderboard(queue_id)
         data = result.data
         isStale = result.isStale
       }
 
-      // If no pagination options, return all data (backward compatibility)
       if (!options) {
         return { data, isStale }
       }
@@ -715,7 +703,6 @@ export class LeaderboardService {
     } catch (error) {
       console.error('Error getting leaderboard from botlatro:', error)
 
-      // If botlatro fails, try to get the latest backup from the database
       const backupKey = this.getBackupKey(queue_id)
       const backup = await db
         .select()
@@ -731,7 +718,6 @@ export class LeaderboardService {
         )
         const data = parsedBackup.data as LeaderboardEntry[]
 
-        // Apply same filtering/pagination logic for backup data
         if (!options) {
           return { data, isStale: true }
         }
@@ -740,7 +726,6 @@ export class LeaderboardService {
         return { ...result, isStale: true }
       }
 
-      // If no backup exists, return an empty array with isStale flag
       console.log(
         'No backup leaderboard data available for getLeaderboard, returning empty array'
       )
@@ -755,29 +740,21 @@ export class LeaderboardService {
     }
   }
 
-  /**
-   * Get historical leaderboard snapshots for a channel
-   * @param queue_id The channel ID
-   * @param limit Optional limit on the number of snapshots to return (default: 100)
-   * @returns Array of leaderboard snapshots
-   */
   async getLeaderboardSnapshots(
     queue_id: string,
     limit = 100
   ): Promise<LeaderboardSnapshotResponse[]> {
     try {
-      // Query the dedicated leaderboardSnapshots table
       const snapshots = await db
         .select()
         .from(leaderboardSnapshots)
         .where(eq(leaderboardSnapshots.channelId, queue_id))
-        .orderBy(desc(leaderboardSnapshots.timestamp)) // Most recent first
+        .orderBy(desc(leaderboardSnapshots.timestamp))
         .limit(limit)
 
-      // Map the snapshots to the expected response format
       return snapshots.map((snapshot) => {
         return {
-          data: snapshot.data as LeaderboardEntry[],
+          data: parseLeaderboardPayload(snapshot.data),
           timestamp: snapshot.timestamp.toISOString(),
           queue_id: snapshot.channelId,
         }
@@ -789,18 +766,15 @@ export class LeaderboardService {
       )
 
       try {
-        // Fallback to the old metadata table approach if the new table query fails
         const prefix = this.getSnapshotPrefix(queue_id)
 
-        // Query the database for all entries with keys that start with the snapshot prefix
         const oldSnapshots = await db
           .select()
           .from(metadata)
           .where(sql`${metadata.key} LIKE ${`${prefix}%`}`)
-          .orderBy(sql`${metadata.key} DESC`) // Most recent first
+          .orderBy(sql`${metadata.key} DESC`)
           .limit(limit)
 
-        // Parse the snapshots
         return oldSnapshots.map((snapshot) => {
           const parsedValue = JSON.parse(
             snapshot.value
@@ -826,7 +800,6 @@ export class LeaderboardService {
     user_id: string
   ): Promise<UserRankResponse> {
     try {
-      // Try to get user data from Redis first
       const userData = await redis.hGetAll(this.getUserKey(user_id, queue_id))
       if (userData && Object.keys(userData).length > 0) {
         return {
@@ -839,7 +812,6 @@ export class LeaderboardService {
         }
       }
 
-      // If not found in Redis, try to refresh the leaderboard
       try {
         const { data: freshLeaderboard } =
           await this.refreshLeaderboard(queue_id)
@@ -852,10 +824,8 @@ export class LeaderboardService {
           'Error refreshing leaderboard for user rank:',
           refreshError
         )
-        // Continue to backup if refresh fails
       }
 
-      // If not found in fresh data or refresh failed, try to get from backup
       const backupKey = this.getBackupKey(queue_id)
       const backup = await db
         .select()
@@ -879,11 +849,9 @@ export class LeaderboardService {
         }
       }
 
-      // If user not found anywhere
       return null
     } catch (error) {
       console.error('Error getting user rank:', error)
-      // Return null instead of rethrowing the error to prevent the page from breaking
       return null
     }
   }
