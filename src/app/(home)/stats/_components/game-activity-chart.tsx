@@ -1,5 +1,9 @@
 'use client'
 
+import { format } from 'date-fns'
+import { CalendarIcon } from 'lucide-react'
+import { useState } from 'react'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -20,12 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import { api } from '@/trpc/react'
-import { format } from 'date-fns'
-import { CalendarIcon } from 'lucide-react'
-import { useState } from 'react'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 
 const chartConfig = {
@@ -37,8 +38,22 @@ const chartConfig = {
 
 type GroupByOption = 'hour' | 'day' | 'week' | 'month'
 
+function parseTimeUnit(value: string, groupBy: GroupByOption) {
+  switch (groupBy) {
+    case 'hour':
+      return new Date(value.replace(' ', 'T'))
+    case 'day':
+      return new Date(`${value}T00:00:00`)
+    case 'week':
+      return new Date(`${value.replace('Week of ', '')}T00:00:00`)
+    case 'month':
+      return new Date(`${value}-01T00:00:00`)
+  }
+}
+
 export function GameActivityChart() {
   const [groupBy, setGroupBy] = useState<GroupByOption>('week')
+  const isMobile = useIsMobile()
   const [dateRange, setDateRange] = useState<
     | {
         from?: Date | undefined
@@ -75,21 +90,41 @@ export function GameActivityChart() {
 
   // Format the X-axis labels based on the grouping
   const formatXAxisTick = (value: string) => {
-    const date = new Date(value)
+    const date = parseTimeUnit(value, groupBy)
+
+    if (Number.isNaN(date.getTime())) {
+      return value
+    }
 
     switch (groupBy) {
       case 'hour':
-        return `${date.toLocaleDateString()} ${date.getHours()}:00`
+        return format(date, isMobile ? 'MMM d HH:mm' : 'MMM d, HH:mm')
       case 'day':
-        return date.toLocaleDateString()
+        return format(date, 'MMM d')
       case 'week':
-        return value // Already formatted as "Week of YYYY-MM-DD"
+        return isMobile
+          ? format(date, 'MMM d')
+          : `Week of ${format(date, 'MMM d')}`
       case 'month':
-        return `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`
+        return format(date, 'MMM yyyy')
       default:
         return value
     }
   }
+
+  const xAxisHeight = isMobile
+    ? groupBy === 'hour'
+      ? 108
+      : 96
+    : groupBy === 'hour'
+      ? 112
+      : 96
+  const xAxisAngle = isMobile ? -90 : -45
+  const xAxisTextAnchor = isMobile ? 'start' : 'end'
+  const xAxisTickDy = isMobile ? 10 : groupBy === 'hour' ? 18 : 14
+  const xAxisTickMargin = isMobile ? 14 : 16
+  const chartRightMargin = isMobile ? 12 : 48
+  const xAxisRightPadding = isMobile ? 8 : 32
 
   return (
     <ChartCard>
@@ -161,14 +196,25 @@ export function GameActivityChart() {
         <ChartContainer config={chartConfig} className='h-full w-full'>
           <BarChart
             data={gamesData}
-            margin={{ top: 20, right: 10, left: 0, bottom: 60 }}
+            margin={{
+              top: 20,
+              right: chartRightMargin,
+              left: 8,
+              bottom: xAxisHeight,
+            }}
           >
             <CartesianGrid strokeDasharray='3 3' />
             <XAxis
               dataKey='timeUnit'
-              angle={-45}
-              textAnchor='end'
-              height={60}
+              angle={xAxisAngle}
+              textAnchor={xAxisTextAnchor}
+              height={xAxisHeight}
+              tick={{ fontSize: 12 }}
+              tickMargin={xAxisTickMargin}
+              dy={xAxisTickDy}
+              minTickGap={16}
+              interval='preserveStartEnd'
+              padding={{ left: 8, right: xAxisRightPadding }}
               tickFormatter={formatXAxisTick}
             />
             <YAxis />
