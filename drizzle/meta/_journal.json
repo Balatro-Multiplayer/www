@@ -8,6 +8,13 @@
       "when": 1761769511924,
       "tag": "0000_thick_thing",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1772290729608,
+      "tag": "0001_nifty_phalanx",
+      "breakpoints": true
     }
   ]
 }

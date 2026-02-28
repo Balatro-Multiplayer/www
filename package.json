@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
+    "db:seed:seasons": "bun run scripts/seed-seasons.ts",
     "db:studio": "drizzle-kit studio",
     "dev": "next dev --turbo",
     "migrate:season": "bun run  scripts/migrate-add-season-column.ts",

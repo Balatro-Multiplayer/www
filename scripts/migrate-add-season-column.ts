@@ -37,7 +37,7 @@ async function migrateSeasonColumn() {
       // Update each record in the batch
       await Promise.all(
         batch.map(async (game) => {
-          const season = getSeasonForDate(new Date(game.gameTime))
+          const season = await getSeasonForDate(new Date(game.gameTime))
           await db
             .update(player_games)
             .set({ season })
@@ -48,7 +48,9 @@ async function migrateSeasonColumn() {
       )
 
       updated += batch.length
-      console.log(`Progress: ${updated}/${allGames.length} (${Math.round((updated / allGames.length) * 100)}%)`)
+      console.log(
+        `Progress: ${updated}/${allGames.length} (${Math.round((updated / allGames.length) * 100)}%)`
+      )
     }
 
     console.log(`✓ Migration completed! Updated ${updated} records`)
@@ -60,7 +62,10 @@ async function migrateSeasonColumn() {
       FROM player_games
       WHERE season IS NULL
     `)
-    const nullCount = (recordsWithoutSeason.rows[0] as any).count
+    const nullCountRow = recordsWithoutSeason.rows[0] as
+      | { count: string }
+      | undefined
+    const nullCount = nullCountRow?.count ?? '0'
 
     if (nullCount === '0') {
       console.log('✓ All records have season values')
@@ -76,10 +81,12 @@ async function migrateSeasonColumn() {
       ORDER BY season
     `)
     console.log('\nSeason distribution:')
-    distribution.rows.forEach((row: any) => {
+    for (const row of distribution.rows as Array<{
+      season: string | null
+      count: string
+    }>) {
       console.log(`  ${row.season}: ${row.count} games`)
-    })
-
+    }
   } catch (error) {
     console.error('Migration failed:', error)
     throw error

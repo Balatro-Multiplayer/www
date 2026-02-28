@@ -1,16 +1,16 @@
 ## 1. Database Schema & Migration
 
-- [ ] 1.1 Add `seasons` table to `src/server/db/schema.ts` (id, name, startDate, endDate, isActive, createdAt)
-- [ ] 1.2 Add `season_snapshots` table to `src/server/db/schema.ts` (id, seasonId FK, queueType text, queueId text, minioKey nullable, uploadedBy nullable, createdAt, UNIQUE seasonId+queueType)
-- [ ] 1.3 Generate Drizzle migration with `bun drizzle-kit generate`
-- [ ] 1.4 Write seed migration script to insert S1–S6 rows into `seasons` table using existing date constants, mark S6 as active; seed script also sets `config:active_season` in Redis to `6`
+- [x] 1.1 Add `seasons` table to `src/server/db/schema.ts` (id, name, startDate, endDate, isActive, createdAt)
+- [x] 1.2 Add `season_snapshots` table to `src/server/db/schema.ts` (id, seasonId FK, queueType text, queueId text, minioKey nullable, uploadedBy nullable, createdAt, UNIQUE seasonId+queueType)
+- [x] 1.3 Generate Drizzle migration with `bun drizzle-kit generate`
+- [x] 1.4 Write seed migration script to insert S1–S6 rows into `seasons` table using existing date constants, mark S6 as active; seed script also sets `config:active_season` in Redis to `6`
 
 ## 2. Season Config Refactor
 
-- [ ] 2.1 Update `src/shared/seasons.ts`: replace `SeasonSchema` enum with `z.string().regex(/^season\d+$/)`, keep string format
-- [ ] 2.2 Make `getSeasonForDate()` async, implement using DB query wrapped in `unstable_cache` with `'seasons'` revalidation tag
-- [ ] 2.3 Update `getSeasonDisplayName()` to derive number from string dynamically (no hardcoded cases)
-- [ ] 2.4 Audit and update all callers of `getSeasonForDate()` and `SeasonSchema` to handle async / new type
+- [x] 2.1 Update `src/shared/seasons.ts`: replace `SeasonSchema` enum with `z.string().regex(/^season\d+$/)`, keep string format
+- [x] 2.2 Make `getSeasonForDate()` async, implement using DB query wrapped in `unstable_cache` with `'seasons'` revalidation tag
+- [x] 2.3 Update `getSeasonDisplayName()` to derive number from string dynamically (no hardcoded cases)
+- [x] 2.4 Audit and update all callers of `getSeasonForDate()` and `SeasonSchema` to handle async / new type
 
 ## 3. Leaderboard Service Consolidation
 

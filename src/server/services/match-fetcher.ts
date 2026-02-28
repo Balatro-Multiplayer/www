@@ -7,6 +7,7 @@ import {
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
 import {
+  SEASON_1_START_DATE,
   SEASON_2_START_DATE,
   SEASON_3_START_DATE,
   SEASON_4_START_DATE,
@@ -41,7 +42,7 @@ export const QUEUE_IDS = [
 export function getSeasonDateRange(season: Season): { start: Date; end: Date } {
   switch (season) {
     case 'season1':
-      return { start: new Date('2000-01-01'), end: SEASON_2_START_DATE }
+      return { start: SEASON_1_START_DATE, end: SEASON_2_START_DATE }
     case 'season2':
       return { start: SEASON_2_START_DATE, end: SEASON_3_START_DATE }
     case 'season3':
@@ -53,6 +54,8 @@ export function getSeasonDateRange(season: Season): { start: Date; end: Date } {
     case 'season6':
       return { start: SEASON_6_START_DATE, end: new Date('2099-01-01') }
   }
+
+  throw new Error(`Unknown season: ${season}`)
 }
 
 export async function fetchMatches(
