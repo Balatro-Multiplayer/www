@@ -2,20 +2,22 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { ModeToggle } from '@/components/mode-toggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ThemeToggle } from 'fumadocs-ui/components/layout/theme-toggle'
 import type { HomeLayoutProps } from 'fumadocs-ui/layouts/home'
-import type { LinkItemType } from 'fumadocs-ui/layouts/links'
-import { replaceOrDefault } from 'fumadocs-ui/layouts/shared'
+import {
+  renderTitleNav,
+  type LinkItemType,
+} from 'fumadocs-ui/layouts/shared'
 import { LogIn, LogOut, Settings, Shield, Tv, User } from 'lucide-react'
 import { signIn, signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import {
   NavbarLink,
   NavbarMenu,
@@ -37,9 +39,18 @@ function getLinkItemKey(item: LinkItemType): string {
   return JSON.stringify(item)
 }
 
+function renderThemeSwitch(
+  themeSwitch: HomeLayoutProps['themeSwitch'],
+  fallback: ReactNode
+) {
+  if (themeSwitch?.enabled === false) return null
+  return themeSwitch?.component ?? fallback
+}
+
 export function Header({
-  nav: { enableSearch = true, ...nav } = {},
+  nav = {},
   finalLinks,
+  searchToggle,
   themeSwitch,
 }: HomeLayoutProps & {
   finalLinks: LinkItemType[]
@@ -54,12 +65,10 @@ export function Header({
 
   return (
     <Navbar>
-      <Link
-        href={nav.url ?? '/'}
-        className='inline-flex items-center gap-2.5 font-semibold'
-      >
-        {nav.title}
-      </Link>
+      {renderTitleNav(nav, {
+        href: nav.url ?? '/',
+        className: 'inline-flex items-center gap-2.5 font-semibold',
+      })}
       {nav.children}
       <ul className='flex flex-row items-center gap-2 px-6 max-md:hidden'>
         {navItems
@@ -125,7 +134,7 @@ export function Header({
         )}
       </ul>
       <div className='flex flex-1 flex-row items-center justify-end gap-1.5'>
-        {enableSearch ? (
+        {searchToggle?.enabled !== false ? (
           <>
             <SearchToggle className='md:hidden' hideIfDisabled />
             <LargeSearchToggle
@@ -134,9 +143,11 @@ export function Header({
             />
           </>
         ) : null}
-        {replaceOrDefault(
+        {renderThemeSwitch(
           themeSwitch,
-          <ThemeToggle className='max-md:hidden' mode={themeSwitch?.mode} />
+          <div className='max-md:hidden'>
+            <ModeToggle />
+          </div>
         )}
 
         {/* Sign In Button or User Menu (desktop only, Sheet handles mobile) */}

@@ -1,5 +1,6 @@
 'use client'
 
+import { ModeToggle } from '@/components/mode-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -9,9 +10,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
-import { ThemeToggle } from 'fumadocs-ui/components/layout/theme-toggle'
 import type { HomeLayoutProps } from 'fumadocs-ui/layouts/home'
-import { replaceOrDefault } from 'fumadocs-ui/layouts/shared'
 import {
   BarChart3,
   BookOpen,
@@ -29,7 +28,15 @@ import {
 } from 'lucide-react'
 import { signIn, signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
+
+function renderThemeSwitch(
+  themeSwitch: HomeLayoutProps['themeSwitch'],
+  fallback: ReactNode
+) {
+  if (themeSwitch?.enabled === false) return null
+  return themeSwitch?.component ?? fallback
+}
 
 function MobileMenuLink({
   href,
@@ -278,9 +285,9 @@ export function MobileMenu({
           <div className='mt-auto border-t px-3 py-3'>
             <div className='flex items-center justify-between px-3'>
               <span className='text-fd-muted-foreground text-xs'>Theme</span>
-              {replaceOrDefault(
+              {renderThemeSwitch(
                 themeSwitch,
-                <ThemeToggle mode={themeSwitch?.mode} />
+                <ModeToggle />
               )}
             </div>
             {isAuthenticated && (

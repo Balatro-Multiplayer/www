@@ -187,7 +187,9 @@ export function DeckStakeStatsChart({
                     const itemCount = deckData.length
                     const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
                     return (
-                      <g transform={`translate(${x - imgSize / 2},${y + 10})`}>
+                      <g
+                        transform={`translate(${Number(x) - imgSize / 2},${Number(y) + 10})`}
+                      >
                         <title className='capitalize'>{payload.value}</title>
                         {imagePath && (
                           <image
@@ -263,7 +265,9 @@ export function DeckStakeStatsChart({
                     const itemCount = stakeData.length
                     const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
                     return (
-                      <g transform={`translate(${x - imgSize / 2},${y + 10})`}>
+                      <g
+                        transform={`translate(${Number(x) - imgSize / 2},${Number(y) + 10})`}
+                      >
                         <title className='capitalize'>{payload.value}</title>
                         {imagePath && (
                           <image

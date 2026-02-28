@@ -358,7 +358,7 @@ export function DeckPopularityChart({
                       )
                       return (
                         <g
-                          transform={`translate(${x - imgSize / 2},${y + 10})`}
+                          transform={`translate(${Number(x) - imgSize / 2},${Number(y) + 10})`}
                         >
                           <title className='capitalize'>{payload.value}</title>
                           {imagePath && (
@@ -393,7 +393,7 @@ export function DeckPopularityChart({
                           const entry = item.payload
                           return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
                         }}
-                        labelFormatter={(label) => label}
+                        labelFormatter={(label) => String(label ?? '')}
                       />
                     }
                   />
@@ -408,7 +408,7 @@ export function DeckPopularityChart({
                       offset={8}
                       className='fill-foreground'
                       fontSize={10}
-                      formatter={(v: number) => `${v}%`}
+                      formatter={(v) => `${v}%`}
                     />
                   </Bar>
                 </BarChart>
@@ -444,7 +444,7 @@ export function DeckPopularityChart({
                           const entry = item.payload
                           return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
                         }}
-                        labelFormatter={(label) => label}
+                        labelFormatter={(label) => String(label ?? '')}
                       />
                     }
                   />
@@ -459,7 +459,7 @@ export function DeckPopularityChart({
                       offset={8}
                       className='fill-foreground'
                       fontSize={10}
-                      formatter={(v: number) => `${v}%`}
+                      formatter={(v) => `${v}%`}
                     />
                   </Bar>
                 </BarChart>
@@ -480,7 +480,7 @@ export function DeckPopularityChart({
                         const entry = item.payload
                         return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
                       }}
-                      labelFormatter={(label) => label}
+                      labelFormatter={(label) => String(label ?? '')}
                     />
                   }
                 />
@@ -491,7 +491,6 @@ export function DeckPopularityChart({
                   cx='50%'
                   cy='50%'
                   outerRadius='80%'
-                  activeIndex={activeIndex}
                   activeShape={renderActiveShape}
                   onMouseEnter={onPieEnter}
                   onMouseLeave={onPieLeave}

@@ -10,13 +10,18 @@ import {
 } from '@radix-ui/react-dialog'
 import { useRouter } from 'fumadocs-core/framework'
 import { useDocsSearch } from 'fumadocs-core/search/client'
-import { useEffectEvent } from 'fumadocs-core/utils/use-effect-event'
 import type { SharedProps } from 'fumadocs-ui/components/dialog/search'
+import { useSidebar } from 'fumadocs-ui/components/sidebar/base'
 import { buttonVariants } from 'fumadocs-ui/components/ui/button'
 import { useI18n } from 'fumadocs-ui/contexts/i18n'
-import { useSidebar } from 'fumadocs-ui/contexts/sidebar'
 import { FileText, Hash, Loader2, SearchIcon, Text, User } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useState,
+} from 'react'
 
 type SearchLink = [name: string, href: string]
 
@@ -149,7 +154,12 @@ function SearchResults({
   const [active, setActive] = useState<string>()
   const { text } = useI18n()
   const router = useRouter()
-  const sidebar = useSidebar()
+  let sidebar: ReturnType<typeof useSidebar> | undefined
+  try {
+    sidebar = useSidebar()
+  } catch {
+    sidebar = undefined
+  }
 
   if (
     items.length > 0 &&
@@ -162,7 +172,7 @@ function SearchResults({
     if (external) window.open(url, '_blank')?.focus()
     else router.push(url)
     onSelect?.(url)
-    sidebar.setOpen(false)
+    sidebar?.setOpen(false)
   }
 
   const onKey = useEffectEvent((e: KeyboardEvent) => {
@@ -284,10 +294,10 @@ export default function CustomSearchDialog(props: SharedProps) {
     {
       type: 'fetch',
       api: '/api/search',
+      locale,
+      delayMs: 200,
     },
-    locale,
-    undefined,
-    200 // debounce delay
+    [locale]
   )
 
   // Transform results to include custom rendering

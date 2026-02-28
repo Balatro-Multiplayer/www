@@ -18,7 +18,8 @@ import {
   DocsTitle,
 } from 'fumadocs-ui/page'
 import { notFound } from 'next/navigation'
-import type { ComponentProps } from 'react'
+import type { TOCItemType } from 'fumadocs-core/toc'
+import type { ComponentProps, ComponentType } from 'react'
 import { metadataImage } from '../../../../lib/metadata'
 import { source } from '../../../../lib/source'
 
@@ -33,12 +34,21 @@ type XmultProps = ComponentProps<typeof Xmult>
 type SpectralProps = ComponentProps<typeof Spectral>
 type MultProps = ComponentProps<typeof Mult>
 type NemesisProps = ComponentProps<typeof Nemesis>
+type DocsPageData = NonNullable<ReturnType<typeof source.getPage>> & {
+  data: {
+    body: ComponentType<{ components?: Record<string, ComponentType<any>> }>
+    description?: string
+    full?: boolean
+    title: string
+    toc: TOCItemType[]
+  }
+}
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>
 }) {
   const params = await props.params
-  const page = source.getPage(params.slug)
+  const page = source.getPage(params.slug) as DocsPageData | undefined
   if (!page) notFound()
 
   const MDX = page.data.body
@@ -57,36 +67,32 @@ export default async function Page(props: {
         <MDX
           components={{
             ...defaultMdxComponents,
-            img: (props) => {
+            img: (props: ImageZoomProps) => {
               const isDev =
                 process.env.NODE_ENV === 'development' ||
                 process.env.IS_PREVIEW === 'true'
               if (isDev) {
-                return <ImageZoom {...(props as ImageZoomProps)} />
+                return <ImageZoom {...props} />
               }
 
-              const typedProps = props as ImageZoomProps
-              const src =
-                typeof typedProps.src === 'string' ? typedProps.src : undefined
+              const src = typeof props.src === 'string' ? props.src : undefined
               return (
                 <ImageZoom
-                  {...typedProps}
-                  src={
-                    src?.startsWith('/') ? `${CDN_URL}${src}` : typedProps.src
-                  }
+                  {...props}
+                  src={src?.startsWith('/') ? `${CDN_URL}${src}` : props.src}
                 />
               )
             },
-            Button: (props) => <Button {...(props as ButtonProps)} />,
-            JokerCard: (props) => <JokerCard {...(props as JokerCardProps)} />,
-            Chips: (props) => <Chips {...(props as ChipsProps)} />,
-            Hands: (props) => <Hands {...(props as HandsProps)} />,
-            Chance: (props) => <Chance {...(props as ChanceProps)} />,
-            Money: (props) => <Money {...(props as MoneyProps)} />,
-            Xmult: (props) => <Xmult {...(props as XmultProps)} />,
-            Spectral: (props) => <Spectral {...(props as SpectralProps)} />,
-            Mult: (props) => <Mult {...(props as MultProps)} />,
-            Nemesis: (props) => <Nemesis {...(props as NemesisProps)} />,
+            Button: (props: ButtonProps) => <Button {...props} />,
+            JokerCard: (props: JokerCardProps) => <JokerCard {...props} />,
+            Chips: (props: ChipsProps) => <Chips {...props} />,
+            Hands: (props: HandsProps) => <Hands {...props} />,
+            Chance: (props: ChanceProps) => <Chance {...props} />,
+            Money: (props: MoneyProps) => <Money {...props} />,
+            Xmult: (props: XmultProps) => <Xmult {...props} />,
+            Spectral: (props: SpectralProps) => <Spectral {...props} />,
+            Mult: (props: MultProps) => <Mult {...props} />,
+            Nemesis: (props: NemesisProps) => <Nemesis {...props} />,
           }}
         />
       </DocsBody>
@@ -102,7 +108,7 @@ export async function generateMetadata(props: {
   params: Promise<{ slug?: string[] }>
 }) {
   const params = await props.params
-  const page = source.getPage(params.slug)
+  const page = source.getPage(params.slug) as DocsPageData | undefined
   if (!page) notFound()
 
   return metadataImage.withImage(page.slugs, {

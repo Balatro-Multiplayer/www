@@ -9,7 +9,10 @@ import { cn } from '@/lib/utils'
 import { cva } from 'class-variance-authority'
 import Link from 'fumadocs-core/link'
 import { buttonVariants } from 'fumadocs-ui/components/ui/button'
-import { BaseLinkItem, type LinkItemType } from 'fumadocs-ui/layouts/links'
+import {
+  LinkItem as BaseLinkItem,
+  type LinkItemType,
+} from 'fumadocs-ui/utils/link-item'
 import type { ComponentPropsWithoutRef } from 'react'
 
 const menuItemVariants = cva('', {

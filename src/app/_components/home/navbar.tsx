@@ -17,8 +17,7 @@ import {
   NavigationMenuTrigger,
   NavigationMenuViewport,
 } from 'fumadocs-ui/components/ui/navigation-menu'
-import { useNav } from 'fumadocs-ui/contexts/layout'
-import { BaseLinkItem } from 'fumadocs-ui/layouts/links'
+import { LinkItem as BaseLinkItem } from 'fumadocs-ui/utils/link-item'
 import { type ComponentProps, type HTMLAttributes, useState } from 'react'
 
 const navItemVariants = cva(
@@ -27,29 +26,32 @@ const navItemVariants = cva(
 
 export function Navbar(props: HTMLAttributes<HTMLElement>) {
   const [value, setValue] = useState('')
-  const { isTransparent } = useNav()
 
   return (
     <NavigationMenu value={value} onValueChange={setValue} asChild>
-      <header
-        id='nd-nav'
-        {...props}
+      <div
         className={cn(
-          '-translate-x-1/2 fixed top-(--fd-banner-height) left-1/2 z-40 box-content w-full max-w-fd-container border-fd-foreground/10 border-b transition-colors lg:mt-2 lg:w-[calc(100%-1rem)] lg:rounded-2xl lg:border',
-          value.length > 0 ? 'shadow-lg' : 'shadow-sm',
-          (!isTransparent || value.length > 0) &&
-            'bg-fd-background/80 backdrop-blur-lg',
+          'h-14 lg:h-16',
           props.className
         )}
       >
-        <NavigationMenuList
-          className='flex h-14 w-full flex-row items-center px-4 lg:h-12'
-          asChild
+        <header
+          id='nd-nav'
+          className={cn(
+            '-translate-x-1/2 fixed top-(--fd-banner-height) left-1/2 z-40 box-content w-full max-w-fd-container border-fd-foreground/10 border-b transition-colors lg:mt-2 lg:w-[calc(100%-1rem)] lg:rounded-2xl lg:border',
+            value.length > 0 ? 'shadow-lg' : 'shadow-sm',
+            'bg-fd-background/80 backdrop-blur-lg'
+          )}
         >
-          <nav>{props.children}</nav>
-        </NavigationMenuList>
-        <NavigationMenuViewport />
-      </header>
+          <NavigationMenuList
+            className='flex h-14 w-full flex-row items-center px-4 lg:h-12'
+            asChild
+          >
+            <nav>{props.children}</nav>
+          </NavigationMenuList>
+          <NavigationMenuViewport />
+        </header>
+      </div>
     </NavigationMenu>
   )
 }

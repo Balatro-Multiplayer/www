@@ -1,5 +1,4 @@
-import type { LinkItemType } from 'fumadocs-ui/layouts/links'
-import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared'
+import type { BaseLayoutProps, LinkItemType } from 'fumadocs-ui/layouts/shared'
 import {
   BarChart3,
   BookOpen,
@@ -33,7 +32,7 @@ const links = [
   },
   {
     text: 'Tools',
-    type: 'menu',
+    type: 'menu' as const,
     icon: <Wrench />,
     items: [
       {

@@ -16,12 +16,10 @@ import { DayPicker, type DropdownProps } from 'react-day-picker'
 function CalendarDropdown({
   value,
   onChange,
-  children,
+  options,
   className,
   ...props
 }: DropdownProps) {
-  const items = React.Children.toArray(children).filter(React.isValidElement)
-
   return (
     <div className={className}>
       <Select
@@ -39,21 +37,15 @@ function CalendarDropdown({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {items.map((item) => {
-            const option = item as React.ReactElement<{
-              value: string | number
-              children: React.ReactNode
-            }>
-
-            return (
-              <SelectItem
-                key={option.props.value.toString()}
-                value={option.props.value.toString()}
-              >
-                {option.props.children}
-              </SelectItem>
-            )
-          })}
+          {options?.map((option) => (
+            <SelectItem
+              key={option.value.toString()}
+              value={option.value.toString()}
+              disabled={option.disabled}
+            >
+              {option.label}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
@@ -120,11 +112,14 @@ function Calendar({
       }}
       components={{
         Dropdown: CalendarDropdown,
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn('size-4', className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn('size-4', className)} {...props} />
+        Chevron: ({ className, orientation, ...props }) => (
+          <>
+            {orientation === 'left' ? (
+              <ChevronLeft className={cn('size-4', className)} {...props} />
+            ) : (
+              <ChevronRight className={cn('size-4', className)} {...props} />
+            )}
+          </>
         ),
       }}
       {...props}
