@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -105,9 +106,9 @@ const KNOWN_QUEUES: QueueConfig[] = [
   { queueType: 'legacy', label: 'Legacy Ranked', queueId: LEGACY_QUEUE_ID },
 ]
 
-function toDateInputValue(value: string | null) {
-  if (!value) return ''
-  return value.split('T')[0] ?? ''
+function parseDateTimeValue(value: string | null) {
+  if (!value) return null
+  return new Date(value)
 }
 
 function buildSnapshotRows(
@@ -427,8 +428,12 @@ export function SeasonDetailClient({
   const router = useRouter()
   const uploadInputsRef = useRef<Record<string, HTMLInputElement | null>>({})
   const [name, setName] = useState(season.name)
-  const [startDate, setStartDate] = useState(toDateInputValue(season.startDate))
-  const [endDate, setEndDate] = useState(toDateInputValue(season.endDate))
+  const [startDate, setStartDate] = useState(() =>
+    parseDateTimeValue(season.startDate)
+  )
+  const [endDate, setEndDate] = useState(() =>
+    parseDateTimeValue(season.endDate)
+  )
   const [isActive, setIsActive] = useState(season.isActive)
   const [formError, setFormError] = useState<string | null>(null)
   const [uploadingQueueType, setUploadingQueueType] = useState<string | null>(
@@ -442,6 +447,7 @@ export function SeasonDetailClient({
   )
   const [rows, setRows] = useState(() => buildSnapshotRows(snapshots))
   const [isHydrated, setIsHydrated] = useState(false)
+  const [browserTimeZone, setBrowserTimeZone] = useState('UTC')
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -459,6 +465,9 @@ export function SeasonDetailClient({
 
   useEffect(() => {
     setIsHydrated(true)
+    setBrowserTimeZone(
+      Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local time'
+    )
   }, [])
 
   const updateSeason = api.seasons.update.useMutation({
@@ -525,7 +534,7 @@ export function SeasonDetailClient({
     }
 
     if (!startDate) {
-      setFormError('Start date required')
+      setFormError('Start datetime required')
       return
     }
 
@@ -533,8 +542,8 @@ export function SeasonDetailClient({
     updateSeason.mutate({
       id: season.id,
       name: name.trim(),
-      startDate: new Date(startDate),
-      endDate: endDate ? new Date(endDate) : null,
+      startDate,
+      endDate,
       isActive,
     })
   }
@@ -673,25 +682,40 @@ export function SeasonDetailClient({
           </div>
 
           <div className='grid gap-2'>
-            <Label htmlFor='season-start-date'>Start date</Label>
-            <Input
+            <Label htmlFor='season-start-date'>Start datetime</Label>
+            <DateTimePicker
               id='season-start-date'
-              type='date'
               value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
+              onChange={setStartDate}
+              placeholder='Pick start datetime'
+              isHydrated={isHydrated}
+              timeZone={browserTimeZone}
               disabled={updateSeason.isPending}
             />
           </div>
 
           <div className='grid gap-2'>
-            <Label htmlFor='season-end-date'>End date</Label>
-            <Input
+            <Label htmlFor='season-end-date'>End datetime</Label>
+            <DateTimePicker
               id='season-end-date'
-              type='date'
               value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
+              onChange={setEndDate}
+              placeholder='Optional end datetime'
+              clearable
+              isHydrated={isHydrated}
+              timeZone={browserTimeZone}
               disabled={updateSeason.isPending}
             />
+          </div>
+
+          <div className='rounded-md border border-dashed bg-muted/30 px-3 py-2 md:col-span-2'>
+            <p className='text-muted-foreground text-xs'>
+              Season datetimes use your browser timezone:{' '}
+              <span className='font-medium text-foreground'>
+                {isHydrated ? browserTimeZone : 'detecting...'}
+              </span>
+              . Each picker also shows the UTC timestamp that will be saved.
+            </p>
           </div>
 
           <div className='md:col-span-2'>

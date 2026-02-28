@@ -1,11 +1,64 @@
 'use client'
 
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type * as React from 'react'
-import { DayPicker } from 'react-day-picker'
-
 import { buttonVariants } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import * as React from 'react'
+import { DayPicker, type DropdownProps } from 'react-day-picker'
+
+function CalendarDropdown({
+  value,
+  onChange,
+  children,
+  className,
+  ...props
+}: DropdownProps) {
+  const items = React.Children.toArray(children).filter(React.isValidElement)
+
+  return (
+    <div className={className}>
+      <Select
+        value={value?.toString()}
+        onValueChange={(nextValue) => {
+          onChange?.({
+            target: { value: nextValue },
+          } as React.ChangeEvent<HTMLSelectElement>)
+        }}
+      >
+        <SelectTrigger
+          className='h-8 min-w-0 border-0 bg-transparent px-1 font-medium text-sm shadow-none focus:ring-0'
+          aria-label={props['aria-label']}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((item) => {
+            const option = item as React.ReactElement<{
+              value: string | number
+              children: React.ReactNode
+            }>
+
+            return (
+              <SelectItem
+                key={option.props.value.toString()}
+                value={option.props.value.toString()}
+              >
+                {option.props.children}
+              </SelectItem>
+            )
+          })}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
 
 function Calendar({
   className,
@@ -20,8 +73,13 @@ function Calendar({
       classNames={{
         months: 'flex flex-col sm:flex-row gap-2',
         month: 'flex flex-col gap-4',
-        caption: 'flex justify-center pt-1 relative items-center w-full',
+        caption: 'relative flex items-center justify-center px-8 pt-1',
+        caption_dropdowns: 'flex items-center justify-center gap-1',
         caption_label: 'text-sm font-medium',
+        dropdown_month: 'relative inline-flex items-center',
+        dropdown_year: 'relative inline-flex items-center',
+        dropdown: 'hidden',
+        dropdown_icon: 'hidden',
         nav: 'flex items-center gap-1',
         nav_button: cn(
           buttonVariants({ variant: 'outline' }),
@@ -57,9 +115,11 @@ function Calendar({
         day_range_middle:
           'aria-selected:bg-accent aria-selected:text-accent-foreground',
         day_hidden: 'invisible',
+        vhidden: 'sr-only',
         ...classNames,
       }}
       components={{
+        Dropdown: CalendarDropdown,
         IconLeft: ({ className, ...props }) => (
           <ChevronLeft className={cn('size-4', className)} {...props} />
         ),
