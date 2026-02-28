@@ -86,11 +86,12 @@ export async function POST(req: NextRequest) {
           console.error('JOIN_QUEUE missing player ID', payload)
           break
         }
+        const normalizedUserId = String(userId)
         console.log('-----JOIN QUEUE-----')
         console.dir(payload, { depth: null })
-        console.log(userId)
-        await redis.set(PLAYER_STATE_KEY(userId), JSON.stringify(state))
-        globalEmitter.emit(`state-change:${userId}`, state)
+        console.log(normalizedUserId)
+        await redis.set(PLAYER_STATE_KEY(normalizedUserId), JSON.stringify(state))
+        globalEmitter.emit(`state-change:${normalizedUserId}`, state)
         break
       }
 
@@ -161,8 +162,11 @@ export async function POST(req: NextRequest) {
           console.error('LEAVE_QUEUE missing player ID', payload)
           break
         }
-        await redis.del(PLAYER_STATE_KEY(userId))
-        globalEmitter.emit(`state-change:${userId}`, { status: 'idle' })
+        const normalizedUserId = String(userId)
+        await redis.del(PLAYER_STATE_KEY(normalizedUserId))
+        globalEmitter.emit(`state-change:${normalizedUserId}`, {
+          status: 'idle',
+        })
         break
       }
     }

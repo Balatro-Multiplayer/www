@@ -28,6 +28,31 @@ type ReactSortedResult = {
   external?: boolean
 }
 
+function isSearchResult(value: unknown): value is SearchResult {
+  if (!value || typeof value !== 'object') return false
+
+  const result = value as Partial<SearchResult>
+
+  if (result.type === 'player') {
+    return (
+      typeof result.discord_id === 'string' &&
+      typeof result.username === 'string' &&
+      typeof result.ranked_mmr === 'number' &&
+      typeof result.url === 'string'
+    )
+  }
+
+  return (
+    result.type === 'doc' &&
+    typeof result.id === 'string' &&
+    typeof result.url === 'string' &&
+    typeof result.content === 'string' &&
+    (result.docType === 'page' ||
+      result.docType === 'heading' ||
+      result.docType === 'text')
+  )
+}
+
 interface CustomSearchDialogProps extends SharedProps {
   search: string
   onSearchChange: (v: string) => void
@@ -268,7 +293,7 @@ export default function CustomSearchDialog(props: SharedProps) {
   // Transform results to include custom rendering
   const transformedResults =
     query.data && Array.isArray(query.data)
-      ? (query.data as SearchResult[]).map((typedResult) => {
+      ? (query.data as unknown[]).filter(isSearchResult).map((typedResult) => {
           if (typedResult.type === 'player') {
             return {
               id: `player-${typedResult.discord_id}`,

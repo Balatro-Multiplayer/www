@@ -66,14 +66,12 @@ export default async function Page(props: {
               }
 
               const typedProps = props as ImageZoomProps
+              const src =
+                typeof typedProps.src === 'string' ? typedProps.src : undefined
               return (
                 <ImageZoom
                   {...typedProps}
-                  src={
-                    typedProps.src?.startsWith('/')
-                      ? `${CDN_URL}${typedProps.src}`
-                      : typedProps.src
-                  }
+                  src={src?.startsWith('/') ? `${CDN_URL}${src}` : typedProps.src}
                 />
               )
             },
