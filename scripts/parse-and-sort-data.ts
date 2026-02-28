@@ -1,5 +1,5 @@
 // @ts-nocheck
-import {RANKED_QUEUE_ID} from "@/shared/constants";
+import { RANKED_QUEUE_ID } from '@/shared/constants'
 
 const data = await fetch(
   `http://balatro.virtualized.dev:4931/api/stats/overall-history/${RANKED_QUEUE_ID}`

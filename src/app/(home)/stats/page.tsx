@@ -1,22 +1,52 @@
-import { RANKED_QUEUE_ID } from '@/shared/constants'
+import { getActiveSeasonNumber, getSeasonKey } from '@/server/seasons'
+import type { Season } from '@/shared/seasons'
 import { HydrateClient, api } from '@/trpc/server'
 import { createLoader } from 'nuqs/server'
 import { Suspense } from 'react'
 import { StatsTabs } from './_components/stats-tabs'
-import { statsSearchParamsParsersServer } from './search-params.server'
-
-const loadSearchParams = createLoader(statsSearchParamsParsersServer)
+import { getStatsSeasons, resolveStatsSeason } from './search-params.constants'
+import { createStatsSearchParamsParsersServer } from './search-params.server'
 
 export default async function StatsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  const [seasonRows, activeSeasonNumber] = await Promise.all([
+    api.seasons.list(),
+    getActiveSeasonNumber(),
+  ])
+  const statsSeasons = getStatsSeasons(seasonRows)
+  const activeSeason = getSeasonKey(activeSeasonNumber)
+  const defaultSeason =
+    (statsSeasons.includes(activeSeason) ? activeSeason : statsSeasons[0]) ??
+    ('season1' as Season)
+  const defaultSeasonId = Number(defaultSeason.replace('season', ''))
+  const defaultSeasonSnapshots = await api.seasons.list_snapshots({
+    seasonId: defaultSeasonId,
+  })
+  const defaultRankedSnapshot =
+    defaultSeasonSnapshots.find(
+      (snapshot) => snapshot.queueType === 'ranked'
+    ) ?? defaultSeasonSnapshots[0]
+  const loadSearchParams = createLoader(
+    createStatsSearchParamsParsersServer(defaultSeason)
+  )
   const params = await loadSearchParams(searchParams)
+  const deckSeason = resolveStatsSeason(
+    params.deckSeason,
+    statsSeasons,
+    defaultSeason
+  )
+  const stakeSeason = resolveStatsSeason(
+    params.stakeSeason,
+    statsSeasons,
+    defaultSeason
+  )
 
   const deckPrefetchInput = {
     mode: params.deckMode,
-    season: params.deckMode === 'season' ? params.deckSeason : undefined,
+    season: params.deckMode === 'season' ? deckSeason : undefined,
     startDate:
       params.deckMode === 'dateRange'
         ? (params.deckStartDate ?? undefined)
@@ -30,7 +60,7 @@ export default async function StatsPage({
 
   const stakePrefetchInput = {
     mode: params.stakeMode,
-    season: params.stakeMode === 'season' ? params.stakeSeason : undefined,
+    season: params.stakeMode === 'season' ? stakeSeason : undefined,
     startDate:
       params.stakeMode === 'dateRange'
         ? (params.stakeStartDate ?? undefined)
@@ -44,13 +74,17 @@ export default async function StatsPage({
 
   await Promise.all([
     api.history.games_per_hour.prefetch({ groupBy: 'hour' }),
-    api.leaderboard.rating_distribution.prefetch({
-      channel_id: RANKED_QUEUE_ID,
-      season: 'season6',
-    }),
     api.stats.deck_popularity.prefetch(deckPrefetchInput),
     api.stats.stake_popularity.prefetch(stakePrefetchInput),
     api.stats.season_overview.prefetch(),
+    ...(defaultRankedSnapshot
+      ? [
+          api.leaderboard.rating_distribution.prefetch({
+            channel_id: defaultRankedSnapshot.queueId,
+            season: defaultSeason,
+          }),
+        ]
+      : []),
   ])
 
   return (
@@ -58,7 +92,10 @@ export default async function StatsPage({
       <h1 className='mb-6 font-bold text-3xl'>Stats</h1>
       <Suspense>
         <HydrateClient>
-          <StatsTabs />
+          <StatsTabs
+            defaultSeason={defaultSeason}
+            statsSeasons={statsSeasons}
+          />
         </HydrateClient>
       </Suspense>
     </div>

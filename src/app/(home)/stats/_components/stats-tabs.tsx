@@ -1,9 +1,11 @@
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { Season } from '@/shared/seasons'
 import { useQueryState } from 'nuqs'
+import { useMemo } from 'react'
 import { Suspense } from 'react'
-import { STAT_TABS, statsSearchParamsParsers } from '../search-params'
+import { STAT_TABS, createStatsSearchParamsParsers } from '../search-params'
 import { DeckPopularityChart } from './deck-popularity-chart'
 import { GameActivityChart } from './game-activity-chart'
 import { RatingDistributionChart } from './rating-distribution-chart'
@@ -24,8 +26,17 @@ const TABS = STAT_TABS.map((value) => ({
             : 'Game Activity',
 }))
 
-export function StatsTabs() {
-  const [tab, setTab] = useQueryState('tab', statsSearchParamsParsers.tab)
+type StatsTabsProps = {
+  defaultSeason: Season
+  statsSeasons: Season[]
+}
+
+export function StatsTabs({ defaultSeason, statsSeasons }: StatsTabsProps) {
+  const parsers = useMemo(
+    () => createStatsSearchParamsParsers(defaultSeason),
+    [defaultSeason]
+  )
+  const [tab, setTab] = useQueryState('tab', parsers.tab)
 
   return (
     <Tabs
@@ -46,17 +57,26 @@ export function StatsTabs() {
       </TabsContent>
       <TabsContent value='rating-distribution'>
         <Suspense>
-          <RatingDistributionChart />
+          <RatingDistributionChart
+            defaultSeason={defaultSeason}
+            statsSeasons={statsSeasons}
+          />
         </Suspense>
       </TabsContent>
       <TabsContent value='deck-popularity'>
         <Suspense>
-          <DeckPopularityChart />
+          <DeckPopularityChart
+            defaultSeason={defaultSeason}
+            statsSeasons={statsSeasons}
+          />
         </Suspense>
       </TabsContent>
       <TabsContent value='stake-popularity'>
         <Suspense>
-          <StakePopularityChart />
+          <StakePopularityChart
+            defaultSeason={defaultSeason}
+            statsSeasons={statsSeasons}
+          />
         </Suspense>
       </TabsContent>
       <TabsContent value='season-overview'>

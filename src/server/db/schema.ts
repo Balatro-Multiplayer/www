@@ -197,7 +197,53 @@ export const leaderboardSnapshots = pgTable('leaderboard_snapshots', {
 
 export const leaderboardSnapshotsRelations = relations(
   leaderboardSnapshots,
-  ({}) => ({})
+  () => ({})
+)
+
+export const seasons = pgTable('seasons', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  name: text('name').notNull(),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date'),
+  isActive: boolean('is_active').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const seasonSnapshots = pgTable(
+  'season_snapshots',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    seasonId: integer('season_id')
+      .references(() => seasons.id)
+      .notNull(),
+    queueType: text('queue_type').notNull(),
+    queueId: text('queue_id').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    minioKey: text('minio_key'),
+    uploadedBy: text('uploaded_by'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('season_snapshots_season_id_idx').on(t.seasonId),
+    uniqueIndex('season_snapshots_season_queue_unique').on(
+      t.seasonId,
+      t.queueType
+    ),
+  ]
+)
+
+export const seasonsRelations = relations(seasons, ({ many }) => ({
+  snapshots: many(seasonSnapshots),
+}))
+
+export const seasonSnapshotsRelations = relations(
+  seasonSnapshots,
+  ({ one }) => ({
+    season: one(seasons, {
+      fields: [seasonSnapshots.seasonId],
+      references: [seasons.id],
+    }),
+  })
 )
 
 export const transcripts = pgTable('transcripts', {

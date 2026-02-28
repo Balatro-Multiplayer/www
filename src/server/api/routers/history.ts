@@ -5,6 +5,7 @@ import {
 } from '@/server/api/trpc'
 import { player_games } from '@/server/db/schema'
 import type { SelectGames } from '@/server/db/types'
+import { getSeasonForDate } from '@/server/seasons'
 import {
   type PlayerMatch,
   botlatro_service,
@@ -12,17 +13,16 @@ import {
 import { QUEUE_IDS, fetchMatches } from '@/server/services/match-fetcher'
 import {
   CASUAL_QUEUE_ID,
+  LEGACY_QUEUE_ID,
   RANKED_QUEUE_ID,
   SANDBOX_QUEUE_ID,
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
-  LEGACY_QUEUE_ID,
 } from '@/shared/constants'
 import {
   SEASON_5_START_DATE,
   SEASON_6_START_DATE,
   SeasonSchema,
-  getSeasonForDate,
 } from '@/shared/seasons'
 import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -162,7 +162,7 @@ export const history_router = createTRPCRouter({
       const matches = await botlatro_service.get_player_matches({
         userId: input.user_id,
       })
-      const apiGames = normalizeBotlatroMatchHistory(matches).filter(
+      const apiGames = (await normalizeBotlatroMatchHistory(matches)).filter(
         (g) => g.gameTime >= SEASON_5_START_DATE
       )
 
@@ -175,7 +175,14 @@ export const history_router = createTRPCRouter({
         user_id: z.string(),
         season: SeasonSchema,
         gameType: z
-          .enum(['ranked', 'smallworld', 'vanilla', 'legacy', 'sandbox', 'casual'])
+          .enum([
+            'ranked',
+            'smallworld',
+            'vanilla',
+            'legacy',
+            'sandbox',
+            'casual',
+          ])
           .optional(),
         result: z.enum(['win', 'loss', 'tie']).optional(),
         page: z.number().int().min(1).default(1),
@@ -269,7 +276,7 @@ export const history_router = createTRPCRouter({
         queueId,
         limit: Math.min(5000, page * pageSize * 5),
       })
-      let rows = normalizeBotlatroMatchHistory(matches).filter(
+      let rows = (await normalizeBotlatroMatchHistory(matches)).filter(
         (g) => g.season === input.season
       )
 
@@ -318,7 +325,14 @@ export const history_router = createTRPCRouter({
         user_id: z.string(),
         season: SeasonSchema,
         gameType: z
-          .enum(['ranked', 'smallworld', 'vanilla', 'legacy', 'sandbox', 'casual'])
+          .enum([
+            'ranked',
+            'smallworld',
+            'vanilla',
+            'legacy',
+            'sandbox',
+            'casual',
+          ])
           .optional(),
         result: z.enum(['win', 'loss', 'tie']).optional(),
         page: z.number().int().min(1).default(1),
@@ -419,7 +433,7 @@ export const history_router = createTRPCRouter({
         queueId,
         limit: 5000,
       })
-      let games = normalizeBotlatroMatchHistory(matches).filter(
+      let games = (await normalizeBotlatroMatchHistory(matches)).filter(
         (g) => g.season === input.season
       )
       if (input.result) games = games.filter((g) => g.result === input.result)
@@ -483,31 +497,35 @@ export const history_router = createTRPCRouter({
     }),
 })
 
-function normalizeBotlatroMatchHistory(matches: PlayerMatch[]): SelectGames[] {
-  return matches
-    .map((match): SelectGames | null => {
-      const opp = match.opponents[0]
-      if (!opp) return null
-      return {
-        playerId: match.player_id,
-        queueId: match.queue_id.toString(),
-        playerName: match.player_name,
-        gameId: match.match_id,
-        gameTime: new Date(match.created_at),
-        gameType: getGameType(match.queue_id.toString()),
-        gameNum: match.match_id,
-        playerMmr: match.mmr_after,
-        mmrChange: match.elo_change,
-        opponentId: opp.user_id,
-        opponentName: opp.name,
-        opponentMmr: opp.mmr_after,
-        deck: match.deck,
-        stake: match.stake,
-        result: match.won ? 'win' : 'loss',
-        season: getSeasonForDate(new Date(match.created_at)),
-      }
-    })
-    .filter((x): x is SelectGames => x !== null)
+async function normalizeBotlatroMatchHistory(
+  matches: PlayerMatch[]
+): Promise<SelectGames[]> {
+  return (
+    await Promise.all(
+      matches.map(async (match): Promise<SelectGames | null> => {
+        const opp = match.opponents[0]
+        if (!opp) return null
+        return {
+          playerId: match.player_id,
+          queueId: match.queue_id.toString(),
+          playerName: match.player_name,
+          gameId: match.match_id,
+          gameTime: new Date(match.created_at),
+          gameType: getGameType(match.queue_id.toString()),
+          gameNum: match.match_id,
+          playerMmr: match.mmr_after,
+          mmrChange: match.elo_change,
+          opponentId: opp.user_id,
+          opponentName: opp.name,
+          opponentMmr: opp.mmr_after,
+          deck: match.deck,
+          stake: match.stake,
+          result: match.won ? 'win' : 'loss',
+          season: await getSeasonForDate(new Date(match.created_at)),
+        }
+      })
+    )
+  ).filter((x): x is SelectGames => x !== null)
 }
 
 function getGameType(queue_id: string) {

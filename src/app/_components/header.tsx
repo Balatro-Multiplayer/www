@@ -27,6 +27,16 @@ import {
 import { Navbar } from './home/navbar'
 import { LargeSearchToggle, SearchToggle } from './search-toggle'
 
+function getLinkItemKey(item: LinkItemType): string {
+  if ('url' in item && typeof item.url === 'string') {
+    return item.url
+  }
+  if ('text' in item && typeof item.text === 'string') {
+    return item.text
+  }
+  return JSON.stringify(item)
+}
+
 export function Header({
   nav: { enableSearch = true, ...nav } = {},
   finalLinks,
@@ -57,8 +67,12 @@ export function Header({
       <ul className='flex flex-row items-center gap-2 px-6 max-sm:hidden'>
         {navItems
           .filter((item) => !isSecondary(item))
-          .map((item, i) => (
-            <NavbarLinkItem key={i} item={item} className='text-sm' />
+          .map((item) => (
+            <NavbarLinkItem
+              key={getLinkItemKey(item)}
+              item={item}
+              className='text-sm'
+            />
           ))}
         {(isAdmin || isOwner) && (
           <NavbarMenu>
@@ -74,6 +88,14 @@ export function Header({
                   <p className='-mb-1 font-medium text-sm'>Role Manager</p>
                   <p className='text-[13px] text-fd-muted-foreground'>
                     Assign roles to users
+                  </p>
+                </NavbarMenuLink>
+              )}
+              {isOwner && (
+                <NavbarMenuLink href='/admin/seasons'>
+                  <p className='-mb-1 font-medium text-sm'>Seasons</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Manage seasons and snapshots
                   </p>
                 </NavbarMenuLink>
               )}
@@ -189,9 +211,9 @@ export function Header({
         )}
       </div>
       <ul className='flex flex-row items-center'>
-        {navItems.filter(isSecondary).map((item, i) => (
+        {navItems.filter(isSecondary).map((item) => (
           <NavbarLinkItem
-            key={i}
+            key={getLinkItemKey(item)}
             item={item}
             className='-me-1.5 max-lg:hidden'
           />
@@ -206,8 +228,12 @@ export function Header({
           <MenuContent className='sm:flex-row sm:items-center sm:justify-end'>
             {menuItems
               .filter((item) => !isSecondary(item))
-              .map((item, i) => (
-                <MenuLinkItem key={i} item={item} className='sm:hidden' />
+              .map((item) => (
+                <MenuLinkItem
+                  key={getLinkItemKey(item)}
+                  item={item}
+                  className='sm:hidden'
+                />
               ))}
             {(isAdmin || isOwner) && (
               <div className='sm:hidden'>
@@ -219,6 +245,11 @@ export function Header({
                   {isOwner && (
                     <Link href='/admin/roles' className='px-3 py-1 text-sm'>
                       Role Manager
+                    </Link>
+                  )}
+                  {isOwner && (
+                    <Link href='/admin/seasons' className='px-3 py-1 text-sm'>
+                      Seasons
                     </Link>
                   )}
                   <Link href='/admin/blog' className='px-3 py-1 text-sm'>
@@ -245,10 +276,14 @@ export function Header({
               </Link>
             </div>
             <div className='-ms-1.5 flex flex-row items-center gap-1.5 max-sm:mt-2'>
-              {menuItems.filter(isSecondary).map((item, i) => (
-                <MenuLinkItem key={i} item={item} className='-me-1.5' />
+              {menuItems.filter(isSecondary).map((item) => (
+                <MenuLinkItem
+                  key={getLinkItemKey(item)}
+                  item={item}
+                  className='-me-1.5'
+                />
               ))}
-              <div role='separator' className='flex-1' />
+              <hr className='flex-1 border-border' />
 
               {replaceOrDefault(
                 themeSwitch,
@@ -272,9 +307,9 @@ function NavbarLinkItem({
   if (item.type === 'custom') return <div {...props}>{item.children}</div>
 
   if (item.type === 'menu') {
-    const children = item.items.map((child, j) => {
+    const children = item.items.map((child) => {
       if (child.type === 'custom')
-        return <Fragment key={j}>{child.children}</Fragment>
+        return <Fragment key={getLinkItemKey(child)}>{child.children}</Fragment>
 
       const {
         banner = child.icon ? (
@@ -286,7 +321,7 @@ function NavbarLinkItem({
       } = child.menu ?? {}
 
       return (
-        <NavbarMenuLink key={j} href={child.url} {...rest}>
+        <NavbarMenuLink key={getLinkItemKey(child)} href={child.url} {...rest}>
           {rest.children ?? (
             <>
               {banner}

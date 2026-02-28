@@ -1,11 +1,6 @@
 'use client'
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   type ChartConfig,
   ChartContainer,
@@ -13,16 +8,16 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart'
 import {
-  type Season,
-  getSeasonDisplayName,
   SEASON_2_START_DATE,
   SEASON_3_START_DATE,
   SEASON_4_START_DATE,
   SEASON_5_START_DATE,
   SEASON_6_START_DATE,
+  type Season,
+  getSeasonDisplayName,
 } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Legend } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from 'recharts'
 
 const fmt = (d: Date) =>
   d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
@@ -42,6 +37,8 @@ function getSeasonDates(season: Season): string {
     case 'season6':
       return `${fmt(SEASON_6_START_DATE)} – Present`
   }
+
+  return getSeasonDisplayName(season)
 }
 
 const chartConfig = {
@@ -69,17 +66,20 @@ export function SeasonOverviewChart() {
         {data.map((d) => (
           <Card key={d.season}>
             <CardHeader className='pb-2'>
-              <CardTitle className='text-sm font-medium'>
+              <CardTitle className='font-medium text-sm'>
                 {getSeasonDisplayName(d.season)}
               </CardTitle>
-              <p className='text-xs text-muted-foreground'>
+              <p className='text-muted-foreground text-xs'>
                 {getSeasonDates(d.season as Season)}
               </p>
             </CardHeader>
             <CardContent className='space-y-1'>
-              <p className='text-2xl font-bold'>{d.totalGames.toLocaleString()} matches</p>
-              <p className='text-xs text-muted-foreground'>
-                {d.uniquePlayers.toLocaleString()} players · {d.avgMmrChange} avg MMR Δ
+              <p className='font-bold text-2xl'>
+                {d.totalGames.toLocaleString()} matches
+              </p>
+              <p className='text-muted-foreground text-xs'>
+                {d.uniquePlayers.toLocaleString()} players · {d.avgMmrChange}{' '}
+                avg MMR Δ
               </p>
             </CardContent>
           </Card>
@@ -103,7 +103,8 @@ export function SeasonOverviewChart() {
                 content={
                   <ChartTooltipContent
                     formatter={(value, name) => {
-                      const label = name === 'Total Games' ? 'matches' : 'players'
+                      const label =
+                        name === 'Total Games' ? 'matches' : 'players'
                       return `${Number(value).toLocaleString()} ${label}`
                     }}
                   />

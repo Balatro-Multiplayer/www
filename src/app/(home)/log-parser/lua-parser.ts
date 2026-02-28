@@ -91,7 +91,7 @@ export class LuaParser {
     }
 
     const num = Number.parseFloat(result)
-    if (isNaN(num)) {
+    if (Number.isNaN(num)) {
       throw new Error(`Invalid number: ${result}`)
     }
     return num
@@ -225,17 +225,13 @@ export class LuaParser {
   }
 }
 
-export class LuaToJsonConverter {
-  private static readonly logger = console
-
-  public static async convert(luaString: string): Promise<string> {
-    try {
-      const parser = new LuaParser(luaString)
-      const parsed = parser.parse()
-      return JSON.stringify(parsed, null, 2)
-    } catch (error) {
-      this.logger.error('Error converting Lua to JSON:', error)
-      throw error
-    }
+export async function convertLuaToJson(luaString: string): Promise<string> {
+  try {
+    const parser = new LuaParser(luaString)
+    const parsed = parser.parse()
+    return JSON.stringify(parsed, null, 2)
+  } catch (error) {
+    console.error('Error converting Lua to JSON:', error)
+    throw error
   }
 }

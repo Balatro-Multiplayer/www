@@ -26,7 +26,9 @@ export async function GET(
 
     // Check if transcript is HTML or plain text
     // If in plain text, render with a very simple html snippet to make it a bit nicer
-    const isHtml = transcript.trim().startsWith('<!') || transcript.trim().startsWith('<html')
+    const isHtml =
+      transcript.trim().startsWith('<!') ||
+      transcript.trim().startsWith('<html')
 
     if (isHtml) {
       return new Response(transcript, {
@@ -37,8 +39,7 @@ export async function GET(
     }
 
     // Don't worry, this is escaped to prevent injection
-    const wrappedHtml =
-      `<!DOCTYPE html>
+    const wrappedHtml = `<!DOCTYPE html>
         <html>
           <head>
             <meta charset="utf-8">

@@ -34,7 +34,10 @@ export function createEventIterator<T>(
     },
     async next() {
       if (events.length > 0) {
-        return { value: events.shift()!, done: false }
+        const value = events.shift()
+        if (value !== undefined) {
+          return { value, done: false }
+        }
       }
       if (done) {
         return { value: undefined, done: true }

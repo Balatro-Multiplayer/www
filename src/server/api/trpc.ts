@@ -59,7 +59,11 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
 
     // Clear stack trace in production to prevent retention
     if (process.env.NODE_ENV === 'production') {
-      delete (formatted as any).stack
+      const { stack: _stack, ...safeFormatted } =
+        formatted as typeof formatted & {
+          stack?: unknown
+        }
+      return safeFormatted
     }
 
     return formatted

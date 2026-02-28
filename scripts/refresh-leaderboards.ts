@@ -1,5 +1,5 @@
 import { LeaderboardService } from '@/server/services/leaderboard'
-import { RANKED_QUEUE_ID, LEGACY_QUEUE_ID } from '@/shared/constants'
+import { LEGACY_QUEUE_ID, RANKED_QUEUE_ID } from '@/shared/constants'
 
 const CHANNEL_IDS = [RANKED_QUEUE_ID, LEGACY_QUEUE_ID]
 

@@ -22,6 +22,7 @@ export const env = createEnv({
     MINIO_ACCESS_KEY: z.string(),
     MINIO_SECRET_KEY: z.string(),
     MINIO_BUCKET_NAME: z.string(),
+    MINIO_LEADERBOARD_BUCKET_NAME: z.string(),
     MINIO_USE_SSL: z.enum(['true', 'false']).default('false'),
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
@@ -55,6 +56,7 @@ export const env = createEnv({
     MINIO_ACCESS_KEY: process.env.MINIO_ACCESS_KEY,
     MINIO_SECRET_KEY: process.env.MINIO_SECRET_KEY,
     MINIO_BUCKET_NAME: process.env.MINIO_BUCKET_NAME,
+    MINIO_LEADERBOARD_BUCKET_NAME: process.env.MINIO_LEADERBOARD_BUCKET_NAME,
     MINIO_USE_SSL: process.env.MINIO_USE_SSL,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   },
