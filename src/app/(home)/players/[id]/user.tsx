@@ -1,25 +1,19 @@
 'use client'
 
 import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  BarChart3,
   Calendar,
   ChevronDown,
   ChevronUp,
-  Filter,
-  GlobeIcon,
-  Trophy,
+  ListFilter,
+  Swords,
   Twitch,
-  UserIcon,
   Youtube,
 } from 'lucide-react'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { useFormatter, useTimeZone } from 'next-intl'
-import type React from 'react'
 import { useMemo, useState } from 'react'
-import { capitalize, isNonNullish } from 'remeda'
+import { isNonNullish } from 'remeda'
 import {
   DeckImage,
   DeckStakeStatsChart,
@@ -32,12 +26,19 @@ import { WinrateTrendChart } from '@/app/(home)/players/[id]/_components/winrate
 import { TimeZoneProvider } from '@/components/timezone-provider'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/mobile-tooltip'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
+  LEGACY_QUEUE_ID,
   OLD_RANKED_CHANNEL,
   OLD_SMALLWORLD_CHANNEL,
   OLD_VANILLA_CHANNEL,
@@ -74,12 +76,13 @@ export function UserInfo() {
     </TimeZoneProvider>
   )
 }
+
 function unescapeName(str: string) {
   return str.replaceAll('\\', '')
 }
 
 function getChannelIdForSeason(
-  queueType: 'ranked' | 'vanilla' | 'smallworld',
+  queueType: 'ranked' | 'vanilla' | 'smallworld' | 'legacy',
   season: Season
 ) {
   const isOldSeason =
@@ -91,36 +94,45 @@ function getChannelIdForSeason(
   if (queueType === 'smallworld') {
     return isOldSeason ? OLD_SMALLWORLD_CHANNEL : SMALLWORLD_QUEUE_ID
   }
+  if (queueType === 'legacy') {
+    return LEGACY_QUEUE_ID
+  }
   return isOldSeason ? OLD_RANKED_CHANNEL : RANKED_QUEUE_ID
 }
 
-function rankIconComponent(mmr: number, queue: string) {
-  const rankData = getRankData(mmr, queue)
-  if (rankData) {
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Image
-              src={rankData.enhancement}
-              alt={rankData.tooltip}
-              width={20}
-              height={20}
-              className='h-5 w-auto'
-              unoptimized
-            />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{rankData.tooltip}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
+function getMostPlayed(
+  gamesList: { deck: string | null; stake: string | null }[]
+) {
+  const deckCounts: Record<string, number> = {}
+  const stakeCounts: Record<string, number> = {}
+  for (const g of gamesList) {
+    if (g.deck) {
+      const clean = g.deck.replace('Deck', '').trim().toLowerCase()
+      if (clean !== 'unknown') deckCounts[clean] = (deckCounts[clean] ?? 0) + 1
+    }
+    if (g.stake) {
+      const clean = g.stake.replace('Stake', '').trim().toLowerCase()
+      if (clean !== 'unknown')
+        stakeCounts[clean] = (stakeCounts[clean] ?? 0) + 1
+    }
   }
-  return <GlobeIcon className='h-4 w-4 text-zink-800 dark:text-zink-200' />
+  const deck =
+    Object.entries(deckCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'unknown'
+  const stake =
+    Object.entries(stakeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'unknown'
+  return { deck, stake }
 }
 
+const TAB_OPTIONS = [
+  { value: 'matches', label: 'Match History' },
+  { value: 'opponents', label: 'Opponents' },
+  { value: 'deck-stake-stats', label: 'Decks / Stakes' },
+  { value: 'mmr-trends', label: 'MMR Trends' },
+  { value: 'winrate-trends', label: 'Winrate Trends' },
+] as const
+
 function UserInfoComponent() {
+  const [activeTab, setActiveTab] = useState('matches')
   const [filter, setFilter] = useState('all')
   const format = useFormatter()
   const timeZone = useTimeZone()
@@ -128,18 +140,17 @@ function UserInfoComponent() {
   const rankedChannelId = getChannelIdForSeason('ranked', season)
   const vanillaChannelId = getChannelIdForSeason('vanilla', season)
   const smallworldChannelId = getChannelIdForSeason('smallworld', season)
+  const legacyChannelId = getChannelIdForSeason('legacy', season)
 
   const [leaderboardFilter, setLeaderboardFilter] = useState('all')
   const { id } = useParams<{ id: string }>()
 
-  // Fetch games data unconditionally
   const gamesQuery = api.history.user_games.useSuspenseQuery({ user_id: id })
-  const games = gamesQuery[0] || [] // Ensure games is always an array
+  const games = gamesQuery[0] || []
   const [discord_user] = api.discord.get_user_by_id.useSuspenseQuery({
     user_id: id,
   })
 
-  // Fetch current season data
   const [rankedLeaderboard] = api.leaderboard.get_leaderboard.useSuspenseQuery({
     channel_id: rankedChannelId,
     season,
@@ -158,7 +169,11 @@ function UserInfoComponent() {
       season,
     })
 
-  // Fetch current season user rank
+  const [legacyLeaderboard] = api.leaderboard.get_leaderboard.useSuspenseQuery({
+    channel_id: legacyChannelId,
+    season,
+  })
+
   const [vanillaUserRankQ] = api.leaderboard.get_user_rank.useSuspenseQuery({
     channel_id: vanillaChannelId,
     user_id: id,
@@ -174,44 +189,45 @@ function UserInfoComponent() {
     user_id: id,
     season,
   })
+  const [legacyUserRankQ] = api.leaderboard.get_user_rank.useSuspenseQuery({
+    channel_id: legacyChannelId,
+    user_id: id,
+    season,
+  })
 
-  // Fetch Season 4 data for historic comparison
   const [rankedUserRankS4Q] = api.leaderboard.get_user_rank.useSuspenseQuery({
     channel_id: RANKED_QUEUE_ID,
     user_id: id,
     season: 'season4',
   })
 
-  // Fetch Season 2 data for historic comparison
   const [rankedUserRankS2Q] = api.leaderboard.get_user_rank.useSuspenseQuery({
     channel_id: OLD_RANKED_CHANNEL,
     user_id: id,
     season: 'season2',
   })
 
-  // Fetch Season 3 data for historic comparison
   const [rankedUserRankS3Q] = api.leaderboard.get_user_rank.useSuspenseQuery({
     channel_id: OLD_RANKED_CHANNEL,
     user_id: id,
     season: 'season3',
   })
+
   const rankedUserRank = rankedUserRankQ?.data
   const vanillaUserRank = vanillaUserRankQ?.data
   const smallWorldUserRank = smallWorldUserRankQ?.data
-
-  // Extract historic data
+  const legacyUserRank = legacyUserRankQ?.data
   const rankedUserRankS2 = rankedUserRankS2Q?.data
   const rankedUserRankS3 = rankedUserRankS3Q?.data
   const rankedUserRankS4 = rankedUserRankS4Q?.data
 
-  // Determine which historic data to show (opposite of current season)
   const historicRankedData =
     season === 'season2'
       ? { data: rankedUserRankS3, season: 'season3' as Season }
       : season === 'season3'
         ? { data: rankedUserRankS2, season: 'season2' as Season }
         : { data: rankedUserRankS4, season: 'season4' as Season }
-  // Filter games by season
+
   const seasonFilteredGames = filterGamesBySeason(games, season)
 
   const filteredGamesByLeaderboard =
@@ -222,7 +238,6 @@ function UserInfoComponent() {
             game.gameType.toLowerCase() === leaderboardFilter?.toLowerCase()
         )
 
-  // Filter by result
   const filteredGames =
     filter === 'all'
       ? filteredGamesByLeaderboard
@@ -245,8 +260,6 @@ function UserInfoComponent() {
       wins++
     } else if (game.result === 'loss') {
       losses++
-    } else if (game.result === 'tie' || game.result === 'unknown') {
-      ties++
     } else {
       ties++
     }
@@ -254,42 +267,26 @@ function UserInfoComponent() {
 
   const aliases = [...new Set(seasonFilteredGames.map((g) => g.playerName))]
   const lastGame = seasonFilteredGames.at(0)
-
   const currentName = lastGame?.playerName ?? discord_user.username
   const meaningful_games = games_played - ties
-  const profileData = {
-    username: unescapeName(currentName),
-    avatar: discord_user.avatar_url,
-    games: games_played,
-    meaningful_games,
-    wins,
-    losses,
-    ties,
-    winRate:
-      meaningful_games > 0 ? Math.ceil((wins / meaningful_games) * 100) : 0,
-    lossRate:
-      meaningful_games > 0 ? Math.floor((losses / meaningful_games) * 100) : 0,
-  }
+  const winRate =
+    meaningful_games > 0 ? Math.ceil((wins / meaningful_games) * 100) : 0
 
-  // Get the overall first game (not filtered by season)
   const overallFirstGame = games.at(-1)
 
-  // Get last games for each leaderboard
   const lastRankedGame = seasonFilteredGames
     .filter((game) => game.gameType === 'ranked')
     .at(0)
   const lastVanillaGame = seasonFilteredGames
-    .filter(
-      (game) =>
-        game.gameType.toLowerCase() === 'vanilla' ||
-        game.gameType.toLowerCase() === 'legacy'
-    )
+    .filter((game) => game.gameType.toLowerCase() === 'vanilla')
+    .at(0)
+  const lastLegacyGame = seasonFilteredGames
+    .filter((game) => game.gameType.toLowerCase() === 'legacy')
     .at(0)
   const lastSmallworldGame = seasonFilteredGames
     .filter((game) => game.gameType.toLowerCase() === 'smallworld')
     .at(0)
 
-  // Calculate average opponent MMR for meaningful games
   const rankedMeaningfulGames = seasonFilteredGames.filter(
     (g) =>
       g.result !== 'tie' && g.result !== 'unknown' && g.gameType === 'ranked'
@@ -302,558 +299,382 @@ function UserInfoComponent() {
       : 0
 
   const mostPlayedRanked = useMemo(() => {
-    const rankedGames = games.filter((g) => g.gameType === 'ranked')
-    const deckCounts: Record<string, number> = {}
-    const stakeCounts: Record<string, number> = {}
-
-    for (const g of rankedGames) {
-      if (g.deck) {
-        const clean = g.deck.replace('Deck', '').trim().toLowerCase()
-        if (clean !== 'unknown') {
-          deckCounts[clean] = (deckCounts[clean] ?? 0) + 1
-        }
-      }
-      if (g.stake) {
-        const clean = g.stake.replace('Stake', '').trim().toLowerCase()
-        if (clean !== 'unknown') {
-          stakeCounts[clean] = (stakeCounts[clean] ?? 0) + 1
-        }
-      }
-    }
-
-    const mostPlayedDeck =
-      Object.entries(deckCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      'unknown'
-    const mostPlayedStake =
-      Object.entries(stakeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      'unknown'
-
-    return { deck: mostPlayedDeck, stake: mostPlayedStake }
+    return getMostPlayed(games.filter((g) => g.gameType === 'ranked'))
   }, [games])
 
   const mostPlayedSmallworld = useMemo(() => {
-    const swGames = games.filter(
-      (g) => g.gameType.toLowerCase() === 'smallworld'
+    return getMostPlayed(
+      games.filter((g) => g.gameType.toLowerCase() === 'smallworld')
     )
-    const deckCounts: Record<string, number> = {}
-    const stakeCounts: Record<string, number> = {}
-
-    for (const g of swGames) {
-      if (g.deck) {
-        const clean = g.deck.replace('Deck', '').trim().toLowerCase()
-        if (clean !== 'unknown') {
-          deckCounts[clean] = (deckCounts[clean] ?? 0) + 1
-        }
-      }
-      if (g.stake) {
-        const clean = g.stake.replace('Stake', '').trim().toLowerCase()
-        if (clean !== 'unknown') {
-          stakeCounts[clean] = (stakeCounts[clean] ?? 0) + 1
-        }
-      }
-    }
-
-    const mostPlayedDeck =
-      Object.entries(deckCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      'unknown'
-    const mostPlayedStake =
-      Object.entries(stakeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      'unknown'
-
-    return { deck: mostPlayedDeck, stake: mostPlayedStake }
   }, [games])
 
   const mostPlayedVanilla = useMemo(() => {
     const vanillaGames = games.filter(
-      (g) =>
-        g.gameType.toLowerCase() === 'vanilla' ||
-        g.gameType.toLowerCase() === 'legacy'
+      (g) => g.gameType.toLowerCase() === 'vanilla'
     )
-    const deckCounts: Record<string, number> = {}
-    const stakeCounts: Record<string, number> = {}
-
-    for (const g of vanillaGames) {
-      if (g.deck) {
-        const clean = g.deck.replace('Deck', '').trim().toLowerCase()
-        if (clean !== 'unknown') {
-          deckCounts[clean] = (deckCounts[clean] ?? 0) + 1
-        }
-      }
-      if (g.stake) {
-        const clean = g.stake.replace('Stake', '').trim().toLowerCase()
-        if (clean !== 'unknown') {
-          stakeCounts[clean] = (stakeCounts[clean] ?? 0) + 1
-        }
-      }
-    }
-
-    const mostPlayedDeck =
-      Object.entries(deckCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      'unknown'
-    const mostPlayedStake =
-      Object.entries(stakeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-      'unknown'
-
-    return { deck: mostPlayedDeck, stake: mostPlayedStake }
+    return getMostPlayed(vanillaGames)
   }, [games])
+
+  const mostPlayedLegacy = useMemo(() => {
+    const legacyGames = games.filter(
+      (g) => g.gameType.toLowerCase() === 'legacy'
+    )
+    return getMostPlayed(legacyGames)
+  }, [games])
+
+  const hasRanked =
+    isNonNullish(rankedUserRank?.mmr) && !Number.isNaN(rankedUserRank?.mmr)
+  const hasVanilla =
+    isNonNullish(vanillaUserRank?.mmr) && !Number.isNaN(vanillaUserRank?.mmr)
+  const hasSmallworld =
+    isNonNullish(smallWorldUserRank?.mmr) &&
+    !Number.isNaN(smallWorldUserRank?.mmr)
+  const hasLegacy =
+    isNonNullish(legacyUserRank?.mmr) && !Number.isNaN(legacyUserRank?.mmr)
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col'>
-        <div className='py-8'>
-          <div className='flex flex-col items-center gap-6 md:flex-row'>
-            <div className='relative'>
-              <Avatar className='size-24'>
+      <div className='mx-auto flex w-full max-w-fd-container flex-1 flex-col px-4 sm:px-6'>
+        {/* ── Profile Header ── */}
+        <div className='pt-8 pb-6'>
+          <div className='flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between'>
+            <div className='flex items-center gap-4'>
+              <Avatar className='size-16 ring-2 ring-border sm:size-20'>
                 <AvatarImage
-                  src={profileData.avatar}
-                  alt={profileData.username}
+                  src={discord_user.avatar_url}
+                  alt={unescapeName(currentName)}
                 />
-                <AvatarFallback className='bg-violet-50 font-bold text-2xl text-violet-600 dark:bg-violet-900/30 dark:text-violet-300'>
-                  {profileData.username.slice(0, 2).toUpperCase()}
+                <AvatarFallback className='bg-muted font-bold text-muted-foreground text-xl'>
+                  {unescapeName(currentName).slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-            </div>
 
-            <div className='text-center md:text-left'>
-              <div className={'flex items-start gap-2'}>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <h1 className='font-bold text-3xl text-gray-900 underline decoration-auto decoration-dotted underline-offset-6 dark:text-white'>
-                        {profileData.username}
-                      </h1>
-                    </TooltipTrigger>
-                    <TooltipContent align={'center'} sideOffset={5}>
-                      <div>
-                        <p>Also known as:</p>
-                        <ul className={'list-disc pl-4'}>
-                          {aliases.map((alias) => (
-                            <li key={alias}>{unescapeName(alias)}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+              <div className='min-w-0'>
+                <div className='flex items-center gap-2'>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <h1 className='truncate font-bold text-2xl leading-tight sm:text-3xl'>
+                          {unescapeName(currentName)}
+                        </h1>
+                      </TooltipTrigger>
+                      {aliases.length > 1 && (
+                        <TooltipContent align='start' sideOffset={5}>
+                          <p className='mb-1 font-medium text-xs'>
+                            Also known as
+                          </p>
+                          <ul className='list-disc pl-4 text-xs'>
+                            {aliases.map((alias) => (
+                              <li key={alias}>{unescapeName(alias)}</li>
+                            ))}
+                          </ul>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
 
-              <p className='pt-2 text-gray-500 text-sm dark:text-zinc-400'>
-                {overallFirstGame ? (
-                  <>
-                    First game:{' '}
-                    {format.dateTime(overallFirstGame.gameTime, {
-                      dateStyle: 'long',
-                      timeZone,
-                    })}
-                  </>
-                ) : (
-                  <>No games played yet</>
-                )}
-              </p>
-              <div className='mt-2 flex flex-wrap items-center justify-center gap-2 md:justify-start'>
-                {!!rankedLeaderboard && (
-                  <Badge
-                    variant='outline'
-                    className='border-gray-200 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-800'
-                  >
-                    <Trophy className='mr-1 h-3 w-3 text-violet-500' />
-                    <span className='text-gray-700 dark:text-zinc-300'>
-                      Ranked Queue:{' '}
-                      {isNonNullish(rankedUserRank?.rank)
-                        ? `#${rankedUserRank.rank}`
-                        : 'N/A'}
-                    </span>
-                  </Badge>
-                )}
+                <p className='mt-0.5 text-muted-foreground text-sm'>
+                  {overallFirstGame
+                    ? `Playing since ${format.dateTime(overallFirstGame.gameTime, { month: 'long', year: 'numeric', timeZone })}`
+                    : 'No games played yet'}
+                </p>
 
-                {!!vanillaLeaderboard && (
-                  <Badge
-                    variant='outline'
-                    className='border-gray-200 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-800'
-                  >
-                    <Trophy className='mr-1 h-3 w-3 text-violet-500' />
-                    <span className='text-gray-700 dark:text-zinc-300'>
-                      Vanilla Queue:{' '}
-                      {isNonNullish(vanillaUserRank?.rank)
-                        ? `#${vanillaUserRank.rank}`
-                        : 'N/A'}
-                    </span>
-                  </Badge>
-                )}
-                {!!smallworldLeaderboard && (
-                  <Badge
-                    variant='outline'
-                    className='border-gray-200 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-800'
-                  >
-                    <Trophy className='mr-1 h-3 w-3 text-violet-500' />
-                    <span className='text-gray-700 dark:text-zinc-300'>
-                      Smallworld Queue:{' '}
-                      {isNonNullish(smallWorldUserRank?.rank)
-                        ? `#${smallWorldUserRank.rank}`
-                        : 'N/A'}
-                    </span>
-                  </Badge>
-                )}
-
-                {/* Show historic rank data if available */}
-                {historicRankedData?.data && (
-                  <Badge
-                    variant='outline'
-                    className='border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                  >
-                    <Calendar className='mr-1 h-3 w-3' />
-                    <span>
-                      {getSeasonDisplayName(historicRankedData.season)} Rank:{' '}
-                      {isNonNullish(historicRankedData.data.rank)
-                        ? `#${historicRankedData.data.rank}`
-                        : 'N/A'}
-                      {isNonNullish(historicRankedData.data.mmr)
-                        ? ` (${Math.round(historicRankedData.data.mmr)} MMR)`
-                        : ''}
-                    </span>
-                  </Badge>
-                )}
-                {discord_user.twitch_url && (
-                  <Badge
-                    variant='outline'
-                    className='border-gray-200 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-800'
-                  >
-                    <Twitch className='mr-1 h-3 w-3 text-purple-500' />
+                <div className='mt-2 flex items-center gap-1.5'>
+                  {discord_user.twitch_url && (
                     <a
                       href={discord_user.twitch_url}
                       target='_blank'
                       rel='noopener noreferrer'
-                      className='text-gray-700 hover:underline dark:text-zinc-300'
+                      className='inline-flex items-center justify-center rounded-md border bg-background p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-purple-500'
                     >
-                      Twitch
+                      <Twitch className='size-3.5' />
                     </a>
-                  </Badge>
-                )}
-                {discord_user.youtube_url && (
-                  <Badge
-                    variant='outline'
-                    className='border-gray-200 bg-gray-50 dark:border-zinc-700 dark:bg-zinc-800'
-                  >
-                    <Youtube className='mr-1 h-3 w-3 text-red-500' />
+                  )}
+                  {discord_user.youtube_url && (
                     <a
                       href={discord_user.youtube_url}
                       target='_blank'
                       rel='noopener noreferrer'
-                      className='text-gray-700 hover:underline dark:text-zinc-300'
+                      className='inline-flex items-center justify-center rounded-md border bg-background p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-red-500'
                     >
-                      YouTube
+                      <Youtube className='size-3.5' />
                     </a>
-                  </Badge>
+                  )}
+                  {historicRankedData?.data &&
+                    isNonNullish(historicRankedData.data.rank) && (
+                      <Badge
+                        variant='outline'
+                        className='ml-1 border-amber-200/60 bg-amber-50/50 text-amber-700 text-xs dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-400'
+                      >
+                        <Calendar className='mr-1 size-3' />
+                        {getSeasonDisplayName(historicRankedData.season)} #
+                        {historicRankedData.data.rank}
+                        {isNonNullish(historicRankedData.data.mmr) &&
+                          ` · ${Math.round(historicRankedData.data.mmr)}`}
+                      </Badge>
+                    )}
+                </div>
+              </div>
+            </div>
+
+            <Select
+              value={season}
+              onValueChange={(value) => setSeason(value as Season)}
+            >
+              <SelectTrigger className='h-9 w-full shrink-0 sm:w-[180px]'>
+                <Calendar className='mr-2 size-3.5 text-muted-foreground' />
+                <SelectValue placeholder='Season' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='season6'>
+                  {getSeasonDisplayName('season6')}
+                </SelectItem>
+                <SelectItem value='season5'>
+                  {getSeasonDisplayName('season5')}
+                </SelectItem>
+                <SelectItem value='season4'>
+                  {getSeasonDisplayName('season4')}
+                </SelectItem>
+                <SelectItem value='season3'>
+                  {getSeasonDisplayName('season3')}
+                </SelectItem>
+                <SelectItem value='season2'>
+                  {getSeasonDisplayName('season2')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* ── Queue Rating Cards ── */}
+        <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+          <QueueCard
+            queue='Ranked'
+            mmr={hasRanked ? Math.round(rankedUserRank?.mmr) : null}
+            rank={
+              !!rankedLeaderboard && isNonNullish(rankedUserRank?.rank)
+                ? rankedUserRank.rank
+                : null
+            }
+            rankIcon={
+              hasRanked ? getRankData(rankedUserRank?.mmr, 'ranked') : null
+            }
+            lastGame={lastRankedGame ?? null}
+            mostPlayed={mostPlayedRanked}
+            accentClass='border-violet-500/20 dark:border-violet-500/10'
+            badgeClass='border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300'
+          />
+          <QueueCard
+            queue='Vanilla'
+            mmr={hasVanilla ? Math.round(vanillaUserRank?.mmr) : null}
+            rank={
+              !!vanillaLeaderboard && isNonNullish(vanillaUserRank?.rank)
+                ? vanillaUserRank.rank
+                : null
+            }
+            rankIcon={
+              hasVanilla ? getRankData(vanillaUserRank?.mmr, 'vanilla') : null
+            }
+            lastGame={lastVanillaGame ?? null}
+            mostPlayed={mostPlayedVanilla}
+            accentClass='border-amber-500/20 dark:border-amber-500/10'
+            badgeClass='border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
+          />
+          <QueueCard
+            queue='Legacy'
+            mmr={hasLegacy ? Math.round(legacyUserRank?.mmr) : null}
+            rank={
+              !!legacyLeaderboard && isNonNullish(legacyUserRank?.rank)
+                ? legacyUserRank.rank
+                : null
+            }
+            rankIcon={
+              hasLegacy ? getRankData(legacyUserRank?.mmr, 'legacy') : null
+            }
+            lastGame={lastLegacyGame ?? null}
+            mostPlayed={mostPlayedLegacy}
+            accentClass='border-orange-500/20 dark:border-orange-500/10'
+            badgeClass='border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300'
+          />
+          <QueueCard
+            queue='Smallworld'
+            mmr={hasSmallworld ? Math.round(smallWorldUserRank?.mmr) : null}
+            rank={
+              !!smallworldLeaderboard && isNonNullish(smallWorldUserRank?.rank)
+                ? smallWorldUserRank.rank
+                : null
+            }
+            rankIcon={
+              hasSmallworld
+                ? getRankData(smallWorldUserRank?.mmr, 'smallworld')
+                : null
+            }
+            lastGame={lastSmallworldGame ?? null}
+            mostPlayed={mostPlayedSmallworld}
+            accentClass='border-cyan-500/20 dark:border-cyan-500/10'
+            badgeClass='border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300'
+          />
+        </div>
+
+        {/* ── Performance Summary ── */}
+        <div className='mt-3 rounded-lg border bg-card p-4'>
+          <div className='flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'>
+            <div className='flex items-center gap-6'>
+              <div className='flex items-center gap-3'>
+                <Swords className='size-4 text-muted-foreground' />
+                <div>
+                  <span className='font-bold text-lg tabular-nums'>
+                    {meaningful_games}
+                  </span>
+                  <span className='ml-1.5 text-muted-foreground text-sm'>
+                    games
+                  </span>
+                </div>
+              </div>
+              <div className='h-5 w-px bg-border' />
+              <div className='flex items-center gap-4'>
+                <span className='font-semibold text-emerald-600 tabular-nums dark:text-emerald-400'>
+                  {wins}
+                  <span className='ml-1 font-normal text-muted-foreground text-xs'>
+                    W
+                  </span>
+                </span>
+                <span className='font-semibold text-rose-600 tabular-nums dark:text-rose-400'>
+                  {losses}
+                  <span className='ml-1 font-normal text-muted-foreground text-xs'>
+                    L
+                  </span>
+                </span>
+                {ties > 0 && (
+                  <span className='font-semibold text-muted-foreground tabular-nums'>
+                    {ties}
+                    <span className='ml-1 font-normal text-xs'>T</span>
+                  </span>
                 )}
               </div>
             </div>
-            <div
-              className={cn(
-                'grid w-full flex-grow grid-cols-2 divide-gray-100 md:w-auto md:grid-cols-3 md:divide-y-0 dark:divide-zinc-800',
-                'lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6'
-              )}
-            >
-              <StatsCard
-                title='Games'
-                value={profileData.meaningful_games}
-                icon={<BarChart3 className='h-5 w-5 text-violet-500' />}
-                description='Total matches'
-              />
-              <StatsCard
-                title='Wins'
-                value={profileData.wins}
-                icon={<ArrowUpCircle className='h-5 w-5 text-emerald-500' />}
-                description={`${profileData.winRate}% win rate`}
-                accentColor='text-emerald-500'
-              />
-              <StatsCard
-                title='Losses'
-                value={profileData.losses}
-                icon={<ArrowDownCircle className='h-5 w-5 text-rose-500' />}
-                description={`${profileData.lossRate}% loss rate`}
-                accentColor='text-rose-500'
-              />
 
-              {isNonNullish(rankedUserRank?.mmr) &&
-              !Number.isNaN(rankedUserRank?.mmr) ? (
-                <StatsCard
-                  title='Ranked MMR'
-                  value={Math.round(rankedUserRank.mmr)}
-                  description={
-                    lastRankedGame ? (
-                      <span
-                        className={cn(
-                          'flex items-center',
-                          lastRankedGame.mmrChange === 0
-                            ? 'text-zink-800 dark:text-zink-200'
-                            : lastRankedGame.mmrChange > 0
-                              ? 'text-emerald-500'
-                              : 'text-rose-500'
-                        )}
-                      >
-                        {lastRankedGame.mmrChange === 0 ? (
-                          'Tied'
-                        ) : lastRankedGame.mmrChange > 0 ? (
-                          <ChevronUp className='h-3 w-3' />
-                        ) : (
-                          <ChevronDown className='h-3 w-3' />
-                        )}
-                        {lastRankedGame.mmrChange !== 0
-                          ? numberFormatter.format(
-                              Math.trunc(lastRankedGame.mmrChange)
-                            )
-                          : null}{' '}
-                        last match
-                      </span>
-                    ) : null
-                  }
-                  icon={rankIconComponent(rankedUserRank.mmr, 'ranked')}
-                  accentColor='text-zink-800 dark:text-zink-200'
-                />
-              ) : (
-                <StatsCard
-                  title='Ranked MMR'
-                  value={0}
-                  customValue='N/A'
-                  icon={rankIconComponent(0, 'ranked')}
-                  accentColor='text-zink-800 dark:text-zink-200'
-                  description='No data'
-                />
+            <div className='flex items-center gap-4'>
+              {/* Win rate bar */}
+              <div className='flex items-center gap-2.5'>
+                <div className='h-2 w-24 overflow-hidden rounded-full bg-rose-500/20 sm:w-32'>
+                  <div
+                    className='h-full rounded-full bg-emerald-500 transition-all duration-500'
+                    style={{ width: `${winRate}%` }}
+                  />
+                </div>
+                <span className='font-semibold text-sm tabular-nums'>
+                  {winRate}%
+                </span>
+              </div>
+              {avgOpponentMmr > 0 && (
+                <>
+                  <div className='hidden h-5 w-px bg-border sm:block' />
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className='hidden cursor-default text-muted-foreground text-sm sm:inline-flex sm:items-center sm:gap-1'>
+                          Avg opp.{' '}
+                          <span className='font-medium text-foreground tabular-nums'>
+                            {Math.round(avgOpponentMmr)}
+                          </span>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Average opponent MMR in ranked
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </>
               )}
-              {isNonNullish(vanillaUserRank?.mmr) &&
-              !Number.isNaN(vanillaUserRank?.mmr) ? (
-                <StatsCard
-                  title='Vanilla MMR'
-                  value={Math.round(vanillaUserRank.mmr)}
-                  icon={rankIconComponent(vanillaUserRank.mmr, 'vanilla')}
-                  accentColor='text-zink-800 dark:text-zink-200'
-                  description={
-                    lastVanillaGame ? (
-                      <span
-                        className={cn(
-                          'flex items-center',
-                          lastVanillaGame.mmrChange === 0
-                            ? 'text-zink-800 dark:text-zink-200'
-                            : lastVanillaGame.mmrChange > 0
-                              ? 'text-emerald-500'
-                              : 'text-rose-500'
-                        )}
-                      >
-                        {lastVanillaGame.mmrChange === 0 ? (
-                          'Tied'
-                        ) : lastVanillaGame.mmrChange > 0 ? (
-                          <ChevronUp className='h-3 w-3' />
-                        ) : (
-                          <ChevronDown className='h-3 w-3' />
-                        )}
-                        {lastVanillaGame.mmrChange !== 0
-                          ? numberFormatter.format(
-                              Math.trunc(lastVanillaGame.mmrChange)
-                            )
-                          : null}{' '}
-                        last match
-                      </span>
-                    ) : null
-                  }
-                />
-              ) : (
-                <StatsCard
-                  title='Vanilla MMR'
-                  value={0}
-                  customValue='N/A'
-                  icon={rankIconComponent(0, 'vanilla')}
-                  accentColor='text-zink-800 dark:text-zink-200'
-                  description='No data'
-                />
-              )}
-              {isNonNullish(smallWorldUserRank?.mmr) &&
-              !Number.isNaN(smallWorldUserRank?.mmr) ? (
-                <StatsCard
-                  title='Smallworld MMR'
-                  value={Math.round(smallWorldUserRank.mmr)}
-                  icon={rankIconComponent(smallWorldUserRank.mmr, 'smallworld')}
-                  accentColor='text-zink-800 dark:text-zink-200'
-                  description={
-                    lastSmallworldGame ? (
-                      <span
-                        className={cn(
-                          'flex items-center',
-                          lastSmallworldGame.mmrChange === 0
-                            ? 'text-zink-800 dark:text-zink-200'
-                            : lastSmallworldGame.mmrChange > 0
-                              ? 'text-emerald-500'
-                              : 'text-rose-500'
-                        )}
-                      >
-                        {lastSmallworldGame.mmrChange === 0 ? (
-                          'Tied'
-                        ) : lastSmallworldGame.mmrChange > 0 ? (
-                          <ChevronUp className='h-3 w-3' />
-                        ) : (
-                          <ChevronDown className='h-3 w-3' />
-                        )}
-                        {lastSmallworldGame.mmrChange !== 0
-                          ? numberFormatter.format(
-                              Math.trunc(lastSmallworldGame.mmrChange)
-                            )
-                          : null}{' '}
-                        last match
-                      </span>
-                    ) : null
-                  }
-                />
-              ) : (
-                <StatsCard
-                  title='Smallworld MMR'
-                  value={0}
-                  customValue='N/A'
-                  icon={rankIconComponent(0, 'smallworld')}
-                  accentColor='text-zink-800 dark:text-zink-200'
-                  description='No data'
-                />
-              )}
-              <StatsCard
-                title='Top Ranked'
-                value={0}
-                customValue={
-                  <div className='flex items-center gap-1.5'>
-                    <div className='flex items-center gap-1'>
-                      <DeckImage deck={mostPlayedRanked.deck} />
-                    </div>
-                    <div className='flex items-center gap-1'>
-                      <StakeImage stake={mostPlayedRanked.stake} />
-                    </div>
-                  </div>
-                }
-                icon={rankIconComponent(0, 'ranked')}
-                description={
-                  !mostPlayedRanked.deck && !mostPlayedRanked.stake
-                    ? 'No Data'
-                    : `${capitalize(mostPlayedRanked.deck ?? 'Unknown')} / ${capitalize(mostPlayedRanked.stake ?? 'Unknown')}`
-                }
-              />
-              <StatsCard
-                title='Top Vanilla'
-                value={0}
-                customValue={
-                  <div className='flex items-center gap-1.5'>
-                    <div className='flex items-center gap-1'>
-                      <DeckImage deck={mostPlayedVanilla.deck} />
-                    </div>
-                    <div className='flex items-center gap-1'>
-                      <StakeImage stake={mostPlayedVanilla.stake} />
-                    </div>
-                  </div>
-                }
-                icon={rankIconComponent(0, 'vanilla')}
-                description={
-                  !mostPlayedVanilla.deck && !mostPlayedVanilla.stake
-                    ? 'No Data'
-                    : `${capitalize(mostPlayedVanilla.deck ?? 'Unknown')} / ${capitalize(mostPlayedVanilla.stake ?? 'Unknown')}`
-                }
-              />
-              <StatsCard
-                title='Top Smallworld'
-                value={0}
-                customValue={
-                  <div className='flex items-center gap-1.5'>
-                    <div className='flex items-center gap-1'>
-                      <DeckImage deck={mostPlayedSmallworld.deck} />
-                    </div>
-                    <div className='flex items-center gap-1'>
-                      <StakeImage stake={mostPlayedSmallworld.stake} />
-                    </div>
-                  </div>
-                }
-                icon={rankIconComponent(0, 'smallworld')}
-                description={
-                  !mostPlayedSmallworld.deck && !mostPlayedSmallworld.stake
-                    ? 'No Data'
-                    : `${capitalize(mostPlayedSmallworld.deck ?? 'Unknown')} / ${capitalize(mostPlayedSmallworld.stake ?? 'Unknown')}`
-                }
-              />
-              <StatsCard
-                title='Avg Opponent MMR'
-                value={Math.round(avgOpponentMmr)}
-                icon={<UserIcon className='h-5 w-5' />}
-                description={''}
-                accentColor='text-zink-800 dark:text-zink-200'
-              />
             </div>
           </div>
         </div>
 
-        <Tabs defaultValue='matches' className='py-6'>
-          <div className='mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center'>
-            <TabsList className='bg-gray-100 dark:bg-zinc-800'>
-              <TabsTrigger value='matches'>Match History</TabsTrigger>
-              <TabsTrigger value='opponents'>Opponents</TabsTrigger>
-              <TabsTrigger value='deck-stake-stats'>Decks/Stakes</TabsTrigger>
-              <TabsTrigger value='mmr-trends'>MMR Trends</TabsTrigger>
-              <TabsTrigger value='winrate-trends'>Winrate Trends</TabsTrigger>
+        {/* ── Tabs ── */}
+        <Tabs
+          defaultValue='matches'
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className='mt-6 pb-8'
+        >
+          <div className='mb-4 flex items-center gap-2'>
+            {/* Mobile/tablet: dropdown */}
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className='w-full md:hidden'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TAB_OPTIONS.map((tab) => (
+                  <SelectItem key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Desktop: inline tabs */}
+            <TabsList className='hidden md:inline-flex'>
+              {TAB_OPTIONS.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value}>
+                  {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
-            <div className='flex flex-wrap items-center gap-2'>
-              <div className='mr-2 flex items-center gap-2'>
-                <Trophy className='h-4 w-4 text-gray-400 dark:text-zinc-400' />
-                <Select
-                  value={leaderboardFilter}
-                  onValueChange={setLeaderboardFilter}
-                >
-                  <SelectTrigger className='h-9 w-[160px]'>
-                    <SelectValue placeholder='Leaderboard' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='all'>All Leaderboards</SelectItem>
-                    <SelectItem value='ranked'>Standard Ranked</SelectItem>
-                    <SelectItem value='smallworld'>Smallworld</SelectItem>
-                    <SelectItem value='vanilla'>Vanilla</SelectItem>
-                    <SelectItem value='legacy'>Legacy Ranked</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className='mr-2 flex items-center gap-2'>
-                <Calendar className='h-4 w-4 text-gray-400 dark:text-zinc-400' />
-                <Select
-                  value={season}
-                  onValueChange={(value) => setSeason(value as Season)}
-                >
-                  <SelectTrigger className='h-9 w-[180px]'>
-                    <SelectValue placeholder='Season' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='season6'>
-                      {getSeasonDisplayName('season6')}
-                    </SelectItem>
-                    <SelectItem value='season5'>
-                      {getSeasonDisplayName('season5')}
-                    </SelectItem>
-                    <SelectItem value='season4'>
-                      {getSeasonDisplayName('season4')}
-                    </SelectItem>
-                    <SelectItem value='season3'>
-                      {getSeasonDisplayName('season3')}
-                    </SelectItem>
-                    <SelectItem value='season2'>
-                      {getSeasonDisplayName('season2')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Filter className='h-4 w-4 text-gray-400 dark:text-zinc-400' />
-              <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger className='h-9 w-[120px]'>
-                  <SelectValue placeholder='Filter' />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>All Games</SelectItem>
-                  <SelectItem value='wins'>Wins</SelectItem>
-                  <SelectItem value='losses'>Losses</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <div className='hidden flex-1 md:block' />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant='outline' className='shrink-0 gap-1.5'>
+                  <ListFilter className='size-4' />
+                  <span className='hidden sm:inline'>Filters</span>
+                  {(leaderboardFilter !== 'all' || filter !== 'all') && (
+                    <span className='flex size-4 items-center justify-center rounded-full bg-violet-500 font-medium text-[10px] text-white'>
+                      {(leaderboardFilter !== 'all' ? 1 : 0) +
+                        (filter !== 'all' ? 1 : 0)}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align='end' className='w-60 space-y-4'>
+                <div className='space-y-1.5'>
+                  <Label className='font-medium text-muted-foreground text-xs'>
+                    Queue
+                  </Label>
+                  <Select
+                    value={leaderboardFilter}
+                    onValueChange={setLeaderboardFilter}
+                  >
+                    <SelectTrigger className='w-full'>
+                      <SelectValue placeholder='Queue' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='all'>All Queues</SelectItem>
+                      <SelectItem value='ranked'>Ranked</SelectItem>
+                      <SelectItem value='smallworld'>Smallworld</SelectItem>
+                      <SelectItem value='vanilla'>Vanilla</SelectItem>
+                      <SelectItem value='legacy'>Legacy</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='space-y-1.5'>
+                  <Label className='font-medium text-muted-foreground text-xs'>
+                    Result
+                  </Label>
+                  <Select value={filter} onValueChange={setFilter}>
+                    <SelectTrigger className='w-full'>
+                      <SelectValue placeholder='Result' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='all'>All</SelectItem>
+                      <SelectItem value='wins'>Wins</SelectItem>
+                      <SelectItem value='losses'>Losses</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <TabsContent value='matches' className='m-0'>
@@ -919,99 +740,125 @@ function UserInfoComponent() {
   )
 }
 
-interface StatsCardProps {
-  title: string
-  value: number
-  customValue?: React.ReactNode
-  icon: React.ReactNode
-  description: React.ReactNode
-  accentColor?: string
+/* ── Queue Card ── */
+
+interface QueueCardProps {
+  queue: string
+  mmr: number | null
+  rank: number | null
+  rankIcon: { enhancement: string; tooltip: string } | null
+  lastGame: {
+    mmrChange: number
+  } | null
+  mostPlayed: { deck: string; stake: string }
+  accentClass: string
+  badgeClass: string
 }
 
-function StatsCard({
-  title,
-  value,
-  customValue,
-  icon,
-  description,
-  accentColor = 'text-violet-500',
-}: StatsCardProps) {
-  return (
-    <div className='flex w-fit flex-col items-start justify-self-center p-2 text-center md:justify-self-auto'>
-      <h3 className='mb-1 text-nowrap font-medium text-gray-500 text-sm dark:text-zinc-400'>
-        {title}
-      </h3>
-      <div className={'flex items-center gap-2'}>
-        <div className='flex items-center justify-center'>{icon}</div>
-        {customValue ? (
-          <div className={cn('font-bold text-3xl', accentColor)}>
-            {customValue}
-          </div>
-        ) : (
-          <p className={cn('font-bold text-3xl', accentColor)}>{value}</p>
-        )}
-      </div>
-      <p className='mt-1 text-gray-500 text-xs dark:text-zinc-400'>
-        {description}
-      </p>
-    </div>
-  )
-}
-
-interface LeaderboardStatsCardProps {
-  title: string
-  rank?: number
-  mmr?: number
-  icon: React.ReactNode
-  accentColor?: string
-}
-
-function _LeaderboardStatsCard({
-  title,
-  rank,
+function QueueCard({
+  queue,
   mmr,
-  icon,
-  accentColor = 'text-violet-500',
-}: LeaderboardStatsCardProps) {
+  rank,
+  rankIcon,
+  lastGame,
+  mostPlayed,
+  accentClass,
+  badgeClass,
+}: QueueCardProps) {
+  const hasData = mmr !== null
+
   return (
-    <div className='rounded-lg border bg-white p-6 dark:bg-zinc-800/20'>
-      <div className='mb-4 flex items-center gap-3'>
-        <div
-          className={cn(
-            'rounded-full bg-gray-100 p-2 dark:bg-zinc-800',
-            accentColor
+    <div
+      className={cn(
+        'rounded-lg border bg-card p-4 transition-colors',
+        accentClass,
+        !hasData && 'hidden lg:block'
+      )}
+    >
+      <div className='mb-3 flex items-center justify-between'>
+        <Badge variant='outline' className={cn('text-xs', badgeClass)}>
+          {queue}
+        </Badge>
+        {rank !== null && (
+          <span className='text-muted-foreground text-xs tabular-nums'>
+            #{rank}
+          </span>
+        )}
+      </div>
+
+      {hasData ? (
+        <>
+          <div className='flex items-center gap-2.5'>
+            {rankIcon && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Image
+                      src={rankIcon.enhancement}
+                      alt={rankIcon.tooltip}
+                      width={28}
+                      height={28}
+                      className='size-7'
+                      unoptimized
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>{rankIcon.tooltip}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <span className='font-bold text-2xl tabular-nums'>{mmr}</span>
+            {lastGame && lastGame.mmrChange !== 0 && (
+              <span
+                className={cn(
+                  'ml-auto inline-flex items-center font-medium text-xs tabular-nums',
+                  lastGame.mmrChange > 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-rose-600 dark:text-rose-400'
+                )}
+              >
+                {lastGame.mmrChange > 0 ? (
+                  <ChevronUp className='size-3' />
+                ) : (
+                  <ChevronDown className='size-3' />
+                )}
+                {numberFormatter.format(Math.trunc(lastGame.mmrChange))}
+              </span>
+            )}
+            {lastGame && lastGame.mmrChange === 0 && (
+              <span className='ml-auto text-muted-foreground text-xs'>
+                Tied
+              </span>
+            )}
+          </div>
+
+          {mostPlayed.deck !== 'unknown' && (
+            <div className='mt-3 flex items-center gap-2 border-t pt-3'>
+              <span className='text-muted-foreground text-xs'>Favorite</span>
+              <div className='ml-auto flex items-center gap-1.5'>
+                <DeckImage
+                  deck={mostPlayed.deck}
+                  width={16}
+                  height={22}
+                  className='h-5 w-auto'
+                />
+                <StakeImage
+                  stake={mostPlayed.stake}
+                  width={20}
+                  height={20}
+                  className='size-5'
+                />
+                <span className='text-muted-foreground text-xs capitalize'>
+                  {mostPlayed.deck} / {mostPlayed.stake}
+                </span>
+              </div>
+            </div>
           )}
-        >
-          {icon}
+        </>
+      ) : (
+        <div className='flex h-16 items-center justify-center'>
+          <span className='text-muted-foreground text-sm'>No data</span>
         </div>
-        <h3 className='font-semibold text-lg'>{title}</h3>
-      </div>
-
-      <div className='grid grid-cols-2 gap-4'>
-        {rank !== undefined && (
-          <div className='rounded-lg bg-gray-50 p-4 dark:bg-zinc-800/40'>
-            <p className='text-gray-500 text-sm dark:text-zinc-400'>Rank</p>
-            <p className={cn('mt-1 font-bold text-2xl', accentColor)}>
-              #{rank}
-            </p>
-          </div>
-        )}
-
-        {mmr !== undefined && (
-          <div className='rounded-lg bg-gray-50 p-4 dark:bg-zinc-800/40'>
-            <p className='text-gray-500 text-sm dark:text-zinc-400'>MMR</p>
-            <p className={cn('mt-1 font-bold text-2xl', accentColor)}>{mmr}</p>
-          </div>
-        )}
-
-        {rank === undefined && mmr === undefined && (
-          <div className='col-span-2 flex h-20 items-center justify-center rounded-lg bg-gray-50 p-4 dark:bg-zinc-800/40'>
-            <p className='text-gray-500 dark:text-zinc-400'>
-              No data available
-            </p>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   )
 }

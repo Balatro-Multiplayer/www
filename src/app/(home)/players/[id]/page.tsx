@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import {
+  LEGACY_QUEUE_ID,
   RANKED_QUEUE_ID,
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
@@ -62,6 +63,9 @@ export default async function PlayerPage({
       api.leaderboard.get_leaderboard.prefetch({
         channel_id: VANILLA_QUEUE_ID,
       }),
+      api.leaderboard.get_leaderboard.prefetch({
+        channel_id: LEGACY_QUEUE_ID,
+      }),
       api.leaderboard.get_user_rank.prefetch({
         channel_id: RANKED_QUEUE_ID,
         user_id: id,
@@ -72,6 +76,10 @@ export default async function PlayerPage({
       }),
       api.leaderboard.get_user_rank.prefetch({
         channel_id: VANILLA_QUEUE_ID,
+        user_id: id,
+      }),
+      api.leaderboard.get_user_rank.prefetch({
+        channel_id: LEGACY_QUEUE_ID,
         user_id: id,
       }),
     ])
