@@ -334,7 +334,7 @@ function UserInfoComponent() {
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <div className='mx-auto flex w-full max-w-fd-container flex-1 flex-col px-4 sm:px-6'>
+      <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col'>
         {/* ── Profile Header ── */}
         <div className='pt-8 pb-6'>
           <div className='flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between'>
