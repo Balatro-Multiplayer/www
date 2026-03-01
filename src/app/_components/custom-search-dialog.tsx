@@ -9,7 +9,6 @@ import {
 import { useRouter } from 'fumadocs-core/framework'
 import { useDocsSearch } from 'fumadocs-core/search/client'
 import type { SharedProps } from 'fumadocs-ui/components/dialog/search'
-import { useSidebar } from 'fumadocs-ui/components/sidebar/base'
 import { buttonVariants } from 'fumadocs-ui/components/ui/button'
 import { useI18n } from 'fumadocs-ui/contexts/i18n'
 import { FileText, Hash, Loader2, SearchIcon, Text, User } from 'lucide-react'
@@ -154,12 +153,6 @@ function SearchResults({
   const [active, setActive] = useState<string>()
   const { text } = useI18n()
   const router = useRouter()
-  let sidebar: ReturnType<typeof useSidebar> | undefined
-  try {
-    sidebar = useSidebar()
-  } catch {
-    sidebar = undefined
-  }
 
   if (
     items.length > 0 &&
@@ -172,7 +165,6 @@ function SearchResults({
     if (external) window.open(url, '_blank')?.focus()
     else router.push(url)
     onSelect?.(url)
-    sidebar?.setOpen(false)
   }
 
   const onKey = useEffectEvent((e: KeyboardEvent) => {
@@ -198,7 +190,7 @@ function SearchResults({
     return () => {
       window.removeEventListener('keydown', onKey)
     }
-  }, [onKey])
+  }, [])
 
   return (
     <div
@@ -274,7 +266,6 @@ function CommandItem({
         [active, value]
       )}
       type='button'
-      aria-selected={active === value}
       onPointerMove={() => onActiveChange(value)}
       {...props}
       className={cn(

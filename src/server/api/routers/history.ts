@@ -21,11 +21,7 @@ import {
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
-import {
-  SEASON_5_START_DATE,
-  SEASON_6_START_DATE,
-  SeasonSchema,
-} from '@/shared/seasons'
+import { SEASON_5_START_DATE, SeasonSchema } from '@/shared/seasons'
 
 function formatTimeKey(date: Date, groupBy: string): string {
   switch (groupBy) {

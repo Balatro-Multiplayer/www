@@ -63,7 +63,7 @@ export class OBSController {
   async getInputs(): Promise<{ inputName: string; inputKind: string }[]> {
     await this.connect()
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       const requestId = `get-inputs-${Date.now()}`
 
       const handleMessage = (event: MessageEvent) => {

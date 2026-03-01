@@ -60,10 +60,7 @@ export function getPlayerData(
 }
 
 export function StreamCardClient() {
-  const { id } = useParams()
-  if (!id || typeof id !== 'string') {
-    return null
-  }
+  const { id } = useParams<{ id: string }>()
 
   const [gamesQueryResult, gamesQuery] =
     api.history.user_games.useSuspenseQuery({ user_id: id })

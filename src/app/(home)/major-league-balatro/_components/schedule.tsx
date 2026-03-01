@@ -87,10 +87,6 @@ const StatusBadge = ({ status }: StatusBadgeProps) => {
   )
 }
 
-type MatchDivisionProps = {
-  division: 'Blue' | 'Red'
-}
-
 type WeekTabProps = {
   week: string | number
   matches: Match[]
@@ -106,7 +102,7 @@ const WeekTab = ({ week, matches, status }: WeekTabProps) => {
     () =>
       matches
         .filter(
-          (m) => m.week === week || m.week === Number.parseInt(String(week))
+          (m) => m.week === week || m.week === Number.parseInt(String(week), 10)
         )
         .sort((a, b) => (a.datetime > b.datetime ? 1 : -1)),
     [matches, week]
@@ -171,7 +167,7 @@ export function MlbSchedule({ matches }: MlbScheduleProps) {
           </TabsList>
 
           {Object.keys(WEEK_CONFIG).map((week) => {
-            const weekNumber = Number.parseInt(week)
+            const weekNumber = Number.parseInt(week, 10)
             const status =
               !Number.isNaN(weekNumber) && weekNumber === currentWeek
                 ? 'current'

@@ -3,6 +3,11 @@
 import * as React from 'react'
 import type { LegendPayload, TooltipContentProps } from 'recharts'
 import * as RechartsPrimitive from 'recharts'
+import type {
+  NameType,
+  Payload,
+  ValueType,
+} from 'recharts/types/component/DefaultTooltipContent'
 
 import { cn } from '@/lib/utils'
 
@@ -116,7 +121,7 @@ function ChartTooltipContent({
   nameKey,
   labelKey,
 }: React.ComponentProps<'div'> &
-  Partial<TooltipContentProps<any, any>> & {
+  Partial<TooltipContentProps<ValueType, NameType>> & {
     hideLabel?: boolean
     hideIndicator?: boolean
     indicator?: 'line' | 'dot' | 'dashed'
@@ -176,7 +181,7 @@ function ChartTooltipContent({
     >
       {!nestLabel ? tooltipLabel : null}
       <div className='grid gap-1.5'>
-        {payload.map((item: any, index) => {
+        {payload.map((item: Payload<ValueType, NameType>, index) => {
           const key = `${nameKey || item.name || item.dataKey || 'value'}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
           const indicatorColor = color || item.payload.fill || item.color

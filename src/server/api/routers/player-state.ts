@@ -29,7 +29,7 @@ export const playerStateRouter = createTRPCRouter({
         lastEventId: z.string().optional(),
       })
     )
-    .subscription(async function* ({ input, ctx, signal }) {
+    .subscription(async function* ({ input, signal }) {
       const iterator = createEventIterator<PlayerState>(
         globalEmitter,
         `state-change:${input.userId}`,

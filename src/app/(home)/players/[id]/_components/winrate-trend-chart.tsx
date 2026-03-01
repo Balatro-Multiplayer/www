@@ -123,7 +123,7 @@ export function WinrateTrendChart({
               content={
                 <ChartTooltipContent
                   hideLabel
-                  formatter={(value, name, entry) => {
+                  formatter={(value, _name, entry) => {
                     const date = new Date(entry.payload.date)
                     const formattedDate = date.toLocaleDateString('en-US', {
                       year: 'numeric',

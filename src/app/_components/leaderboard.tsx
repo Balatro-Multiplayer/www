@@ -9,6 +9,7 @@ import {
   Search,
   TrendingUp,
 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 import type React from 'react'
@@ -83,10 +84,13 @@ const getMedal = (rank: number, mmr: number, queueType?: string) => {
       <Tooltip>
         <TooltipTrigger asChild>
           <span className='flex shrink-0 items-center justify-center gap-1.5'>
-            <img
+            <Image
               src={enhancement}
               alt={`Rank ${rank}`}
-              className='h-5 text-white'
+              width={20}
+              height={20}
+              className='h-5 w-auto text-white'
+              unoptimized
             />
           </span>
         </TooltipTrigger>

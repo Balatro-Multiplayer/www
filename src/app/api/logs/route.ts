@@ -185,7 +185,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Delete the log file from the database
-    await db.delete(logFiles).where(eq(logFiles.id, Number.parseInt(id)))
+    await db.delete(logFiles).where(eq(logFiles.id, Number.parseInt(id, 10)))
 
     return NextResponse.json({ success: true })
   } catch (error) {

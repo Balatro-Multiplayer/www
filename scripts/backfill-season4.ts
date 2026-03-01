@@ -89,7 +89,7 @@ async function backfill() {
       continue
     }
 
-    const result = await db
+    const _result = await db
       .insert(player_games)
       .values(values)
       .onConflictDoNothing({

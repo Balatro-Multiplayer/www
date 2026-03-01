@@ -15,10 +15,6 @@ type PlayerState = {
   }
 }
 
-type StatusCount = {
-  [key: string]: number
-}
-
 type QueueEntry = {
   key: string
   value: PlayerState

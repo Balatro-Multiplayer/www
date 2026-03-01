@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     // Convert the file to a buffer and text
     const buffer = Buffer.from(await file.arrayBuffer())
-    const fileContent = await file.text()
+    const _fileContent = await file.text()
 
     // Upload the file to MinIO
     const fileUrl = await uploadFile(buffer, file.name, file.type)
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     // Check if user is authenticated (optional)
-    const session = await auth()
+    const _session = await auth()
 
     // Parse the JSON data
     const data = await req.json()

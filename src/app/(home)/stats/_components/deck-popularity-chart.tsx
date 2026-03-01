@@ -118,7 +118,7 @@ function isPieActiveShapeProps(value: unknown): value is PieActiveShapeProps {
 }
 
 function renderActiveShape(props: unknown) {
-  if (!isPieActiveShapeProps(props)) return <></>
+  if (!isPieActiveShapeProps(props)) return null
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props
   return (
     <Sector
@@ -389,7 +389,7 @@ export function DeckPopularityChart({
                     cursor={false}
                     content={
                       <ChartTooltipContent
-                        formatter={(value, name, item) => {
+                        formatter={(_value, _name, item) => {
                           const entry = item.payload
                           return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
                         }}
@@ -440,7 +440,7 @@ export function DeckPopularityChart({
                     cursor={false}
                     content={
                       <ChartTooltipContent
-                        formatter={(value, name, item) => {
+                        formatter={(_value, _name, item) => {
                           const entry = item.payload
                           return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
                         }}
@@ -476,7 +476,7 @@ export function DeckPopularityChart({
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value, name, item) => {
+                      formatter={(_value, _name, item) => {
                         const entry = item.payload
                         return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
                       }}
@@ -509,11 +509,15 @@ export function DeckPopularityChart({
             </ChartContainer>
             <div className='grid grid-cols-2 gap-1 overflow-y-auto py-2 pr-2 sm:flex sm:w-40 sm:flex-col'>
               {data.map((entry, i) => (
-                <div
+                <button
                   key={entry.deck}
-                  className='flex cursor-default items-center gap-2 rounded px-2 py-1 text-xs capitalize transition-colors hover:bg-fd-muted'
+                  type='button'
+                  className='flex items-center gap-2 rounded px-2 py-1 text-left text-xs capitalize transition-colors hover:bg-fd-muted'
                   onMouseEnter={() => setActiveIndex(i)}
                   onMouseLeave={() => setActiveIndex(undefined)}
+                  onFocus={() => setActiveIndex(i)}
+                  onBlur={() => setActiveIndex(undefined)}
+                  aria-pressed={activeIndex === i}
                   style={{
                     opacity:
                       activeIndex !== undefined && activeIndex !== i ? 0.4 : 1,
@@ -529,7 +533,7 @@ export function DeckPopularityChart({
                   <span className='ml-auto text-fd-muted-foreground'>
                     {entry.pickRate}%
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </div>

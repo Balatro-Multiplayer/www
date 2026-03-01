@@ -3,7 +3,6 @@ import {
   ChevronRight,
   CircleArrowRightIcon,
   MessageSquare,
-  PersonStandingIcon,
   Trophy,
   Users,
 } from 'lucide-react'

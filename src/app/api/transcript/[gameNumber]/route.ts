@@ -2,7 +2,7 @@ import { auth } from '@/server/auth'
 import { botlatro_service } from '@/server/services/botlatro.service'
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ gameNumber: string }> }
 ) {
   const session = await auth()

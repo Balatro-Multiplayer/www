@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: post.title,
       description: post.excerpt || `${post.content.substring(0, 160)}...`,
     }
-  } catch (error) {
+  } catch (_error) {
     return {
       title: 'Blog Post Not Found',
       description: 'The requested blog post could not be found.',
@@ -46,7 +46,7 @@ export default async function BlogPostPage({ params }: Props) {
         </article>
       </div>
     )
-  } catch (error) {
+  } catch (_error) {
     notFound()
   }
 }

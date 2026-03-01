@@ -15,7 +15,7 @@ export const discord_router = createTRPCRouter({
           .regex(DISCORD_SNOWFLAKE_REGEX, 'Invalid Discord user ID'),
       })
     )
-    .query(async ({ ctx, input }) => {
+    .query(async ({ input }) => {
       const discordUser = await discord_service.get_user_by_id(input.user_id)
 
       // Get social media links from the database

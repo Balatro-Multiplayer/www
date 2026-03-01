@@ -16,11 +16,7 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart'
 import type { SelectGames } from '@/server/db/types'
-import {
-  filterGamesBySeason,
-  getSeasonDisplayName,
-  type Season,
-} from '@/shared/seasons'
+import { getSeasonDisplayName, type Season } from '@/shared/seasons'
 
 export const DECK_IMAGES: Record<string, string> = {
   red: '/decks/red.png',

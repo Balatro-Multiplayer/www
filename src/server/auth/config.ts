@@ -45,7 +45,7 @@ export const authConfig = {
           const defaultAvatarNumber =
             profile.discriminator === '0'
               ? Number(BigInt(profile.id) >> BigInt(22)) % 6
-              : Number.parseInt(profile.discriminator) % 5
+              : Number.parseInt(profile.discriminator, 10) % 5
           profile.image_url = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarNumber}.png`
         } else {
           const format = profile.avatar.startsWith('a_') ? 'gif' : 'png'

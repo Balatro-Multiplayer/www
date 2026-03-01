@@ -240,7 +240,7 @@ export function ReleasesClient() {
 
   const SMODS_RELEASES_URL =
     'https://api.github.com/repos/Steamodded/smods/releases'
-  const LOVELY_RELEASES_BASE_URL =
+  const _LOVELY_RELEASES_BASE_URL =
     'https://github.com/ethangreen-dev/lovely-injector/releases'
 
   useEffect(() => {

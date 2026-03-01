@@ -9,7 +9,6 @@ import {
 } from '@tanstack/react-table'
 import {
   ArrowDownCircle,
-  ArrowUp,
   ArrowUpCircle,
   Loader2,
   MinusCircle,

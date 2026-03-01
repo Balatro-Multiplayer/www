@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Season } from '@/shared/seasons'
 import { createStatsSearchParamsParsers, STAT_TABS } from '../search-params'
 import { DeckPopularityChart } from './deck-popularity-chart'

@@ -9,7 +9,6 @@
  *   bun scripts/snapshot-season5.ts
  */
 
-import { sql } from 'drizzle-orm'
 import { db } from '@/server/db'
 import { leaderboardSnapshots, player_games } from '@/server/db/schema'
 import { getSeasonForDate } from '@/server/seasons'
@@ -187,7 +186,7 @@ async function fetchPlayerMatches(userId: string): Promise<ApiPlayerMatch[]> {
     .map((entry) => entry.match)
 }
 
-async function insertPlayerGames(
+async function _insertPlayerGames(
   playerIds: string[],
   gameNumOffset: number
 ): Promise<number> {

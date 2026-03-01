@@ -1,4 +1,4 @@
-import { asc, eq, sql } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import postgres from 'postgres'
 import { env } from '@/env'
 import { db } from '@/server/db'

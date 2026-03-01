@@ -7,6 +7,7 @@ import {
   Upload,
   Wrench,
 } from 'lucide-react'
+import Image from 'next/image'
 import { Header } from './_components/header'
 
 const links = [
@@ -57,7 +58,13 @@ const links = [
 const nav = {
   title: (
     <div className='flex items-center space-x-2'>
-      <img src={'/logo.png'} alt={'Balatro Multiplayer'} className={'size-8'} />
+      <Image
+        src='/logo.png'
+        alt='Balatro Multiplayer'
+        width={32}
+        height={32}
+        className='size-8'
+      />
       <span className='inline-block font-bold'>Balatro Multiplayer</span>
     </div>
   ),

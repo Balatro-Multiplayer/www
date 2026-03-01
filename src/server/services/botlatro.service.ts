@@ -26,7 +26,7 @@ export const botlatro_service = {
     res.leaderboard.sort((a, b) => b.mmr - a.mmr)
 
     const fixed: Array<LeaderboardEntry> = res.leaderboard.map(
-      (entry, idx) => ({
+      (entry, _idx) => ({
         ...entry,
         rank: entry.rank,
         id: entry.id,

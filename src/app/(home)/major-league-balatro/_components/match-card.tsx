@@ -3,7 +3,6 @@ import { SiTwitch, SiYoutube } from '@icons-pack/react-simple-icons'
 import { TvMinimalPlay } from 'lucide-react'
 import Link from 'next/link'
 import { useFormatter, useTimeZone } from 'next-intl'
-import type React from 'react'
 import { PlayerAvatar } from '@/app/(home)/major-league-balatro/_components/player-avatar'
 import { players } from '@/app/(home)/major-league-balatro/_constants/players'
 import type { Match } from '@/app/(home)/major-league-balatro/types'
@@ -82,50 +81,48 @@ export const MatchCard = ({ match }: MatchCardProps) => {
             </div>
             <div className='flex gap-2'>
               {completed ? (
-                <>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant='outline' size='sm' className='gap-1'>
-                        <TvMinimalPlay className='size-4' />
-                        Watch
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {vod1 && (
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href={vod1}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                          >
-                            {vod1.includes('twitch') ? (
-                              <SiTwitch className='h-4 w-4' />
-                            ) : (
-                              <SiYoutube className='h-4 w-4' />
-                            )}
-                            {player1.name}
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
-                      {vod2 && (
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href={vod2}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                          >
-                            {vod2.includes('twitch') ? (
-                              <SiTwitch className='h-4 w-4' />
-                            ) : (
-                              <SiYoutube className='h-4 w-4' />
-                            )}
-                            {player2.name}
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant='outline' size='sm' className='gap-1'>
+                      <TvMinimalPlay className='size-4' />
+                      Watch
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {vod1 && (
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={vod1}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                        >
+                          {vod1.includes('twitch') ? (
+                            <SiTwitch className='h-4 w-4' />
+                          ) : (
+                            <SiYoutube className='h-4 w-4' />
+                          )}
+                          {player1.name}
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {vod2 && (
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={vod2}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                        >
+                          {vod2.includes('twitch') ? (
+                            <SiTwitch className='h-4 w-4' />
+                          ) : (
+                            <SiYoutube className='h-4 w-4' />
+                          )}
+                          {player2.name}
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

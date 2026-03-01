@@ -1,6 +1,5 @@
 import { SiTwitch } from '@icons-pack/react-simple-icons'
 import Link from 'next/link'
-import { TimeZoneProvider } from '@/components/timezone-provider'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,

@@ -83,6 +83,16 @@ function SidebarProvider({
       }
 
       // This sets the cookie to keep the sidebar state.
+      if ('cookieStore' in window) {
+        void window.cookieStore.set({
+          name: SIDEBAR_COOKIE_NAME,
+          value: String(openState),
+          path: '/',
+          expires: new Date(Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000),
+        })
+        return
+      }
+      // biome-ignore lint/suspicious/noDocumentCookie: fallback for browsers without Cookie Store API
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
     [setOpenProp, open]

@@ -50,13 +50,13 @@ export default async function Home({
   const selectedSnapshot =
     snapshots.find((snapshot) => snapshot.queueType === type) ?? snapshots[0]
   const season = requestedSeason
-  const page = params.page ? Number.parseInt(params.page) : 1
+  const page = params.page ? Number.parseInt(params.page, 10) : 1
   const search = params.search
   const minGames = params.minGames
-    ? Number.parseInt(params.minGames)
+    ? Number.parseInt(params.minGames, 10)
     : undefined
   const maxGames = params.maxGames
-    ? Number.parseInt(params.maxGames)
+    ? Number.parseInt(params.maxGames, 10)
     : undefined
   const sortBy = params.sortBy
   const sortOrder = params.sortOrder as 'asc' | 'desc' | undefined

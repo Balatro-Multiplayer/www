@@ -9,9 +9,6 @@ import {
   ChevronUp,
   Filter,
   GlobeIcon,
-  IceCreamCone,
-  ShieldHalf,
-  Star,
   Trophy,
   Twitch,
   UserIcon,
@@ -24,10 +21,8 @@ import type React from 'react'
 import { useMemo, useState } from 'react'
 import { capitalize, isNonNullish } from 'remeda'
 import {
-  DECK_IMAGES,
   DeckImage,
   DeckStakeStatsChart,
-  STAKE_IMAGES,
   StakeImage,
 } from '@/app/(home)/players/[id]/_components/deck-stake-stats-chart'
 import { GamesTable } from '@/app/(home)/players/[id]/_components/games-table'
@@ -106,10 +101,13 @@ function rankIconComponent(mmr: number, queue: string) {
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <img
+            <Image
               src={rankData.enhancement}
               alt={rankData.tooltip}
-              className='h-5'
+              width={20}
+              height={20}
+              className='h-5 w-auto'
+              unoptimized
             />
           </TooltipTrigger>
           <TooltipContent>
@@ -132,8 +130,7 @@ function UserInfoComponent() {
   const smallworldChannelId = getChannelIdForSeason('smallworld', season)
 
   const [leaderboardFilter, setLeaderboardFilter] = useState('all')
-  const { id } = useParams()
-  if (!id || typeof id !== 'string') return null
+  const { id } = useParams<{ id: string }>()
 
   // Fetch games data unconditionally
   const gamesQuery = api.history.user_games.useSuspenseQuery({ user_id: id })
@@ -969,7 +966,7 @@ interface LeaderboardStatsCardProps {
   accentColor?: string
 }
 
-function LeaderboardStatsCard({
+function _LeaderboardStatsCard({
   title,
   rank,
   mmr,

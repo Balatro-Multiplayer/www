@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import { SessionProvider } from 'next-auth/react'
 import { ProfileSettingsPageClient } from '@/app/(home)/profile/settings/page-client'
 import { auth } from '@/server/auth'
 import { api, HydrateClient } from '@/trpc/server'

@@ -48,7 +48,7 @@ export function ObsControlPanelClient() {
     }
   }, [])
   const [isConnected, setIsConnected] = useState(false)
-  const [commentators, setCommentators] = useLocalStorage<Commentator[]>(
+  const [commentators, _setCommentators] = useLocalStorage<Commentator[]>(
     'commentators',
     []
   )
@@ -122,15 +122,15 @@ export function ObsControlPanelClient() {
       : null
   }, [player2Info, player2Games])
 
-  let winsVsOpponent = 0
-  let lossesVsOpponent = 0
+  let _winsVsOpponent = 0
+  let _lossesVsOpponent = 0
   if (value1 && player1Games && value2) {
     for (const game of player1Games) {
       if (game.opponentId === value2) {
         if (game.result === 'win') {
-          winsVsOpponent++
+          _winsVsOpponent++
         } else if (game.result === 'loss') {
-          lossesVsOpponent++
+          _lossesVsOpponent++
         }
       }
     }

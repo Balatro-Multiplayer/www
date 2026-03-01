@@ -36,7 +36,9 @@ type MultProps = ComponentProps<typeof Mult>
 type NemesisProps = ComponentProps<typeof Nemesis>
 type DocsPageData = NonNullable<ReturnType<typeof source.getPage>> & {
   data: {
-    body: ComponentType<{ components?: Record<string, ComponentType<any>> }>
+    body: ComponentType<{
+      components?: Record<string, ComponentType<Record<string, unknown>>>
+    }>
     description?: string
     full?: boolean
     title: string

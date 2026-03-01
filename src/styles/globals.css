@@ -4,12 +4,13 @@
 @import "fumadocs-ui/css/preset.css";
 
 /* path of `fumadocs-ui` relative to the CSS file */
-@source '../../node_modules/fumadocs-ui/dist/**/*.js';
+@source "../../node_modules/fumadocs-ui/dist/**/*.js";
 @custom-variant dark (&:is(.dark *));
 
 @theme {
   --font-m6x11: var(--font-m6x11);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
+  --font-sans:
+    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
