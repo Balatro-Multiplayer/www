@@ -1,18 +1,19 @@
 ---
 title: Sandbox
-description: Experimental ruleset for testing balance changes and new mechanics
+description: Competitive ruleset built around commitment, intuition, and no score preview
 ---
 
 ## Overview
 
-Sandbox tests mechanical changes that reshape how you approach the game. Score preview disabled. Modified jokers force different strategic choices. Three experimental stakes. Changes based on Standard ruleset.
+Sandbox strips away the calculation and asks what's left. No score preview — you play what you feel is enough and find out if you were right. Modified jokers reward commitment over optimization. Reworked spectrals remove permanent penalties. Custom stakes separate sticker types across clean difficulty tiers instead of stacking them all on Gold.
+
+Changes are based on the Standard ruleset.
 
 ## Gameplay Changes
 
+- **Score Preview:** Disabled — forces pattern recognition over arithmetic
 - **Comeback Gold Mechanic:** $3 per completed Ante (was $4 per life lost)
-- **Score Preview:** Disabled - removes calculation paralysis, speeds up play
-- **Glass Cards:** Justice back in Tarot pool, glass cards break at 1/3 rate
-- **Modified Content:** 12 jokers, 2 spectral cards, 3 tags, 3 new stakes - see below
+- **Glass Cards:** Justice back in Tarot pool, glass cards break at 1/3 rate (instead of 1 in 4)
 
 ## Modified Jokers
 
@@ -252,7 +253,9 @@ Sandbox tests mechanical changes that reshape how you approach the game. Score p
 			</td>
 			<td>
 				<div className={'flex flex-col gap-1'}>
-				One of two variants added to joker pool at game start - Zealot (<Mult>X1.5</Mult> per rank) and Hoarder (rewards card hoarding).
+				Split into two variants. Both appear in the shop, but buying one permanently removes the other.
+				<span>**The Zealot** — picks a rank every blind. Every card of that rank scores <Xmult>X1.5</Xmult> Mult</span>
+				<span>**The Collector** — scales with your most common card. Stack duplicates and watch it grow</span>
 				</div>
 			</td>
 			<td>
@@ -346,12 +349,187 @@ Sandbox tests mechanical changes that reshape how you approach the game. Score p
 </div>
 
 ## Tags
+
 - **Gambling Tag**: Replaces Rare Tag. 1/2 chance for free Rare Joker next shop
 - **Juggle Tag**: +3 hand size next PvP Blind (changed from affecting next blind to specifically targeting PvP blinds)
 - **Investment Tag**: After defeating Boss Blind, gain $5 + $10 per completed Ante (scales with progression instead of flat $25)
-## Glass Cards
 
-Justice is back in the Tarot pool. Glass cards now break at **1/3 rate** (instead of 1 in 4).
+## Extra Credit
+
+Sandbox v3 adds 26 jokers and 1 deck from the [Extra Credit mod](https://github.com/CampfireCollective/ExtraCredit), selected in collaboration with Balatro University. If you have Extra Credit installed, the full EC pool is available in Sandbox.
+
+### Extra Credit Jokers
+
+<div className={'relative overflow-auto'}>
+	<table>
+		<thead>
+		<tr>
+			<th>Joker</th>
+			<th>Rarity</th>
+			<th>Description</th>
+		</tr>
+		</thead>
+		<tbody>
+		<tr>
+			<td>**Forklift**</td>
+			<td>Common</td>
+			<td><Hands>+2</Hands> consumable slots</td>
+		</tr>
+		<tr>
+			<td>**Starfruit**</td>
+			<td>Common</td>
+			<td><Hands>1 in 2</Hands> chance to level up first played hand each round. <Hands>5 uses</Hands>, then self-destructs</td>
+		</tr>
+		<tr>
+			<td>**Espresso**</td>
+			<td>Common</td>
+			<td>Gain <Money>$30</Money> when you skip a Blind, then self-destruct. Payout decreases by <Money>$5</Money> each round. Expires if payout reaches $0</td>
+		</tr>
+		<tr>
+			<td>**Pyromancer**</td>
+			<td>Common</td>
+			<td><Mult>+20</Mult> Mult when remaining hands ≤ remaining discards</td>
+		</tr>
+		<tr>
+			<td>**Lucky 7**</td>
+			<td>Common</td>
+			<td>All scoring cards count as <Hands>Lucky</Hands> when a <Hands>7</Hands> is in the scoring hand</td>
+		</tr>
+		<tr>
+			<td>**Farmer**</td>
+			<td>Common</td>
+			<td>Earn <Money>$2</Money> for each card of <Hands>[suit]</Hands> held in hand at end of round. Suit changes each round</td>
+		</tr>
+		<tr>
+			<td>**Double Rainbow**</td>
+			<td>Uncommon</td>
+			<td>Retrigger all <Hands>Lucky</Hands> cards</td>
+		</tr>
+		<tr>
+			<td>**Candy Necklace**</td>
+			<td>Uncommon</td>
+			<td>Gain a random <Hands>Booster Pack Tag</Hands> when leaving shop. <Hands>5 uses</Hands>, then self-destructs</td>
+		</tr>
+		<tr>
+			<td>**Bobby**</td>
+			<td>Uncommon</td>
+			<td><Hands>-2</Hands> hands, <Hands>+4</Hands> discards at start of each Blind (halved if only 2 hands remaining)</td>
+		</tr>
+		<tr>
+			<td>**Monte Haul**</td>
+			<td>Uncommon</td>
+			<td>After <Hands>1 round</Hands>, sell this joker to gain <Hands>2</Hands> random Joker Tags (Foil, Holo, Poly, Negative, Uncommon, or Rare)</td>
+		</tr>
+		<tr>
+			<td>**Ambrosia**</td>
+			<td>Uncommon</td>
+			<td>Fill consumable slots with <Hands>Spectral</Hands> cards when skipping a Blind. Self-destructs when you sell a Spectral card</td>
+		</tr>
+		<tr>
+			<td>**Clown College**</td>
+			<td>Uncommon</td>
+			<td>Fill consumable slots with <Hands>The Fool</Hands> after defeating Boss Blind</td>
+		</tr>
+		<tr>
+			<td>**Warlock**</td>
+			<td>Uncommon</td>
+			<td><Hands>1 in 7</Hands> chance for played <Hands>Lucky</Hands> cards to be destroyed and spawn a <Hands>Spectral</Hands> card</td>
+		</tr>
+		<tr>
+			<td>**Traffic Light**</td>
+			<td>Uncommon</td>
+			<td><Xmult>X2.5</Xmult> Mult, decreases by <Xmult>X1</Xmult> each hand played, resets to <Xmult>X2.5</Xmult> after reaching <Xmult>X0.5</Xmult></td>
+		</tr>
+		<tr>
+			<td>**Werewolf**</td>
+			<td>Uncommon</td>
+			<td>All <Hands>enhanced</Hands> cards in played hand become <Hands>Wild</Hands> cards</td>
+		</tr>
+		<tr>
+			<td>**Tuxedo**</td>
+			<td>Uncommon</td>
+			<td>Retrigger all cards of <Hands>[suit]</Hands>. Suit changes each round</td>
+		</tr>
+		<tr>
+			<td>**Go Fish**</td>
+			<td>Uncommon</td>
+			<td>Once per round: destroy played cards of rank <Hands>[rank]</Hands> (rank changes each round)</td>
+		</tr>
+		<tr>
+			<td>**Pocket Aces**</td>
+			<td>Uncommon</td>
+			<td>Gain <Money>$2</Money> for each <Hands>Ace</Hands> played. Paid at end of round, resets each Ante</td>
+		</tr>
+		<tr>
+			<td>**Hoarder**</td>
+			<td>Uncommon</td>
+			<td>Gains <Money>$1</Money> sell value whenever you earn money</td>
+		</tr>
+		<tr>
+			<td>**Alloy**</td>
+			<td>Uncommon</td>
+			<td><Hands>Gold</Hands> cards also count as <Hands>Steel</Hands>. <Hands>Steel</Hands> cards also count as <Hands>Gold</Hands></td>
+		</tr>
+		<tr>
+			<td>**Clown Car**</td>
+			<td>Rare</td>
+			<td><Mult>+44</Mult> Mult, but costs <Money>$3</Money> each hand played</td>
+		</tr>
+		<tr>
+			<td>**Chain Lightning**</td>
+			<td>Rare</td>
+			<td><Hands>Mult</Hands> cards give <Xmult>X Mult</Xmult> that chains through consecutive Mult cards. Starts at <Xmult>X1</Xmult>, gains <Xmult>X0.1</Xmult> per Mult card</td>
+		</tr>
+		<tr>
+			<td>**Ship of Theseus**</td>
+			<td>Rare</td>
+			<td>Copy destroyed/broken cards back into deck. Gains <Xmult>X0.4</Xmult> Mult per card copied</td>
+		</tr>
+		<tr>
+			<td>**Jokalisa**</td>
+			<td>Rare</td>
+			<td>Gains <Xmult>X0.1</Xmult> Mult per <Hands>unique enhancement type</Hands> in scoring hand (permanent)</td>
+		</tr>
+		<tr>
+			<td>**Joker of the Year**</td>
+			<td>Rare</td>
+			<td>Retrigger all cards when playing a <Hands>5-card hand</Hands></td>
+		</tr>
+		<tr>
+			<td>**Coupon Sheet**</td>
+			<td>Rare</td>
+			<td>Gain <Hands>Coupon Tag</Hands> and <Hands>Voucher Tag</Hands> after defeating Boss Blind</td>
+		</tr>
+		</tbody>
+	</table>
+</div>
+
+### Extra Credit Deck
+
+<div className={'relative overflow-auto'}>
+	<table>
+		<thead>
+		<tr>
+			<th>Deck</th>
+			<th>Description</th>
+			<th>Notes</th>
+		</tr>
+		</thead>
+		<tbody>
+		<tr>
+			<td>**Echo Deck**</td>
+			<td>
+				<div className={'flex flex-col gap-1'}>
+					<span><Hands>Retrigger</Hands> all playing cards</span>
+					<span><Mult>X1.2</Mult> base Blind size</span>
+					<span>Increases by <Mult>X0.2</Mult> each Ante</span>
+				</div>
+			</td>
+			<td>The Community Favorite.</td>
+		</tr>
+		</tbody>
+	</table>
+</div>
 
 ## Stakes
 
@@ -372,22 +550,12 @@ Sandbox runs a custom stake rotation designed for cleaner difficulty progression
 **Design Notes:**
 Each stake introduces one sticker type (Eternal → Perishable → Rental) with increasingly aggressive ante scaling. Discard reduction from vanilla Blue Stake removed entirely.
 
-## Multiplayer Jokers
-
-All multiplayer jokers from the Standard ruleset are included and available in Sandbox. See [Standard ruleset](/docs/rulesets/standard#multiplayer-jokers) for details.
-
-<Callout>
-## Why These Changes?
-
-Balatro's single-player balance creates optimization-heavy competitive play where players calculate through 5-second score previews. Sandbox rebalances around faster decisions and strategic variety.
-
-Score preview removal forces pattern recognition over arithmetic. Spectral card changes remove permanent penalties that could make Ouija and Ectoplasm situationally unfun. Stakes progression separates sticker types across difficulties instead of stacking them on Gold Stake.
-</Callout>
-
 ---
 
 ## Changelog
 
-### V3
-* Mail-in-rebate nerfed from $8 to $5
-* Golden ticket from $4 to 1/2 chance for $4
+### Sandbox v3: Gods and Guests
+* Idol removed and replaced with two variants: The Zealot and The Collector
+* Mail-in Rebate nerfed from $8 to $5
+* Golden Ticket from $4 to 1/2 chance for $5, now Uncommon
+* Added Extra Credit with 26 jokers and Echo Deck
