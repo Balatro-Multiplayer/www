@@ -88,7 +88,7 @@ function SidebarProvider({
           name: SIDEBAR_COOKIE_NAME,
           value: String(openState),
           path: '/',
-          expires: new Date(Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000),
+          expires: Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000,
         })
         return
       }
