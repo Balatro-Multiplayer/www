@@ -1,7 +1,7 @@
-import { createEventIterator, globalEmitter } from '@/lib/events'
-import { redis } from '@/server/redis'
 import { tracked } from '@trpc/server'
 import { z } from 'zod'
+import { createEventIterator, globalEmitter } from '@/lib/events'
+import { redis } from '@/server/redis'
 import { createTRPCRouter, publicProcedure } from '../trpc'
 
 export type PlayerState = {

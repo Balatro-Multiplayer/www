@@ -1,8 +1,8 @@
-import { formatDate } from '@/lib/utils'
-import { api } from '@/trpc/server'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
+import { formatDate } from '@/lib/utils'
+import { api } from '@/trpc/server'
 
 type Props = {
   params: Promise<{

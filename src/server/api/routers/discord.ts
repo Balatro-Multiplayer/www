@@ -1,10 +1,10 @@
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
 import { createTRPCRouter, publicProcedure } from '@/server/api/trpc'
 import { db } from '@/server/db'
 import { users } from '@/server/db/schema'
 import { discord_service } from '@/server/services/discord.service'
 import { DISCORD_SNOWFLAKE_REGEX } from '@/shared/discord'
-import { eq } from 'drizzle-orm'
-import { z } from 'zod'
 
 export const discord_router = createTRPCRouter({
   get_user_by_id: publicProcedure

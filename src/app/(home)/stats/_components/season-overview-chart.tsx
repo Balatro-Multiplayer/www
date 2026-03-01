@@ -1,5 +1,6 @@
 'use client'
 
+import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   type ChartConfig,
@@ -8,16 +9,15 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart'
 import {
+  getSeasonDisplayName,
   SEASON_2_START_DATE,
   SEASON_3_START_DATE,
   SEASON_4_START_DATE,
   SEASON_5_START_DATE,
   SEASON_6_START_DATE,
   type Season,
-  getSeasonDisplayName,
 } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from 'recharts'
 import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 
 const fmt = (d: Date) =>

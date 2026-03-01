@@ -1,31 +1,28 @@
 'use client'
 
+import type { HomeLayoutProps } from 'fumadocs-ui/layouts/home'
+import { type LinkItemType, renderTitleNav } from 'fumadocs-ui/layouts/shared'
+import { LogIn, LogOut, Settings, Shield, Tv, User } from 'lucide-react'
+import Link from 'next/link'
+import { signIn, signOut, useSession } from 'next-auth/react'
+import { Fragment, type ReactNode } from 'react'
+import { ModeToggle } from '@/components/mode-toggle'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { ModeToggle } from '@/components/mode-toggle'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import type { HomeLayoutProps } from 'fumadocs-ui/layouts/home'
 import {
-  renderTitleNav,
-  type LinkItemType,
-} from 'fumadocs-ui/layouts/shared'
-import { LogIn, LogOut, Settings, Shield, Tv, User } from 'lucide-react'
-import { signIn, signOut, useSession } from 'next-auth/react'
-import Link from 'next/link'
-import { Fragment, type ReactNode } from 'react'
-import {
+  Navbar,
   NavbarLink,
   NavbarMenu,
   NavbarMenuContent,
   NavbarMenuLink,
   NavbarMenuTrigger,
 } from './home/navbar'
-import { Navbar } from './home/navbar'
 import { MobileMenu } from './mobile-menu'
 import { LargeSearchToggle, SearchToggle } from './search-toggle'
 

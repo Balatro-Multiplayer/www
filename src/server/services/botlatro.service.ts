@@ -45,7 +45,11 @@ export const botlatro_service = {
     userId,
     queueId,
     limit,
-  }: { userId: string; limit?: number; queueId?: string }) => {
+  }: {
+    userId: string
+    limit?: number
+    queueId?: string
+  }) => {
     try {
       const params = new URLSearchParams()
       if (limit) {

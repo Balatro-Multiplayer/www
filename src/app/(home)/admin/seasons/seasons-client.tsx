@@ -1,5 +1,9 @@
 'use client'
 
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { startTransition, useState } from 'react'
+import { toast } from 'sonner'
 import { TableShell } from '@/app/_components/table-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,10 +27,6 @@ import {
 } from '@/components/ui/table'
 import { formatDate } from '@/lib/utils'
 import { api } from '@/trpc/react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { startTransition, useState } from 'react'
-import { toast } from 'sonner'
 
 export type SeasonListRow = {
   id: number

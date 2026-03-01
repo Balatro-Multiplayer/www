@@ -1,10 +1,10 @@
+import { Suspense } from 'react'
 import {
   RANKED_QUEUE_ID,
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
-import { HydrateClient, api } from '@/trpc/server'
-import { Suspense } from 'react'
+import { api, HydrateClient } from '@/trpc/server'
 import { UserInfo } from './user'
 
 export default async function PlayerPage({

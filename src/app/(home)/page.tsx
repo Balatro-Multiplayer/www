@@ -1,7 +1,3 @@
-import { GithubLinks } from '@/app/_components/github-links'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { SiGithub } from '@icons-pack/react-simple-icons'
 import {
   ChevronRight,
@@ -13,6 +9,10 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { GithubLinks } from '@/app/_components/github-links'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 export default function Home() {
   return (

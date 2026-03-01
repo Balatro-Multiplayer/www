@@ -1,7 +1,5 @@
 'use client'
 
-import { cn } from '@/lib/utils'
-import type { SearchResult } from '@/types/search'
 import {
   Dialog,
   DialogContent,
@@ -22,6 +20,8 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { cn } from '@/lib/utils'
+import type { SearchResult } from '@/types/search'
 
 type SearchLink = [name: string, href: string]
 
@@ -95,7 +95,7 @@ function CustomSearchDialogComponent({
       <DialogOverlay className='fixed inset-0 z-50 bg-black/30 backdrop-blur-sm data-[state=closed]:animate-fd-fade-out data-[state=open]:animate-fd-fade-in' />
       <DialogContent
         aria-describedby={undefined}
-        className='-translate-x-1/2 fixed top-[10vh] left-1/2 z-50 w-[98vw] max-w-screen-sm rounded-lg border bg-fd-popover text-fd-popover-foreground shadow-lg data-[state=closed]:animate-fd-dialog-out data-[state=open]:animate-fd-dialog-in'
+        className='fixed top-[10vh] left-1/2 z-50 w-[98vw] max-w-screen-sm -translate-x-1/2 rounded-lg border bg-fd-popover text-fd-popover-foreground shadow-lg data-[state=closed]:animate-fd-dialog-out data-[state=open]:animate-fd-dialog-in'
       >
         <DialogTitle className='hidden'>{text.search}</DialogTitle>
         <div className='flex flex-row items-center gap-2 px-3'>

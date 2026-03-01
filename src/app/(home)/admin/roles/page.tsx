@@ -1,7 +1,7 @@
-import { auth } from '@/server/auth'
-import { HydrateClient, api } from '@/trpc/server'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
+import { auth } from '@/server/auth'
+import { api, HydrateClient } from '@/trpc/server'
 import { RolesClient } from './roles-client'
 
 export default async function RolesManagerPage() {

@@ -1,3 +1,5 @@
+import { and, gte, lt, sql } from 'drizzle-orm'
+import { z } from 'zod'
 import { createTRPCRouter, publicProcedure } from '@/server/api/trpc'
 import { player_games } from '@/server/db/schema'
 import {
@@ -8,9 +10,9 @@ import {
   getSeasons,
 } from '@/server/seasons'
 import {
+  fetchMatches,
   type OverallMatch,
   QUEUE_IDS,
-  fetchMatches,
 } from '@/server/services/match-fetcher'
 import {
   SEASON_5_START_DATE,
@@ -18,8 +20,6 @@ import {
   type Season,
   SeasonSchema,
 } from '@/shared/seasons'
-import { and, gte, lt, sql } from 'drizzle-orm'
-import { z } from 'zod'
 
 function aggregateDeckStats(matches: { deck: string | null }[]) {
   const counts: Record<string, number> = {}

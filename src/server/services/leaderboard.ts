@@ -1,3 +1,4 @@
+import { and, asc, desc, eq, gte, lt, or, sql } from 'drizzle-orm'
 import { env } from '@/env'
 import { db } from '@/server/db'
 import {
@@ -7,10 +8,8 @@ import {
 } from '@/server/db/schema'
 import { minioClient } from '@/server/minio'
 import { getActiveSeasonNumber, getSeasonConfig } from '@/server/seasons'
-import { and, asc, desc, eq, gte, lt, or } from 'drizzle-orm'
-import { sql } from 'drizzle-orm'
 import { redis } from '../redis'
-import { type LeaderboardEntry, botlatro_service } from './botlatro.service'
+import { botlatro_service, type LeaderboardEntry } from './botlatro.service'
 
 // Memory profiling utility
 let currentRunId: string | null = null

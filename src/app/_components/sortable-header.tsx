@@ -1,9 +1,8 @@
 'use client'
 
-import type { ComponentPropsWithoutRef } from 'react'
-
-import { cn } from '@/lib/utils'
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
+import type { ComponentPropsWithoutRef } from 'react'
+import { cn } from '@/lib/utils'
 
 export type SortDirection = 'asc' | 'desc'
 

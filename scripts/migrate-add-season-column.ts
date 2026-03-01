@@ -1,7 +1,7 @@
+import { sql } from 'drizzle-orm'
 import { db } from '@/server/db'
 import { player_games } from '@/server/db/schema'
 import { getSeasonForDate } from '@/server/seasons'
-import { sql } from 'drizzle-orm'
 
 async function migrateSeasonColumn() {
   console.log('Starting season column migration...')

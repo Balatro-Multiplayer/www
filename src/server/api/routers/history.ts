@@ -1,3 +1,5 @@
+import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm'
+import { z } from 'zod'
 import {
   createTRPCRouter,
   publicProcedure,
@@ -7,10 +9,10 @@ import { player_games } from '@/server/db/schema'
 import type { SelectGames } from '@/server/db/types'
 import { getSeasonForDate } from '@/server/seasons'
 import {
-  type PlayerMatch,
   botlatro_service,
+  type PlayerMatch,
 } from '@/server/services/botlatro.service'
-import { QUEUE_IDS, fetchMatches } from '@/server/services/match-fetcher'
+import { fetchMatches, QUEUE_IDS } from '@/server/services/match-fetcher'
 import {
   CASUAL_QUEUE_ID,
   LEGACY_QUEUE_ID,
@@ -24,8 +26,6 @@ import {
   SEASON_6_START_DATE,
   SeasonSchema,
 } from '@/shared/seasons'
-import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm'
-import { z } from 'zod'
 
 function formatTimeKey(date: Date, groupBy: string): string {
   switch (groupBy) {

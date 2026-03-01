@@ -1,9 +1,9 @@
-import type { Season } from '@/shared/seasons'
 import { parseAsString, parseAsStringLiteral } from 'nuqs/server'
+import type { Season } from '@/shared/seasons'
 import {
+  STAT_TABS,
   STATS_FILTER_MODES,
   STATS_QUEUES,
-  STAT_TABS,
 } from './search-params.constants'
 
 export function createStatsSearchParamsParsersServer(defaultSeason: Season) {

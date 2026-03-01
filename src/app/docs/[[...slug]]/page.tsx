@@ -1,3 +1,14 @@
+import type { TOCItemType } from 'fumadocs-core/toc'
+import { ImageZoom } from 'fumadocs-ui/components/image-zoom'
+import defaultMdxComponents from 'fumadocs-ui/mdx'
+import {
+  DocsBody,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+} from 'fumadocs-ui/page'
+import { notFound } from 'next/navigation'
+import type { ComponentProps, ComponentType } from 'react'
 import { Chance } from '@/app/_components/chance'
 import { Chips } from '@/app/_components/chips'
 import { Hands } from '@/app/_components/hands'
@@ -9,17 +20,6 @@ import { Spectral } from '@/app/_components/spectral'
 import { Xmult } from '@/app/_components/xmult'
 import { Button } from '@/components/ui/button'
 import { CDN_URL } from '@/shared/constants'
-import { ImageZoom } from 'fumadocs-ui/components/image-zoom'
-import defaultMdxComponents from 'fumadocs-ui/mdx'
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-} from 'fumadocs-ui/page'
-import { notFound } from 'next/navigation'
-import type { TOCItemType } from 'fumadocs-core/toc'
-import type { ComponentProps, ComponentType } from 'react'
 import { metadataImage } from '../../../../lib/metadata'
 import { source } from '../../../../lib/source'
 

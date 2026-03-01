@@ -118,6 +118,7 @@ export const jokers: { [key: string]: JokerInfo } = {
   j_seance: { name: 'Seance', file: 'j_seance.png' },
   j_seeing_double: { name: 'Seeing Double', file: 'j_seeing_double.png' },
   j_selzer: { name: 'Seltzer', file: 'j_selzer.png' },
+  j_mp_seltzer: { name: 'Seltzer', file: 'j_mp_seltzer.png' },
   j_shoot_the_moon: { name: 'Shoot the Moon', file: 'j_shoot_the_moon.png' },
   j_shortcut: { name: 'Shortcut', file: 'j_shortcut.png' },
   j_sly: { name: 'Sly Joker', file: 'j_sly.png' },

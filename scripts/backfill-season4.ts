@@ -1,6 +1,6 @@
+import { sql } from 'drizzle-orm'
 import { db } from '@/server/db'
 import { player_games } from '@/server/db/schema'
-import { sql } from 'drizzle-orm'
 
 interface PlayerGameRow {
   playerId: string

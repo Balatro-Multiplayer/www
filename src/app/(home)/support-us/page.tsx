@@ -1,3 +1,5 @@
+import { CircleDollarSign, Coffee, ExternalLink, Heart } from 'lucide-react'
+import Link from 'next/link'
 import {
   Card,
   CardContent,
@@ -6,8 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { CircleDollarSign, Coffee, ExternalLink, Heart } from 'lucide-react'
-import Link from 'next/link'
 
 export default async function SupportUsPage() {
   return (

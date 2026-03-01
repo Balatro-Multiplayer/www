@@ -1,7 +1,8 @@
-import { db } from '@/server/db'
-import { player_games } from '@/server/db/schema'
 import { desc, eq } from 'drizzle-orm'
 import { createClient } from 'redis'
+import { db } from '@/server/db'
+import { player_games } from '@/server/db/schema'
+
 const redisClient = await createClient({ url: process.env.REDIS_URL })
   .on('error', (err) => console.error('Redis Client Error', err))
   .connect()

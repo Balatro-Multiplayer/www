@@ -1,5 +1,10 @@
 'use client'
 
+import { Trash2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
+import { useCallback, useEffect, useState } from 'react'
+import { useDebounceCallback } from 'usehooks-ts'
 import { PaginationControls } from '@/app/_components/pagination-controls'
 import { SortableHeader } from '@/app/_components/sortable-header'
 import { TableShell } from '@/app/_components/table-shell'
@@ -13,11 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Trash2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useEffect, useState } from 'react'
-import { useDebounceCallback } from 'usehooks-ts'
 
 type LogFile = {
   id: number

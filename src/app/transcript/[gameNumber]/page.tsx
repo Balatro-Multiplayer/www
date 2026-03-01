@@ -1,6 +1,6 @@
-import { auth } from '@/server/auth'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
+import { auth } from '@/server/auth'
 
 type Props = {
   params: Promise<{

@@ -1,6 +1,6 @@
+import { Suspense } from 'react'
 import { LogsClient } from '@/app/(home)/admin/logs/logs-client'
 import { auth } from '@/server/auth'
-import { Suspense } from 'react'
 
 export default async function LogsPage() {
   const session = await auth()

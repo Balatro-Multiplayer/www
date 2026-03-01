@@ -1,8 +1,8 @@
+import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
+import { z } from 'zod'
 import { createTRPCRouter, ownerProcedure } from '@/server/api/trpc'
 import { db } from '@/server/db'
 import { users } from '@/server/db/schema'
-import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
-import { z } from 'zod'
 
 export const usersRouter = createTRPCRouter({
   listUsers: ownerProcedure

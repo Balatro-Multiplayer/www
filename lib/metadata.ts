@@ -5,8 +5,7 @@ type DocPage = NonNullable<ReturnType<typeof source.getPage>>
 const ROOT_DOCS_OG_SLUG = '_index'
 
 function getImagePath(slugs?: string[]) {
-  const routeSlugs =
-    slugs && slugs.length > 0 ? slugs : [ROOT_DOCS_OG_SLUG]
+  const routeSlugs = slugs && slugs.length > 0 ? slugs : [ROOT_DOCS_OG_SLUG]
   const path = routeSlugs.join('/')
   return `/docs-og/${path}`
 }

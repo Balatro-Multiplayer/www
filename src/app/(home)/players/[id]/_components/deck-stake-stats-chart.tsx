@@ -1,4 +1,7 @@
 'use client'
+import Image from 'next/image'
+import { useMemo } from 'react'
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts'
 import {
   Card,
   CardContent,
@@ -14,13 +17,10 @@ import {
 } from '@/components/ui/chart'
 import type { SelectGames } from '@/server/db/types'
 import {
-  type Season,
   filterGamesBySeason,
   getSeasonDisplayName,
+  type Season,
 } from '@/shared/seasons'
-import Image from 'next/image'
-import { useMemo } from 'react'
-import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from 'recharts'
 
 export const DECK_IMAGES: Record<string, string> = {
   red: '/decks/red.png',

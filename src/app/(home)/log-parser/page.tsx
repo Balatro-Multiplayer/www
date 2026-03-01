@@ -1,5 +1,9 @@
 'use client'
 
+import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
+import { useFormatter } from 'next-intl'
+import { Fragment, useEffect, useState } from 'react'
 import { convertLuaToJson } from '@/app/(home)/log-parser/lua-parser'
 import {
   Card,
@@ -35,11 +39,8 @@ import {
 } from '@/components/ui/tooltip'
 import { jokers } from '@/shared/jokers'
 import { vouchers } from '@/shared/vouchers'
-import { useFormatter } from 'next-intl'
-import Image from 'next/image'
-import { useSearchParams } from 'next/navigation'
-import { Fragment, useEffect, useState } from 'react'
 import { type PvpBlind, PvpBlindsCard } from './_components/pvp-blinds'
+
 // Define the structure for individual log events within a game
 type LogEvent = {
   timestamp: Date
@@ -1142,7 +1143,7 @@ export default function LogParser() {
                                       className={'size-5 shrink-0'}
                                       width={20}
                                       height={20}
-                                      // @ts-ignore
+                                      // @ts-expect-error
                                       src={STAKE_IMG[game.options.stake]}
                                       alt={'Stake'}
                                     />

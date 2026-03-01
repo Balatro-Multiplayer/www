@@ -1,6 +1,6 @@
+import { redirect } from 'next/navigation'
 import { auth } from '@/server/auth'
 import { api } from '@/trpc/server'
-import { redirect } from 'next/navigation'
 import { type SeasonListRow, SeasonsClient } from './seasons-client'
 
 async function loadSeasonRows(): Promise<SeasonListRow[]> {

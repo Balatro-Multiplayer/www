@@ -1,18 +1,20 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { api } from '@/trpc/react'
 import { SiTwitch, SiYoutube } from '@icons-pack/react-simple-icons'
 import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { api } from '@/trpc/react'
 
 export function ProfileSettingsPageClient({
   userId,
-}: { userId: string | null }) {
+}: {
+  userId: string | null
+}) {
   const [socialLinks] = api.profile.getSocialLinks.useSuspenseQuery()
   const [twitchUrl, setTwitchUrl] = useState<string | null>(
     socialLinks.twitch_url

@@ -1,4 +1,6 @@
 'use client'
+import { useState } from 'react'
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import {
   Card,
   CardContent,
@@ -16,12 +18,10 @@ import {
 import { Slider } from '@/components/ui/slider'
 import type { SelectGames } from '@/server/db/types'
 import {
-  type Season,
   filterGamesBySeason,
   getSeasonDisplayName,
+  type Season,
 } from '@/shared/seasons'
-import { useState } from 'react'
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 
 const chartConfig = {
   winrate: {

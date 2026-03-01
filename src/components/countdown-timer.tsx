@@ -1,6 +1,6 @@
 'use client'
-import type { Match } from '@/app/(home)/major-league-balatro/types'
 import { useEffect, useState } from 'react'
+import type { Match } from '@/app/(home)/major-league-balatro/types'
 
 export function CountdownTimer({
   nextMatch,

@@ -1,12 +1,11 @@
 'use client'
 
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type React from 'react'
 import { useMemo, useState } from 'react'
-
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 export type PaginationControlsProps = {
   currentPage: number

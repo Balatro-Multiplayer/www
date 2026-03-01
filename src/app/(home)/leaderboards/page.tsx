@@ -6,7 +6,7 @@ import {
 } from '@/server/seasons'
 import type { PaginationOptions } from '@/server/services/leaderboard'
 import { type Season, SeasonSchema } from '@/shared/seasons'
-import { HydrateClient, api } from '@/trpc/server'
+import { api, HydrateClient } from '@/trpc/server'
 
 function getDefaultQueueType(snapshots: Array<{ queueType: string }>) {
   return snapshots[0]?.queueType ?? 'ranked'

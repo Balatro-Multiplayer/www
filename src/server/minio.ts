@@ -1,5 +1,5 @@
-import { env } from '@/env'
 import { Client } from 'minio'
+import { env } from '@/env'
 
 // Create and configure the MinIO client
 export const minioClient = new Client({

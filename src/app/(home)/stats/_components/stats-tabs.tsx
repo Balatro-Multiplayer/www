@@ -1,5 +1,7 @@
 'use client'
 
+import { useQueryState } from 'nuqs'
+import { Suspense, useMemo } from 'react'
 import {
   Select,
   SelectContent,
@@ -9,10 +11,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Season } from '@/shared/seasons'
-import { useQueryState } from 'nuqs'
-import { useMemo } from 'react'
-import { Suspense } from 'react'
-import { STAT_TABS, createStatsSearchParamsParsers } from '../search-params'
+import { createStatsSearchParamsParsers, STAT_TABS } from '../search-params'
 import { DeckPopularityChart } from './deck-popularity-chart'
 import { GameActivityChart } from './game-activity-chart'
 import { RatingDistributionChart } from './rating-distribution-chart'
@@ -42,7 +41,11 @@ function StatsContent({
   tab,
   defaultSeason,
   statsSeasons,
-}: { tab: string; defaultSeason: Season; statsSeasons: Season[] }) {
+}: {
+  tab: string
+  defaultSeason: Season
+  statsSeasons: Season[]
+}) {
   switch (tab) {
     case 'game-activity':
       return <GameActivityChart />

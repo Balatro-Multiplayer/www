@@ -1,16 +1,16 @@
 import '@/styles/globals.css'
-import CustomSearchDialog from '@/app/_components/custom-search-dialog'
-import { Toaster } from '@/components/ui/sonner'
-import { TRPCReactProvider } from '@/trpc/react'
 import { RootProvider } from 'fumadocs-ui/provider/next'
 import type { Metadata } from 'next'
+import { Geist } from 'next/font/google'
+import localFont from 'next/font/local'
 import { SessionProvider } from 'next-auth/react'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale } from 'next-intl/server'
 import PlausibleProvider from 'next-plausible'
-import { Geist } from 'next/font/google'
-import localFont from 'next/font/local'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
+import CustomSearchDialog from '@/app/_components/custom-search-dialog'
+import { Toaster } from '@/components/ui/sonner'
+import { TRPCReactProvider } from '@/trpc/react'
 export const metadata: Metadata = {
   title: {
     template: '%s | Balatro Multiplayer',

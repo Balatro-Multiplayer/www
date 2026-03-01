@@ -1,14 +1,14 @@
 'use client'
 
+import { Swords } from 'lucide-react'
+import { useParams } from 'next/navigation'
+import { type ComponentPropsWithoutRef, useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { SelectGames } from '@/server/db/types'
 import type { LeaderboardEntry } from '@/server/services/botlatro.service'
 import { RANKED_QUEUE_ID } from '@/shared/constants'
 import { filterGamesBySeason } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import { Swords } from 'lucide-react'
-import { useParams } from 'next/navigation'
-import { type ComponentPropsWithoutRef, useEffect, useState } from 'react'
 
 export function getPlayerData(
   playerLeaderboardEntry: LeaderboardEntry,
@@ -267,7 +267,7 @@ function PlayerInfo({
         <div className='ml-0.5 font-bold text-rose-400'>
           {playerData.losses}L
         </div>
-        <div className='ml-0.5 '>({playerData.winRate}%)</div>
+        <div className='ml-0.5'>({playerData.winRate}%)</div>
       </div>
       {isInBattle && (
         <div

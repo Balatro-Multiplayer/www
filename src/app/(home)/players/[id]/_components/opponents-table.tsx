@@ -1,5 +1,9 @@
 'use client'
 
+import { ArrowDownCircle, ArrowUpCircle, MinusCircle } from 'lucide-react'
+import Link from 'next/link'
+import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
+import { memo, useCallback } from 'react'
 import { PaginationControls } from '@/app/_components/pagination-controls'
 import { SortableHeader } from '@/app/_components/sortable-header'
 import { TableShell } from '@/app/_components/table-shell'
@@ -14,10 +18,6 @@ import {
 import { cn } from '@/lib/utils'
 import type { Season } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import { ArrowDownCircle, ArrowUpCircle, MinusCircle } from 'lucide-react'
-import Link from 'next/link'
-import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
-import { memo, useCallback } from 'react'
 
 const numberFormatter = new Intl.NumberFormat('en-US', {
   signDisplay: 'exceptZero',

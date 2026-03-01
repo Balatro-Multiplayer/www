@@ -1,9 +1,9 @@
+import { eq } from 'drizzle-orm'
+import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 import { logFiles } from '@/server/db/schema'
 import { uploadFile } from '@/server/minio'
-import { eq } from 'drizzle-orm'
-import { type NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {

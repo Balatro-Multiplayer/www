@@ -1,5 +1,21 @@
 'use client'
 
+import { format } from 'date-fns'
+import { BarChart3, CalendarIcon, PieChartIcon } from 'lucide-react'
+import { parseAsString, useQueryStates } from 'nuqs'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  Pie,
+  PieChart,
+  Sector,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { STAKE_IMAGES } from '@/app/(home)/players/[id]/_components/deck-stake-stats-chart'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -29,28 +45,12 @@ import {
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
-import { type Season, getSeasonDisplayName } from '@/shared/seasons'
+import { getSeasonDisplayName, type Season } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import { format } from 'date-fns'
-import { BarChart3, CalendarIcon, PieChartIcon } from 'lucide-react'
-import { parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  Pie,
-  PieChart,
-  Sector,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import {
+  createStatsSearchParamsParsers,
   type STATS_FILTER_MODES,
   type STATS_QUEUES,
-  createStatsSearchParamsParsers,
 } from '../search-params'
 import { resolveStatsSeason } from '../search-params.constants'
 import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'

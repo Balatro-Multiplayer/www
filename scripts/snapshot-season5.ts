@@ -9,6 +9,7 @@
  *   bun scripts/snapshot-season5.ts
  */
 
+import { sql } from 'drizzle-orm'
 import { db } from '@/server/db'
 import { leaderboardSnapshots, player_games } from '@/server/db/schema'
 import { getSeasonForDate } from '@/server/seasons'
@@ -20,7 +21,6 @@ import {
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
 import { SEASON_5_START_DATE } from '@/shared/seasons'
-import { sql } from 'drizzle-orm'
 
 const BOTLATRO_URL = 'http://balatro.virtualized.dev:4931'
 

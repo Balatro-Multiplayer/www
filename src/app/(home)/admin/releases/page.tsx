@@ -1,7 +1,7 @@
+import { Suspense } from 'react'
 import { ReleasesClient } from '@/app/(home)/admin/releases/releases-client'
 import { auth } from '@/server/auth'
-import { HydrateClient, api } from '@/trpc/server'
-import { Suspense } from 'react'
+import { api, HydrateClient } from '@/trpc/server'
 
 export default async function ReleasesPage() {
   const session = await auth()

@@ -1,6 +1,6 @@
+import { Heart } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Heart } from 'lucide-react'
 
 export function PrizePool() {
   return (

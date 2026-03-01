@@ -1,5 +1,25 @@
 'use client'
 
+import { keepPreviousData } from '@tanstack/react-query'
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import {
+  ArrowDownCircle,
+  ArrowUp,
+  ArrowUpCircle,
+  Loader2,
+  MinusCircle,
+} from 'lucide-react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { useFormatter, useTimeZone } from 'next-intl'
+import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
+import { useCallback, useMemo, useState } from 'react'
 import { PaginationControls } from '@/app/_components/pagination-controls'
 import { SortableHeader } from '@/app/_components/sortable-header'
 import { TableShell } from '@/app/_components/table-shell'
@@ -29,26 +49,6 @@ import { cn } from '@/lib/utils'
 import type { SelectGames } from '@/server/db/types'
 import type { Season } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import { keepPreviousData } from '@tanstack/react-query'
-import {
-  createColumnHelper,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
-import {
-  ArrowDownCircle,
-  ArrowUp,
-  ArrowUpCircle,
-  Loader2,
-  MinusCircle,
-} from 'lucide-react'
-import { useSession } from 'next-auth/react'
-import { useFormatter, useTimeZone } from 'next-intl'
-import Image from 'next/image'
-import Link from 'next/link'
-import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
-import { useCallback, useMemo, useState } from 'react'
 
 const numberFormatter = new Intl.NumberFormat('en-US', {
   signDisplay: 'exceptZero',
@@ -550,7 +550,7 @@ export function GamesTable({
 
       {/* Transcript Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className='max-h-[80vh] w-full overflow-y-auto sm:max-w-[calc(100%-2rem)] '>
+        <DialogContent className='max-h-[80vh] w-full overflow-y-auto sm:max-w-[calc(100%-2rem)]'>
           <DialogHeader>
             <div className='flex items-center justify-between'>
               <DialogTitle>

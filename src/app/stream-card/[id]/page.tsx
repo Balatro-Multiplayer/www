@@ -1,7 +1,7 @@
+import { Suspense } from 'react'
 import { StreamCardClient } from '@/app/stream-card/[id]/_components/stream-card-client'
 import { RANKED_QUEUE_ID } from '@/shared/constants'
-import { HydrateClient, api } from '@/trpc/server'
-import { Suspense } from 'react'
+import { api, HydrateClient } from '@/trpc/server'
 
 export default async function StreamCardPage({
   params,

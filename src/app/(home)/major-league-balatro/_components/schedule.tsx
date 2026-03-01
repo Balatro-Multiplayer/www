@@ -1,9 +1,9 @@
+import { useMemo } from 'react'
 import { MatchCard } from '@/app/(home)/major-league-balatro/_components/match-card'
 import { TimeZoneProvider } from '@/components/timezone-provider'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { useMemo } from 'react'
 import type { BadgeProps, Match, WeekConfig } from '../types'
 
 const WEEK_CONFIG: Record<string | number, WeekConfig> = {

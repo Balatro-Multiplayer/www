@@ -8,9 +8,9 @@
  *   bun scripts/migrate-vanilla-to-legacy.ts
  */
 
+import { eq, sql } from 'drizzle-orm'
 import { db } from '@/server/db'
 import { player_games } from '@/server/db/schema'
-import { eq, sql } from 'drizzle-orm'
 
 async function main() {
   const [{ count }] = await db

@@ -1,7 +1,7 @@
+import { createFromSource } from 'fumadocs-core/search/server'
 import { LeaderboardService } from '@/server/services/leaderboard'
 import { RANKED_QUEUE_ID } from '@/shared/constants'
 import type { PlayerSearchResult, SearchResult } from '@/types/search'
-import { createFromSource } from 'fumadocs-core/search/server'
 import { source } from '../../../../lib/source'
 
 const leaderboardService = new LeaderboardService()

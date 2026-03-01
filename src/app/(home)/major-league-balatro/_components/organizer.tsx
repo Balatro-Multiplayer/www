@@ -1,8 +1,8 @@
+import { SiTwitch, SiYoutube } from '@icons-pack/react-simple-icons'
+import Link from 'next/link'
 import { PlayerAvatar } from '@/app/(home)/major-league-balatro/_components/player-avatar'
 import { players } from '@/app/(home)/major-league-balatro/_constants/players'
 import { Button } from '@/components/ui/button'
-import { SiTwitch, SiYoutube } from '@icons-pack/react-simple-icons'
-import Link from 'next/link'
 
 export function Organizer() {
   return (

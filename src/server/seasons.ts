@@ -1,8 +1,8 @@
+import { asc } from 'drizzle-orm'
 import { db } from '@/server/db'
 import { seasons } from '@/server/db/schema'
 import { redis } from '@/server/redis'
 import type { Season } from '@/shared/seasons'
-import { asc } from 'drizzle-orm'
 
 export type SeasonConfig = {
   id: number

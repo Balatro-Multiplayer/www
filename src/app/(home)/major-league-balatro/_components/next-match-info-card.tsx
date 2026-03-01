@@ -1,3 +1,5 @@
+import { SiTwitch } from '@icons-pack/react-simple-icons'
+import Link from 'next/link'
 import { TimeZoneProvider } from '@/components/timezone-provider'
 import { Button } from '@/components/ui/button'
 import {
@@ -6,8 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { SiTwitch } from '@icons-pack/react-simple-icons'
-import Link from 'next/link'
 import type { Player } from '../types'
 import { PlayerAvatar } from './player-avatar'
 

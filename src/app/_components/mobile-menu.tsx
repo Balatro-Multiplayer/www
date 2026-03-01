@@ -1,15 +1,5 @@
 'use client'
 
-import { ModeToggle } from '@/components/mode-toggle'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
 import type { HomeLayoutProps } from 'fumadocs-ui/layouts/home'
 import {
   BarChart3,
@@ -26,9 +16,19 @@ import {
   Upload,
   User,
 } from 'lucide-react'
-import { signIn, signOut, useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { signIn, signOut, useSession } from 'next-auth/react'
 import { type ReactNode, useState } from 'react'
+import { ModeToggle } from '@/components/mode-toggle'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 
 function renderThemeSwitch(
   themeSwitch: HomeLayoutProps['themeSwitch'],
@@ -280,16 +280,12 @@ export function MobileMenu({
               </div>
             </>
           )}
-
         </div>
 
         <div className='border-t px-3 py-3'>
           <div className='flex items-center justify-between px-3'>
             <span className='text-fd-muted-foreground text-xs'>Theme</span>
-            {renderThemeSwitch(
-              themeSwitch,
-              <ModeToggle />
-            )}
+            {renderThemeSwitch(themeSwitch, <ModeToggle />)}
           </div>
           {isAuthenticated && (
             <button

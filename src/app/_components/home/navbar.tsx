@@ -1,11 +1,10 @@
 'use client'
 
-import { cn } from '@/lib/utils'
 import type {
   NavigationMenuContentProps,
   NavigationMenuTriggerProps,
 } from '@radix-ui/react-navigation-menu'
-import { type VariantProps, cva } from 'class-variance-authority'
+import { cva, type VariantProps } from 'class-variance-authority'
 import Link, { type LinkProps } from 'fumadocs-core/link'
 import { buttonVariants } from 'fumadocs-ui/components/ui/button'
 import {
@@ -19,6 +18,7 @@ import {
 } from 'fumadocs-ui/components/ui/navigation-menu'
 import { LinkItem as BaseLinkItem } from 'fumadocs-ui/utils/link-item'
 import { type ComponentProps, type HTMLAttributes, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 const navItemVariants = cva(
   'inline-flex items-center gap-1 p-2 text-fd-muted-foreground transition-colors hover:text-fd-accent-foreground data-[active=true]:text-fd-primary [&_svg]:size-4'
@@ -29,16 +29,11 @@ export function Navbar(props: HTMLAttributes<HTMLElement>) {
 
   return (
     <NavigationMenu value={value} onValueChange={setValue} asChild>
-      <div
-        className={cn(
-          'h-14 lg:h-16',
-          props.className
-        )}
-      >
+      <div className={cn('h-14 lg:h-16', props.className)}>
         <header
           id='nd-nav'
           className={cn(
-            '-translate-x-1/2 fixed top-(--fd-banner-height) left-1/2 z-40 box-content w-full max-w-fd-container border-fd-foreground/10 border-b transition-colors lg:mt-2 lg:w-[calc(100%-1rem)] lg:rounded-2xl lg:border',
+            'fixed top-(--fd-banner-height) left-1/2 z-40 box-content w-full max-w-fd-container -translate-x-1/2 border-fd-foreground/10 border-b transition-colors lg:mt-2 lg:w-[calc(100%-1rem)] lg:rounded-2xl lg:border',
             value.length > 0 ? 'shadow-lg' : 'shadow-sm',
             'bg-fd-background/80 backdrop-blur-lg'
           )}

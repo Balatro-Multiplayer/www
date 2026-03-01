@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { db } from '@/server/db'
 import { seasons } from '@/server/db/schema'
 import { redis } from '@/server/redis'
@@ -9,7 +10,6 @@ import {
   SEASON_5_START_DATE,
   SEASON_6_START_DATE,
 } from '@/shared/seasons'
-import { sql } from 'drizzle-orm'
 
 async function seedSeasons() {
   console.log('Seeding seasons...')

@@ -1,12 +1,12 @@
 'use client'
 
+import { ExternalLink } from 'lucide-react'
+import type { PropsWithChildren } from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { ExternalLink } from 'lucide-react'
-import type { PropsWithChildren } from 'react'
 
 const WEB_GITHUB_REPO_URL = 'https://github.com/Balatro-Multiplayer/www'
 const MOD_GITHUB_REPO_URL =

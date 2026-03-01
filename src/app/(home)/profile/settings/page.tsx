@@ -1,8 +1,8 @@
+import { redirect } from 'next/navigation'
+import { SessionProvider } from 'next-auth/react'
 import { ProfileSettingsPageClient } from '@/app/(home)/profile/settings/page-client'
 import { auth } from '@/server/auth'
-import { HydrateClient, api } from '@/trpc/server'
-import { SessionProvider } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { api, HydrateClient } from '@/trpc/server'
 
 export default async function ProfileSettingsPage() {
   const session = await auth()

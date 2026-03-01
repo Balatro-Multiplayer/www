@@ -1,4 +1,9 @@
 'use client'
+import { SiTwitch, SiYoutube } from '@icons-pack/react-simple-icons'
+import { TvMinimalPlay } from 'lucide-react'
+import Link from 'next/link'
+import { useFormatter, useTimeZone } from 'next-intl'
+import type React from 'react'
 import { PlayerAvatar } from '@/app/(home)/major-league-balatro/_components/player-avatar'
 import { players } from '@/app/(home)/major-league-balatro/_constants/players'
 import type { Match } from '@/app/(home)/major-league-balatro/types'
@@ -16,11 +21,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/mobile-tooltip'
-import { SiTwitch, SiYoutube } from '@icons-pack/react-simple-icons'
-import { TvMinimalPlay } from 'lucide-react'
-import { useFormatter, useTimeZone } from 'next-intl'
-import Link from 'next/link'
-import type React from 'react'
 
 type MatchCardProps = {
   match: Match
@@ -70,7 +70,7 @@ export const MatchCard = ({ match }: MatchCardProps) => {
         <div className='p-4 sm:w-3/4'>
           <div className='flex flex-col justify-between gap-4 sm:flex-row sm:items-center'>
             <div className='flex items-center gap-3'>
-              <div className='-space-x-4 flex'>
+              <div className='flex -space-x-4'>
                 <PlayerAvatar playerName={player1.name} img={player1.picture} />
                 <PlayerAvatar playerName={player2.name} img={player2.picture} />
               </div>

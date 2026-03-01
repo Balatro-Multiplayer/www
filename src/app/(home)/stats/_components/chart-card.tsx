@@ -1,5 +1,5 @@
-import { cn } from '@/lib/utils'
 import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 /**
  * On mobile: renders as a plain div (no card chrome).
@@ -8,7 +8,10 @@ import type { ReactNode } from 'react'
 export function ChartCard({
   children,
   className,
-}: { children: ReactNode; className?: string }) {
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
     <div
       className={cn(
@@ -24,7 +27,10 @@ export function ChartCard({
 export function ChartCardHeader({
   children,
   className,
-}: { children: ReactNode; className?: string }) {
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
     <div className={cn('flex flex-col gap-4 sm:px-6', className)}>
       {children}
@@ -35,6 +41,9 @@ export function ChartCardHeader({
 export function ChartCardContent({
   children,
   className,
-}: { children: ReactNode; className?: string }) {
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return <div className={cn('w-full sm:px-6', className)}>{children}</div>
 }

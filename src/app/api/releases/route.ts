@@ -1,6 +1,6 @@
+import { eq } from 'drizzle-orm'
 import { db } from '@/server/db'
 import { branches, releases } from '@/server/db/schema'
-import { eq } from 'drizzle-orm'
 
 export async function GET() {
   const res = await db

@@ -1,9 +1,9 @@
+import { headers } from 'next/headers'
 import { env } from '@/env'
 import { db } from '@/server/db'
 import { memoryLogs } from '@/server/db/schema'
 import { leaderboardService } from '@/server/services/leaderboard'
 import { RANKED_QUEUE_ID, VANILLA_QUEUE_ID } from '@/shared/constants'
-import { headers } from 'next/headers'
 
 const SECURE_TOKEN = env.CRON_SECRET
 const CHANNEL_IDS = [RANKED_QUEUE_ID, VANILLA_QUEUE_ID]

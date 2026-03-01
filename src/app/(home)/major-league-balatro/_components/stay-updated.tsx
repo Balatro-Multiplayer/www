@@ -1,6 +1,6 @@
-import { Button } from '@/components/ui/button'
 import { SiBluesky, SiYoutube } from '@icons-pack/react-simple-icons'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 export function StayUpdated() {
   return (

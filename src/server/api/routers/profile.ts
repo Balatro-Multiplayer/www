@@ -1,8 +1,8 @@
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
 import { createTRPCRouter, protectedProcedure } from '@/server/api/trpc'
 import { db } from '@/server/db'
 import { users } from '@/server/db/schema'
-import { eq } from 'drizzle-orm'
-import { z } from 'zod'
 
 export const profileRouter = createTRPCRouter({
   getSocialLinks: protectedProcedure.query(async ({ ctx }) => {

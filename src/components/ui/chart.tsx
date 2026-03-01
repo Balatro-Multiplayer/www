@@ -1,10 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import type {
-  LegendPayload,
-  TooltipContentProps,
-} from 'recharts'
+import type { LegendPayload, TooltipContentProps } from 'recharts'
 import * as RechartsPrimitive from 'recharts'
 
 import { cn } from '@/lib/utils'
@@ -257,11 +254,11 @@ function ChartLegendContent({
   verticalAlign = 'bottom',
   nameKey,
 }: React.ComponentProps<'div'> & {
-    hideIcon?: boolean
-    payload?: ReadonlyArray<LegendPayload>
-    verticalAlign?: 'top' | 'bottom' | 'middle'
-    nameKey?: string
-  }) {
+  hideIcon?: boolean
+  payload?: ReadonlyArray<LegendPayload>
+  verticalAlign?: 'top' | 'bottom' | 'middle'
+  nameKey?: string
+}) {
   const { config } = useChart()
 
   if (!payload?.length) {

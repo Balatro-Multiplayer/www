@@ -1,9 +1,9 @@
-import type { Season } from '@/shared/seasons'
 import { parseAsString, parseAsStringLiteral } from 'nuqs'
+import type { Season } from '@/shared/seasons'
 import {
+  STAT_TABS,
   STATS_FILTER_MODES,
   STATS_QUEUES,
-  STAT_TABS,
 } from './search-params.constants'
 
 export { STAT_TABS, STATS_FILTER_MODES, STATS_QUEUES }

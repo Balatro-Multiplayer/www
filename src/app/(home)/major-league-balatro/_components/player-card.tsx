@@ -1,8 +1,8 @@
-import type { Player } from '@/app/(home)/major-league-balatro/types'
-import { Card, CardContent } from '@/components/ui/card'
 import { SiTwitch, SiYoutube } from '@icons-pack/react-simple-icons'
 import Image from 'next/image'
 import Link from 'next/link'
+import type { Player } from '@/app/(home)/major-league-balatro/types'
+import { Card, CardContent } from '@/components/ui/card'
 
 export type PlayerCardProps = {
   picture: string

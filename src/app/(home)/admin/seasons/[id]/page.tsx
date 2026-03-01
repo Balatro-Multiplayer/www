@@ -1,7 +1,7 @@
-import { auth } from '@/server/auth'
-import { api } from '@/trpc/server'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { auth } from '@/server/auth'
+import { api } from '@/trpc/server'
 import {
   SeasonDetailClient,
   type SeasonDetailPageData,

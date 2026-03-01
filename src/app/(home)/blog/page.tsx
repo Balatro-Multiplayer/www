@@ -1,7 +1,7 @@
-import { formatDate } from '@/lib/utils'
-import { api } from '@/trpc/server'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { formatDate } from '@/lib/utils'
+import { api } from '@/trpc/server'
 
 export const metadata: Metadata = {
   title: 'Blog',

@@ -1,5 +1,12 @@
 'use client'
 
+import { SettingsIcon, X } from 'lucide-react'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import { useLocalStorage } from 'usehooks-ts'
+import { v4 } from 'uuid'
 import { getPlayerData } from '@/app/stream-card/[id]/_components/stream-card-client'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,13 +30,6 @@ import {
 import { OBSController } from '@/lib/obs-connection'
 import { RANKED_QUEUE_ID } from '@/shared/constants'
 import { api } from '@/trpc/react'
-import { SettingsIcon, X } from 'lucide-react'
-import * as React from 'react'
-import { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { toast } from 'sonner'
-import { useLocalStorage } from 'usehooks-ts'
-import { v4 } from 'uuid'
 import { PlayerSelector } from './player-selector'
 
 const obs = new OBSController()

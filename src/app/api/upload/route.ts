@@ -1,6 +1,6 @@
+import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/server/auth'
 import { uploadFile } from '@/server/minio'
-import { type NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {

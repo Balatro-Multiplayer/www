@@ -1,9 +1,9 @@
 'use client'
-import { type ButtonProps, buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { useSearchContext } from 'fumadocs-ui/contexts/search'
 import { SearchIcon } from 'lucide-react'
 import type { ButtonHTMLAttributes } from 'react'
+import { type ButtonProps, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function SearchToggle({
   hideIfDisabled,

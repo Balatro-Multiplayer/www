@@ -1,5 +1,7 @@
 'use client'
 
+import { useMemo, useState } from 'react'
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import {
   type ChartConfig,
   ChartContainer,
@@ -13,10 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { type Season, getSeasonDisplayName } from '@/shared/seasons'
-import { type RouterOutputs, api } from '@/trpc/react'
-import { useMemo, useState } from 'react'
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { getSeasonDisplayName, type Season } from '@/shared/seasons'
+import { api, type RouterOutputs } from '@/trpc/react'
 import { resolveStatsSeason } from '../search-params.constants'
 import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 

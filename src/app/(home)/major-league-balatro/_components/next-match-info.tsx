@@ -1,10 +1,10 @@
 'use client'
-import { NextMatchInfoCard } from '@/app/(home)/major-league-balatro/_components/next-match-info-card'
-import { CountdownTimer } from '@/components/countdown-timer'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, Clock } from 'lucide-react'
 import { useFormatter, useTimeZone } from 'next-intl'
 import type { PropsWithChildren } from 'react'
+import { NextMatchInfoCard } from '@/app/(home)/major-league-balatro/_components/next-match-info-card'
+import { CountdownTimer } from '@/components/countdown-timer'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { players } from '../_constants/players'
 import type { Match } from '../types'
 
@@ -63,7 +63,7 @@ export function NextMatchInfo({ nextMatch }: NextMatchInfoProps) {
 
   return (
     <SectionContainer>
-      <div className='relative overflow-hidden rounded-xl border-2 bg-gradient-to-b from-background '>
+      <div className='relative overflow-hidden rounded-xl border-2 bg-gradient-to-b from-background'>
         <div className='relative z-10 px-6 py-8 md:py-10'>
           <div className='mb-8 text-center'>
             <h2 className='mb-2 font-bold text-2xl md:text-3xl'>

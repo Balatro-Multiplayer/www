@@ -1,14 +1,28 @@
 'use client'
 
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/mobile-tooltip'
+  ArrowDownCircle,
+  ArrowUpCircle,
+  BarChart3,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  GlobeIcon,
+  IceCreamCone,
+  ShieldHalf,
+  Star,
+  Trophy,
+  Twitch,
+  UserIcon,
+  Youtube,
+} from 'lucide-react'
+import Image from 'next/image'
+import { useParams } from 'next/navigation'
+import { useFormatter, useTimeZone } from 'next-intl'
 import type React from 'react'
 import { useMemo, useState } from 'react'
-
+import { capitalize, isNonNullish } from 'remeda'
 import {
   DECK_IMAGES,
   DeckImage,
@@ -23,6 +37,12 @@ import { WinrateTrendChart } from '@/app/(home)/players/[id]/_components/winrate
 import { TimeZoneProvider } from '@/components/timezone-provider'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/mobile-tooltip'
 import {
   Select,
   SelectContent,
@@ -42,32 +62,11 @@ import {
 } from '@/shared/constants'
 import { getRankData } from '@/shared/ranks'
 import {
-  type Season,
   filterGamesBySeason,
   getSeasonDisplayName,
+  type Season,
 } from '@/shared/seasons'
 import { api } from '@/trpc/react'
-import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  BarChart3,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  Filter,
-  GlobeIcon,
-  IceCreamCone,
-  ShieldHalf,
-  Star,
-  Trophy,
-  Twitch,
-  UserIcon,
-  Youtube,
-} from 'lucide-react'
-import { useFormatter, useTimeZone } from 'next-intl'
-import Image from 'next/image'
-import { useParams } from 'next/navigation'
-import { capitalize, isNonNullish } from 'remeda'
 
 const numberFormatter = new Intl.NumberFormat('en-US', {
   signDisplay: 'exceptZero',
@@ -779,7 +778,7 @@ function UserInfoComponent() {
               <StatsCard
                 title='Avg Opponent MMR'
                 value={Math.round(avgOpponentMmr)}
-                icon={<UserIcon className='h-5 w-5 ' />}
+                icon={<UserIcon className='h-5 w-5' />}
                 description={''}
                 accentColor='text-zink-800 dark:text-zink-200'
               />

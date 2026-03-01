@@ -1,5 +1,33 @@
 'use client'
 
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import {
+  type ChangeEvent,
+  type FormEvent,
+  startTransition,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
+import { toast } from 'sonner'
 import { TableShell } from '@/app/_components/table-shell'
 import {
   AlertDialog,
@@ -33,34 +61,6 @@ import {
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
 import { api } from '@/trpc/react'
-import {
-  DndContext,
-  type DragEndEvent,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import {
-  type ChangeEvent,
-  type FormEvent,
-  startTransition,
-  useEffect,
-  useRef,
-  useState,
-} from 'react'
-import { toast } from 'sonner'
 
 export type SeasonDetailPageData = {
   id: number
