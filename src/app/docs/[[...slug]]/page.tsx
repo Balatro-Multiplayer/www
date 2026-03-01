@@ -52,6 +52,7 @@ export default async function Page(props: {
   const params = await props.params
   const page = source.getPage(params.slug) as DocsPageData | undefined
   if (!page) notFound()
+  const isFullWidth = page.data.full ?? true
 
   const MDX = page.data.body
 
@@ -59,9 +60,10 @@ export default async function Page(props: {
     <DocsPage
       toc={page.data.toc}
       tableOfContent={{
+        enabled: page.data.toc.length > 0,
         style: 'clerk',
       }}
-      full={page.data.full}
+      full={isFullWidth}
     >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
