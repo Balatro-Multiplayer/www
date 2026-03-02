@@ -63,7 +63,8 @@ export const playerStateRouter = createTRPCRouter({
     for await (const _ of iterator) {
       yield tracked(
         Date.now().toString(),
-        await botlatro_service.get_active_matches())
+        await botlatro_service.get_active_matches()
+      )
     }
   }),
 })
