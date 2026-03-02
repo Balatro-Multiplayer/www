@@ -46,20 +46,21 @@ export function LiveMatchesTab() {
     onData: (event) => setLiveQueues(event.data),
   })
 
-  const queues = sortAndFilterQueues(liveQueues ?? initialQueues ?? [])
+  const allQueues = liveQueues ?? initialQueues ?? []
+  const queues = sortAndFilterQueues(allQueues)
+  const total = allQueues.reduce((sum, q) => sum + q.active_matches, 0)
 
   return (
     <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6'>
+      <QueueCard label='Total' count={total} />
       {queues.map((queue) => (
-        <QueueCard key={queue.queue_id} queue={queue} />
+        <QueueCard key={queue.queue_id} label={queue.queue_name} count={queue.active_matches} />
       ))}
     </div>
   )
 }
 
-function QueueCard({ queue }: { queue: ActiveMatchQueue }) {
-  const count = queue.active_matches
-
+function QueueCard({ label, count }: { label: string; count: number }) {
   return (
     <Card>
       <CardHeader className='pb-2'>
@@ -68,7 +69,7 @@ function QueueCard({ queue }: { queue: ActiveMatchQueue }) {
             <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75' />
             <span className='relative inline-flex h-2 w-2 rounded-full bg-emerald-500' />
           </span>
-          {queue.queue_name}
+          {label}
         </CardTitle>
       </CardHeader>
       <CardContent>
