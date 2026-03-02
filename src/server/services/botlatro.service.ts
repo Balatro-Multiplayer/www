@@ -10,6 +10,14 @@ export const TRANSCRIPT_CACHE_KEY = (gameNumber: number) =>
   `transcript:${gameNumber}`
 
 export const botlatro_service = {
+  get_active_matches: async (): Promise<ActiveMatchQueue[]> => {
+    const response = await fetch(`${BOTLATRO_URL}api/matches/active-counts`)
+    if (!response.ok) {
+      throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
+    }
+    const data = (await response.json()) as { queues: ActiveMatchQueue[] }
+    return data.queues
+  },
   get_leaderboard: async (queue_id: string, season?: number) => {
     const params = new URLSearchParams({ limit: '100000' })
     if (season !== undefined) {
@@ -186,4 +194,10 @@ export type Opponent = {
   team: number
   elo_change: number
   mmr_after: number
+}
+
+export type ActiveMatchQueue = {
+  queue_id: number
+  queue_name: string
+  active_matches: number
 }

@@ -2,6 +2,7 @@ import { tracked } from '@trpc/server'
 import { z } from 'zod'
 import { createEventIterator, globalEmitter } from '@/lib/events'
 import { redis } from '@/server/redis'
+import { botlatro_service } from '@/server/services/botlatro.service'
 import { createTRPCRouter, publicProcedure } from '../trpc'
 
 export type PlayerState = {
@@ -14,17 +15,6 @@ export type PlayerState = {
 }
 
 const PLAYER_STATE_KEY = (userId: string) => `player:${userId}:state`
-
-async function getActiveMatchCount() {
-  const keys = await redis.keys('player:*:state')
-  if (!keys.length) return 0
-  const values = await redis.mGet(keys)
-  const inGameCount = values.filter((v) => {
-    if (!v) return false
-    return (JSON.parse(v) as PlayerState).status === 'in_game'
-  }).length
-  return Math.floor(inGameCount / 2)
-}
 
 export const playerStateRouter = createTRPCRouter({
   getState: publicProcedure
@@ -58,10 +48,10 @@ export const playerStateRouter = createTRPCRouter({
         yield tracked(Date.now().toString(), state)
       }
     }),
-  getActiveMatchCount: publicProcedure.query(async () => {
-    return getActiveMatchCount()
+  getActiveMatches: publicProcedure.query(async () => {
+    return botlatro_service.get_active_matches()
   }),
-  onActiveMatchCountChange: publicProcedure.subscription(async function* ({
+  onActiveMatchesChange: publicProcedure.subscription(async function* ({
     signal,
   }) {
     const iterator = createEventIterator<void>(
@@ -69,9 +59,9 @@ export const playerStateRouter = createTRPCRouter({
       'active-matches-count-change',
       { signal }
     )
-    yield tracked('initial', await getActiveMatchCount())
+    yield tracked('initial', await botlatro_service.get_active_matches())
     for await (const _ of iterator) {
-      yield tracked(Date.now().toString(), await getActiveMatchCount())
+      yield tracked(Date.now().toString(), await botlatro_service.get_active_matches())
     }
   }),
 })
