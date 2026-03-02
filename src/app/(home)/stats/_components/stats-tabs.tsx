@@ -14,6 +14,7 @@ import type { Season } from '@/shared/seasons'
 import { createStatsSearchParamsParsers, STAT_TABS } from '../search-params'
 import { DeckPopularityChart } from './deck-popularity-chart'
 import { GameActivityChart } from './game-activity-chart'
+import { LiveMatchesTab } from './live-matches-tab'
 import { RatingDistributionChart } from './rating-distribution-chart'
 import { SeasonOverviewChart } from './season-overview-chart'
 import { StakePopularityChart } from './stake-popularity-chart'
@@ -29,7 +30,9 @@ const TABS = STAT_TABS.map((value) => ({
           ? 'Stake Popularity'
           : value === 'season-overview'
             ? 'Season Overview'
-            : 'Game Activity',
+            : value === 'live-matches'
+              ? 'Live Matches'
+              : 'Game Activity',
 }))
 
 type StatsTabsProps = {
@@ -72,6 +75,8 @@ function StatsContent({
       )
     case 'season-overview':
       return <SeasonOverviewChart />
+    case 'live-matches':
+      return <LiveMatchesTab />
     default:
       return null
   }

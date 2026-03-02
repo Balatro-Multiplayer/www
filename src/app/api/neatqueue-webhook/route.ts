@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
             globalEmitter.emit(`state-change:${id}`, state)
           })
         )
+        globalEmitter.emit('active-matches-count-change')
         break
       }
 
@@ -155,6 +156,7 @@ export async function POST(req: NextRequest) {
             globalEmitter.emit(`state-change:${id}`, { status: 'idle' })
           })
         ).catch(console.error)
+        globalEmitter.emit('active-matches-count-change')
 
         break
       }

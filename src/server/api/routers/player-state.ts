@@ -15,6 +15,17 @@ export type PlayerState = {
 
 const PLAYER_STATE_KEY = (userId: string) => `player:${userId}:state`
 
+async function getActiveMatchCount() {
+  const keys = await redis.keys('player:*:state')
+  if (!keys.length) return 0
+  const values = await redis.mGet(keys)
+  const inGameCount = values.filter((v) => {
+    if (!v) return false
+    return (JSON.parse(v) as PlayerState).status === 'in_game'
+  }).length
+  return Math.floor(inGameCount / 2)
+}
+
 export const playerStateRouter = createTRPCRouter({
   getState: publicProcedure
     .input(z.string())
@@ -47,4 +58,20 @@ export const playerStateRouter = createTRPCRouter({
         yield tracked(Date.now().toString(), state)
       }
     }),
+  getActiveMatchCount: publicProcedure.query(async () => {
+    return getActiveMatchCount()
+  }),
+  onActiveMatchCountChange: publicProcedure.subscription(async function* ({
+    signal,
+  }) {
+    const iterator = createEventIterator<void>(
+      globalEmitter,
+      'active-matches-count-change',
+      { signal }
+    )
+    yield tracked('initial', await getActiveMatchCount())
+    for await (const _ of iterator) {
+      yield tracked(Date.now().toString(), await getActiveMatchCount())
+    }
+  }),
 })

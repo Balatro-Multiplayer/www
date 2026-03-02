@@ -12,6 +12,7 @@ export const STAT_TABS = [
   'stake-popularity',
   'season-overview',
   'game-activity',
+  'live-matches',
 ] as const
 
 export const STATS_FILTER_MODES = ['season', 'dateRange'] as const
