@@ -23,7 +23,9 @@ export function LiveMatchesTab() {
     <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6'>
       <QueueCard label='Total' count={total} />
       {queues.map((queue) => (
-        <QueueCard key={queue.queue_id} label={queue.queue_name} count={queue.active_matches} />
+        <QueueCard key={queue.queue_id}
+        label={queue.queue_name}
+        count={queue.active_matches} />
       ))}
     </div>
   )
