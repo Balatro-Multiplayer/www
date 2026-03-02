@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { sumBy } from 'remeda'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ActiveMatchQueue } from '@/server/services/botlatro.service'
 import { api } from '@/trpc/react'
-import { sumBy } from 'remeda'
 
 export function LiveMatchesTab() {
   const [liveQueues, setLiveQueues] = useState<ActiveMatchQueue[] | null>(null)
@@ -23,12 +23,12 @@ export function LiveMatchesTab() {
   return (
     <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6'>
       <QueueCard label='Total' count={total} />
-        {queues.map((queue) => (
-          <QueueCard key={queue.queue_id}
+      {queues.map((queue) => (
+        <QueueCard key={queue.queue_id}
           label={queue.queue_name}
-          count={queue.active_matches} 
-        />
-      ))}
+          count={queue.active_matches}
+      />
+    ))}
     </div>
   )
 }
