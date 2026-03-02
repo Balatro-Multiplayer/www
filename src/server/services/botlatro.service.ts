@@ -11,7 +11,11 @@ export const TRANSCRIPT_CACHE_KEY = (gameNumber: number) =>
 
 export const botlatro_service = {
   get_active_matches: async (): Promise<ActiveMatchQueue[]> => {
-    const response = await fetch(`${BOTLATRO_URL}api/matches/active-counts`)
+    const response = await fetch(`${BOTLATRO_URL}api/matches/active-counts`, {
+      headers: {
+        Authorization: `Bearer ${process.env.API_TOKEN}`,
+      },
+    })
     if (!response.ok) {
       throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
     }
