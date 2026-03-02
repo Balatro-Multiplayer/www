@@ -3,7 +3,37 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ActiveMatchQueue } from '@/server/services/botlatro.service'
+import {
+  CASUAL_QUEUE_ID,
+  LEGACY_QUEUE_ID,
+  RANKED_QUEUE_ID,
+  SANDBOX_QUEUE_ID,
+  SMALLWORLD_QUEUE_ID,
+  VANILLA_QUEUE_ID,
+} from '@/shared/constants'
 import { api } from '@/trpc/react'
+
+const QUEUE_ORDER = [
+  Number(RANKED_QUEUE_ID),
+  Number(LEGACY_QUEUE_ID),
+  Number(SMALLWORLD_QUEUE_ID),
+  Number(SANDBOX_QUEUE_ID),
+  Number(CASUAL_QUEUE_ID),
+]
+
+const HIDDEN_QUEUES = new Set([Number(VANILLA_QUEUE_ID)])
+
+function sortAndFilterQueues(queues: ActiveMatchQueue[]): ActiveMatchQueue[] {
+  return queues
+    .filter((q) => !HIDDEN_QUEUES.has(q.queue_id))
+    .sort((a, b) => {
+      const ai = QUEUE_ORDER.indexOf(a.queue_id)
+      const bi = QUEUE_ORDER.indexOf(b.queue_id)
+      const aOrder = ai === -1 ? QUEUE_ORDER.length : ai
+      const bOrder = bi === -1 ? QUEUE_ORDER.length : bi
+      return aOrder - bOrder
+    })
+}
 
 export function LiveMatchesTab() {
   const [liveQueues, setLiveQueues] = useState<ActiveMatchQueue[] | null>(null)
@@ -12,15 +42,14 @@ export function LiveMatchesTab() {
     { refetchInterval: 30_000 } // poll every 30s as a fallback
   )
 
-
   api.playerState.onActiveMatchesChange.useSubscription(undefined, {
     onData: (event) => setLiveQueues(event.data),
   })
 
-  const queues = liveQueues ?? initialQueues ?? []
+  const queues = sortAndFilterQueues(liveQueues ?? initialQueues ?? [])
 
   return (
-    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6'>
       {queues.map((queue) => (
         <QueueCard key={queue.queue_id} queue={queue} />
       ))}
