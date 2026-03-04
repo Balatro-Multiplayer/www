@@ -205,4 +205,5 @@ export type ActiveMatchQueue = {
   queue_id: number
   queue_name: string
   active_matches: number
+  players_in_queue: number
 }
