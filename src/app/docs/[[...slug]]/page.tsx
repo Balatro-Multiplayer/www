@@ -18,8 +18,8 @@ import { Mult } from '@/app/_components/mult'
 import { Nemesis } from '@/app/_components/nemesis'
 import { Spectral } from '@/app/_components/spectral'
 import { Xmult } from '@/app/_components/xmult'
-import { env } from '@/env'
 import { Button } from '@/components/ui/button'
+import { env } from '@/env'
 import { CDN_URL } from '@/shared/constants'
 import { metadataImage } from '../../../../lib/metadata'
 import { source } from '../../../../lib/source'
@@ -74,8 +74,7 @@ export default async function Page(props: {
             ...defaultMdxComponents,
             img: (props: ImageZoomProps) => {
               const isDev =
-                env.NODE_ENV === 'development' ||
-                env.IS_PREVIEW === 'true'
+                env.NODE_ENV === 'development' || env.IS_PREVIEW === 'true'
               if (isDev) {
                 return <ImageZoom {...props} />
               }
