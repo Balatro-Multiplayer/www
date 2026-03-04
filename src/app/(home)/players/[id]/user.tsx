@@ -466,22 +466,6 @@ function UserInfoComponent() {
             badgeClass='border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300'
           />
           <QueueCard
-            queue='Vanilla'
-            mmr={hasVanilla ? Math.round(vanillaUserRank?.mmr) : null}
-            rank={
-              !!vanillaLeaderboard && isNonNullish(vanillaUserRank?.rank)
-                ? vanillaUserRank.rank
-                : null
-            }
-            rankIcon={
-              hasVanilla ? getRankData(vanillaUserRank?.mmr, 'vanilla') : null
-            }
-            lastGame={lastVanillaGame ?? null}
-            mostPlayed={mostPlayedVanilla}
-            accentClass='border-amber-500/20 dark:border-amber-500/10'
-            badgeClass='border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
-          />
-          <QueueCard
             queue='Legacy'
             mmr={hasLegacy ? Math.round(legacyUserRank?.mmr) : null}
             rank={
@@ -496,6 +480,22 @@ function UserInfoComponent() {
             mostPlayed={mostPlayedLegacy}
             accentClass='border-orange-500/20 dark:border-orange-500/10'
             badgeClass='border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300'
+          />
+          <QueueCard
+            queue='Vanilla'
+            mmr={hasVanilla ? Math.round(vanillaUserRank?.mmr) : null}
+            rank={
+              !!vanillaLeaderboard && isNonNullish(vanillaUserRank?.rank)
+                ? vanillaUserRank.rank
+                : null
+            }
+            rankIcon={
+              hasVanilla ? getRankData(vanillaUserRank?.mmr, 'vanilla') : null
+            }
+            lastGame={lastVanillaGame ?? null}
+            mostPlayed={mostPlayedVanilla}
+            accentClass='border-amber-500/20 dark:border-amber-500/10'
+            badgeClass='border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
           />
           <QueueCard
             queue='Smallworld'
