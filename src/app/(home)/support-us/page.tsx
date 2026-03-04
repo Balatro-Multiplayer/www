@@ -71,7 +71,7 @@ export default async function SupportUsPage() {
               and keep the servers running smoothly.
             </p>
           </CardContent>
-          <CardFooter>
+          <CardFooter className={'flex flex-wrap gap-2'}>
             <Link
               target={'_blank'}
               rel={'noopener noreferrer'}
@@ -80,7 +80,17 @@ export default async function SupportUsPage() {
                 'flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90'
               }
             >
-              Support on Ko-fi <ExternalLink className={'size-4'} />
+              Support Andy on Ko-fi <ExternalLink className={'size-4'} />
+            </Link>
+            <Link
+              target={'_blank'}
+              rel={'noopener noreferrer'}
+              href={'https://ko-fi.com/jeffdev'}
+              className={
+                'flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90'
+              }
+            >
+              Support Jeffdev on Ko-fi <ExternalLink className={'size-4'} />
             </Link>
           </CardFooter>
         </Card>
