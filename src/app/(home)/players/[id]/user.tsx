@@ -466,22 +466,6 @@ function UserInfoComponent() {
             badgeClass='border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300'
           />
           <QueueCard
-            queue='Vanilla'
-            mmr={hasVanilla ? Math.round(vanillaUserRank?.mmr) : null}
-            rank={
-              !!vanillaLeaderboard && isNonNullish(vanillaUserRank?.rank)
-                ? vanillaUserRank.rank
-                : null
-            }
-            rankIcon={
-              hasVanilla ? getRankData(vanillaUserRank?.mmr, 'vanilla') : null
-            }
-            lastGame={lastVanillaGame ?? null}
-            mostPlayed={mostPlayedVanilla}
-            accentClass='border-amber-500/20 dark:border-amber-500/10'
-            badgeClass='border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
-          />
-          <QueueCard
             queue='Legacy'
             mmr={hasLegacy ? Math.round(legacyUserRank?.mmr) : null}
             rank={
@@ -516,6 +500,22 @@ function UserInfoComponent() {
             badgeClass='border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300'
           />
         </div>
+        <QueueCard
+          queue='Vanilla'
+          mmr={hasVanilla ? Math.round(vanillaUserRank?.mmr) : null}
+          rank={
+            !!vanillaLeaderboard && isNonNullish(vanillaUserRank?.rank)
+              ? vanillaUserRank.rank
+              : null
+          }
+          rankIcon={
+            hasVanilla ? getRankData(vanillaUserRank?.mmr, 'vanilla') : null
+          }
+          lastGame={lastVanillaGame ?? null}
+          mostPlayed={mostPlayedVanilla}
+          accentClass='border-amber-500/20 dark:border-amber-500/10'
+          badgeClass='border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
+        />
 
         {/* ── Performance Summary ── */}
         <div className='mt-3 rounded-lg border bg-card p-4'>
