@@ -322,8 +322,6 @@ function UserInfoComponent() {
     return getMostPlayed(legacyGames)
   }, [games])
 
-  const seasonNumber = Number(season.replace('season', ''))
-
   const hasRanked =
     isNonNullish(rankedUserRank?.mmr) && !Number.isNaN(rankedUserRank?.mmr)
   const hasVanilla =
@@ -333,6 +331,24 @@ function UserInfoComponent() {
     !Number.isNaN(smallWorldUserRank?.mmr)
   const hasLegacy =
     isNonNullish(legacyUserRank?.mmr) && !Number.isNaN(legacyUserRank?.mmr)
+
+  const rankedAvailable = (rankedLeaderboard?.total ?? 0) > 0
+  const vanillaAvailable = (vanillaLeaderboard?.total ?? 0) > 0
+  const smallworldAvailable = (smallworldLeaderboard?.total ?? 0) > 0
+  const legacyAvailable = (legacyLeaderboard?.total ?? 0) > 0
+
+  const activeQueueCount = [
+    rankedAvailable,
+    vanillaAvailable,
+    smallworldAvailable,
+    legacyAvailable,
+  ].filter(Boolean).length
+  const lgGridCols: Record<number, string> = {
+    1: 'lg:grid-cols-1',
+    2: 'lg:grid-cols-2',
+    3: 'lg:grid-cols-3',
+    4: 'lg:grid-cols-4',
+  }
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
@@ -450,7 +466,12 @@ function UserInfoComponent() {
         </div>
 
         {/* ── Queue Rating Cards ── */}
-        <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-3 sm:grid-cols-2',
+            lgGridCols[activeQueueCount] ?? 'lg:grid-cols-4'
+          )}
+        >
           <QueueCard
             queue='Ranked'
             mmr={hasRanked ? Math.round(rankedUserRank?.mmr) : null}
@@ -467,7 +488,7 @@ function UserInfoComponent() {
             accentClass='border-violet-500/20 dark:border-violet-500/10'
             badgeClass='border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300'
           />
-          {seasonNumber === 6 && (
+          {legacyAvailable && (
             <QueueCard
               queue='Legacy'
               mmr={hasLegacy ? Math.round(legacyUserRank?.mmr) : null}
@@ -485,7 +506,7 @@ function UserInfoComponent() {
               badgeClass='border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300'
             />
           )}
-          {seasonNumber >= 4 && (
+          {smallworldAvailable && (
             <QueueCard
               queue='Smallworld'
               mmr={hasSmallworld ? Math.round(smallWorldUserRank?.mmr) : null}
@@ -506,7 +527,7 @@ function UserInfoComponent() {
               badgeClass='border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300'
             />
           )}
-          {seasonNumber !== 6 && (
+          {vanillaAvailable && (
             <QueueCard
               queue='Vanilla'
               mmr={hasVanilla ? Math.round(vanillaUserRank?.mmr) : null}
