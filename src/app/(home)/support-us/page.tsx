@@ -1,4 +1,4 @@
-import { CircleDollarSign, Coffee, ExternalLink, Heart } from 'lucide-react'
+import { Bot, CircleDollarSign, Coffee, ExternalLink, Heart } from 'lucide-react'
 import Link from 'next/link'
 import {
   Card,
@@ -20,7 +20,7 @@ export default async function SupportUsPage() {
         </p>
       </div>
 
-      <div className={'grid gap-8 md:grid-cols-2'}>
+      <div className={'grid gap-8 md:grid-cols-3'}>
         <Card className={'transition-all hover:shadow-md'}>
           <CardHeader className={'flex flex-row items-center gap-4'}>
             <div className={'rounded-full bg-primary/10 p-2'}>
@@ -91,6 +91,38 @@ export default async function SupportUsPage() {
               }
             >
               Support Jeffdev on Ko-fi <ExternalLink className={'size-4'} />
+            </Link>
+          </CardFooter>
+        </Card>
+
+        <Card className={'transition-all hover:shadow-md'}>
+          <CardHeader className={'flex flex-row items-center gap-4'}>
+            <div className={'rounded-full bg-primary/10 p-2'}>
+              <Bot className={'size-6 text-primary'} />
+            </div>
+            <div>
+              <CardTitle>Support the Discord Bot</CardTitle>
+              <CardDescription>
+                Help fund the development of the Botlatro Discord bot
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className={'text-muted-foreground'}>
+              Your contribution helps support the developers maintaining and
+              improving the Botlatro Discord bot, which is used for the queue in discord.
+            </p>
+          </CardContent>
+          <CardFooter>
+            <Link
+              target={'_blank'}
+              rel={'noopener noreferrer'}
+              href={'https://ko-fi.com/botlatro'}
+              className={
+                'flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90'
+              }
+            >
+              Support on Ko-fi <ExternalLink className={'size-4'} />
             </Link>
           </CardFooter>
         </Card>
