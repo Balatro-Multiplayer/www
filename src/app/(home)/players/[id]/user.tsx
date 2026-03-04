@@ -322,6 +322,8 @@ function UserInfoComponent() {
     return getMostPlayed(legacyGames)
   }, [games])
 
+  const seasonNumber = Number(season.replace('season', ''))
+
   const hasRanked =
     isNonNullish(rankedUserRank?.mmr) && !Number.isNaN(rankedUserRank?.mmr)
   const hasVanilla =
@@ -465,56 +467,63 @@ function UserInfoComponent() {
             accentClass='border-violet-500/20 dark:border-violet-500/10'
             badgeClass='border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300'
           />
-          <QueueCard
-            queue='Vanilla'
-            mmr={hasVanilla ? Math.round(vanillaUserRank?.mmr) : null}
-            rank={
-              !!vanillaLeaderboard && isNonNullish(vanillaUserRank?.rank)
-                ? vanillaUserRank.rank
-                : null
-            }
-            rankIcon={
-              hasVanilla ? getRankData(vanillaUserRank?.mmr, 'vanilla') : null
-            }
-            lastGame={lastVanillaGame ?? null}
-            mostPlayed={mostPlayedVanilla}
-            accentClass='border-amber-500/20 dark:border-amber-500/10'
-            badgeClass='border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
-          />
-          <QueueCard
-            queue='Legacy'
-            mmr={hasLegacy ? Math.round(legacyUserRank?.mmr) : null}
-            rank={
-              !!legacyLeaderboard && isNonNullish(legacyUserRank?.rank)
-                ? legacyUserRank.rank
-                : null
-            }
-            rankIcon={
-              hasLegacy ? getRankData(legacyUserRank?.mmr, 'legacy') : null
-            }
-            lastGame={lastLegacyGame ?? null}
-            mostPlayed={mostPlayedLegacy}
-            accentClass='border-orange-500/20 dark:border-orange-500/10'
-            badgeClass='border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300'
-          />
-          <QueueCard
-            queue='Smallworld'
-            mmr={hasSmallworld ? Math.round(smallWorldUserRank?.mmr) : null}
-            rank={
-              !!smallworldLeaderboard && isNonNullish(smallWorldUserRank?.rank)
-                ? smallWorldUserRank.rank
-                : null
-            }
-            rankIcon={
-              hasSmallworld
-                ? getRankData(smallWorldUserRank?.mmr, 'smallworld')
-                : null
-            }
-            lastGame={lastSmallworldGame ?? null}
-            mostPlayed={mostPlayedSmallworld}
-            accentClass='border-cyan-500/20 dark:border-cyan-500/10'
-            badgeClass='border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300'
-          />
+          {seasonNumber === 6 && (
+            <QueueCard
+              queue='Legacy'
+              mmr={hasLegacy ? Math.round(legacyUserRank?.mmr) : null}
+              rank={
+                !!legacyLeaderboard && isNonNullish(legacyUserRank?.rank)
+                  ? legacyUserRank.rank
+                  : null
+              }
+              rankIcon={
+                hasLegacy ? getRankData(legacyUserRank?.mmr, 'legacy') : null
+              }
+              lastGame={lastLegacyGame ?? null}
+              mostPlayed={mostPlayedLegacy}
+              accentClass='border-orange-500/20 dark:border-orange-500/10'
+              badgeClass='border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300'
+            />
+          )}
+          {seasonNumber >= 4 && (
+            <QueueCard
+              queue='Smallworld'
+              mmr={hasSmallworld ? Math.round(smallWorldUserRank?.mmr) : null}
+              rank={
+                !!smallworldLeaderboard &&
+                isNonNullish(smallWorldUserRank?.rank)
+                  ? smallWorldUserRank.rank
+                  : null
+              }
+              rankIcon={
+                hasSmallworld
+                  ? getRankData(smallWorldUserRank?.mmr, 'smallworld')
+                  : null
+              }
+              lastGame={lastSmallworldGame ?? null}
+              mostPlayed={mostPlayedSmallworld}
+              accentClass='border-cyan-500/20 dark:border-cyan-500/10'
+              badgeClass='border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-300'
+            />
+          )}
+          {seasonNumber !== 6 && (
+            <QueueCard
+              queue='Vanilla'
+              mmr={hasVanilla ? Math.round(vanillaUserRank?.mmr) : null}
+              rank={
+                !!vanillaLeaderboard && isNonNullish(vanillaUserRank?.rank)
+                  ? vanillaUserRank.rank
+                  : null
+              }
+              rankIcon={
+                hasVanilla ? getRankData(vanillaUserRank?.mmr, 'vanilla') : null
+              }
+              lastGame={lastVanillaGame ?? null}
+              mostPlayed={mostPlayedVanilla}
+              accentClass='border-amber-500/20 dark:border-amber-500/10'
+              badgeClass='border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300'
+            />
+          )}
         </div>
 
         {/* ── Performance Summary ── */}
