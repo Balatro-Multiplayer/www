@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { env } from '@/env'
 import { db } from '../db'
 import { transcripts } from '../db/schema'
 import { redis } from '../redis'
@@ -13,7 +14,7 @@ export const botlatro_service = {
   get_active_matches: async (): Promise<ActiveMatchQueue[]> => {
     const response = await fetch(`${BOTLATRO_URL}api/matches/active-counts`, {
       headers: {
-        Authorization: `Bearer ${process.env.API_TOKEN}`,
+        Authorization: `Bearer ${env.API_TOKEN}`,
       },
     })
     if (!response.ok) {
@@ -112,7 +113,7 @@ export const botlatro_service = {
         `${BOTLATRO_URL}api/transcripts/view/${gameNumber}`,
         {
           headers: {
-            Authorization: `Bearer ${process.env.API_TOKEN}`,
+            Authorization: `Bearer ${env.API_TOKEN}`,
           },
         }
       )

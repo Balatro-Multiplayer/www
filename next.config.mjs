@@ -2,7 +2,7 @@
  * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
  * for Docker builds.
  */
-import './src/env.js'
+import { env } from './src/env.js'
 import { createMDX } from 'fumadocs-mdx/next'
 import createNextIntlPlugin from 'next-intl/plugin'
 
@@ -85,8 +85,8 @@ const config = {
   // This will be used for cache invalidation in the image loader
   generateBuildId: async () => {
     // Use existing build ID if available (e.g., from CI/CD)
-    if (process.env.BUILD_ID) {
-      return process.env.BUILD_ID
+    if (env.BUILD_ID) {
+      return env.BUILD_ID
     }
     // Otherwise, use a timestamp
     return `build-${Date.now()}`
