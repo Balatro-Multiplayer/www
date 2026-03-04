@@ -13,6 +13,11 @@ export const RANK_IMAGES = {
   pyrite: '/ranks/pyrite.png',
   jade: '/ranks/jade.png',
   crystal: '/ranks/crystal.png',
+  milk: '/ranks/milk.png',
+  strawberry: '/ranks/strawberry.png',
+  chocolate: '/ranks/chocolate.png',
+  mint: '/ranks/mint.png',
+  bubblegum: '/ranks/bubblegum.png',
 }
 
 export const EDITION_THRESHOLD = {
@@ -20,6 +25,7 @@ export const EDITION_THRESHOLD = {
   HOLOGRAPHIC: 10,
   POLYCHROME: 3,
   NEGATIVE: 1,
+  ANTIMATTER: 1,
 }
 
 export const ENHANCEMENT_THRESHOLD = {
@@ -37,9 +43,39 @@ export const SMALLWORLD_THRESHOLD = {
   CRYSTAL: 550,
 }
 
+export const LEGACY_THRESHOLD = {
+  MILK: 0,
+  STRAWBERRY: 225,
+  CHOCOLATE: 325,
+  MINT: 425,
+  BUBBLEGUM: 550,
+}
+
 export const getRankData = (mmr: number, queueType?: string) => {
-  if (queueType === 'vanilla' || queueType === 'legacy') {
+  if (queueType === 'vanilla') {
     return null
+  }
+
+  if (queueType === 'legacy') {
+    let enhancement = RANK_IMAGES.milk
+    let tooltip = 'Milk'
+    if (mmr >= LEGACY_THRESHOLD.STRAWBERRY) {
+      enhancement = RANK_IMAGES.strawberry
+      tooltip = 'Strawberry'
+    }
+    if (mmr >= LEGACY_THRESHOLD.CHOCOLATE) {
+      enhancement = RANK_IMAGES.chocolate
+      tooltip = 'Chocolate'
+    }
+    if (mmr >= LEGACY_THRESHOLD.MINT) {
+      enhancement = RANK_IMAGES.mint
+      tooltip = 'Mint'
+    }
+    if (mmr >= LEGACY_THRESHOLD.BUBBLEGUM) {
+      enhancement = RANK_IMAGES.bubblegum
+      tooltip = 'Bubblegum'
+    }
+    return { enhancement, tooltip }
   }
 
   if (queueType === 'smallworld') {
