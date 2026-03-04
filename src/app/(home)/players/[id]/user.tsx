@@ -299,28 +299,28 @@ function UserInfoComponent() {
       : 0
 
   const mostPlayedRanked = useMemo(() => {
-    return getMostPlayed(games.filter((g) => g.gameType === 'ranked'))
-  }, [games])
+    return getMostPlayed(seasonFilteredGames.filter((g) => g.gameType === 'ranked'))
+  }, [seasonFilteredGames])
 
   const mostPlayedSmallworld = useMemo(() => {
     return getMostPlayed(
-      games.filter((g) => g.gameType.toLowerCase() === 'smallworld')
+      seasonFilteredGames.filter((g) => g.gameType.toLowerCase() === 'smallworld')
     )
-  }, [games])
+  }, [seasonFilteredGames])
 
   const mostPlayedVanilla = useMemo(() => {
-    const vanillaGames = games.filter(
+    const vanillaGames = seasonFilteredGames.filter(
       (g) => g.gameType.toLowerCase() === 'vanilla'
     )
     return getMostPlayed(vanillaGames)
-  }, [games])
+  }, [seasonFilteredGames])
 
   const mostPlayedLegacy = useMemo(() => {
-    const legacyGames = games.filter(
+    const legacyGames = seasonFilteredGames.filter(
       (g) => g.gameType.toLowerCase() === 'legacy'
     )
     return getMostPlayed(legacyGames)
-  }, [games])
+  }, [seasonFilteredGames])
 
   const seasonNumber = Number(season.replace('season', ''))
 
