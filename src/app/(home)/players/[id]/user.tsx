@@ -334,6 +334,19 @@ function UserInfoComponent() {
   const hasLegacy =
     isNonNullish(legacyUserRank?.mmr) && !Number.isNaN(legacyUserRank?.mmr)
 
+  const activeQueueCount = [
+    hasRanked,
+    hasVanilla,
+    hasLegacy,
+    hasSmallworld,
+  ].filter(Boolean).length
+  const lgGridCols: Record<number, string> = {
+    1: 'lg:grid-cols-1',
+    2: 'lg:grid-cols-2',
+    3: 'lg:grid-cols-3',
+    4: 'lg:grid-cols-4',
+  }
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col'>
@@ -450,7 +463,12 @@ function UserInfoComponent() {
         </div>
 
         {/* ── Queue Rating Cards ── */}
-        <div className='grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-3 sm:grid-cols-2',
+            lgGridCols[activeQueueCount] ?? 'lg:grid-cols-4'
+          )}
+        >
           <QueueCard
             queue='Ranked'
             mmr={hasRanked ? Math.round(rankedUserRank?.mmr) : null}
