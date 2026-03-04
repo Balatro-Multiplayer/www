@@ -799,7 +799,7 @@ function QueueCard({
       className={cn(
         'rounded-lg border bg-card p-4 transition-colors',
         accentClass,
-        !hasData && 'hidden'
+        !hasData && 'hidden lg:block'
       )}
     >
       <div className='mb-3 flex items-center justify-between'>
