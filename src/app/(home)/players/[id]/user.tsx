@@ -299,12 +299,16 @@ function UserInfoComponent() {
       : 0
 
   const mostPlayedRanked = useMemo(() => {
-    return getMostPlayed(seasonFilteredGames.filter((g) => g.gameType === 'ranked'))
+    return getMostPlayed(
+      seasonFilteredGames.filter((g) => g.gameType === 'ranked')
+    )
   }, [seasonFilteredGames])
 
   const mostPlayedSmallworld = useMemo(() => {
     return getMostPlayed(
-      seasonFilteredGames.filter((g) => g.gameType.toLowerCase() === 'smallworld')
+      seasonFilteredGames.filter(
+        (g) => g.gameType.toLowerCase() === 'smallworld'
+      )
     )
   }, [seasonFilteredGames])
 
