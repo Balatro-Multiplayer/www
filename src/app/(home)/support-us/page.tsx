@@ -1,4 +1,10 @@
-import { Bot, CircleDollarSign, Coffee, ExternalLink, Heart } from 'lucide-react'
+import {
+  Bot,
+  CircleDollarSign,
+  Coffee,
+  ExternalLink,
+  Heart,
+} from 'lucide-react'
 import Link from 'next/link'
 import {
   Card,
@@ -110,7 +116,8 @@ export default async function SupportUsPage() {
           <CardContent>
             <p className={'text-muted-foreground'}>
               Your contribution helps support the developers maintaining and
-              improving the Botlatro Discord bot, which is used for the queue in discord.
+              improving the Botlatro Discord bot, which is used for the queue in
+              discord.
             </p>
           </CardContent>
           <CardFooter>
