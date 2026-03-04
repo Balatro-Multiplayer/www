@@ -28,7 +28,6 @@ export const env = createEnv({
     VERCEL_URL: z.string().optional(),
     PORT: z.string().optional(),
     IS_PREVIEW: z.string().optional(),
-    BUILD_ID: z.string().optional(),
   },
 
   /**
@@ -74,7 +73,6 @@ export const env = createEnv({
     VERCEL_URL: process.env.VERCEL_URL,
     PORT: process.env.PORT,
     IS_PREVIEW: process.env.IS_PREVIEW,
-    BUILD_ID: process.env.BUILD_ID,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

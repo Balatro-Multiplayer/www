@@ -5,7 +5,7 @@
 
 import { createMDX } from 'fumadocs-mdx/next'
 import createNextIntlPlugin from 'next-intl/plugin'
-import { env } from './src/env.js'
+import './src/env.js'
 
 const withMDX = createMDX()
 
@@ -86,8 +86,8 @@ const config = {
   // This will be used for cache invalidation in the image loader
   generateBuildId: async () => {
     // Use existing build ID if available (e.g., from CI/CD)
-    if (env.BUILD_ID) {
-      return env.BUILD_ID
+    if (process.env.BUILD_ID) {
+      return process.env.BUILD_ID
     }
     // Otherwise, use a timestamp
     return `build-${Date.now()}`
