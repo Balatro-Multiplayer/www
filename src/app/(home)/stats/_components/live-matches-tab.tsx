@@ -19,22 +19,32 @@ export function LiveMatchesTab() {
 
   const queues = liveQueues ?? initialQueues ?? []
   const total = sumBy(queues, (q) => q.active_matches)
+  const totalInQueue = sumBy(queues, (q) => q.players_in_queue)
 
   return (
     <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6'>
-      <QueueCard label='Total' count={total} />
+      <QueueCard label='Total' count={total} inQueue={totalInQueue} />
       {queues.map((queue) => (
         <QueueCard
           key={queue.queue_id}
           label={queue.queue_name}
           count={queue.active_matches}
+          inQueue={queue.players_in_queue}
         />
       ))}
     </div>
   )
 }
 
-function QueueCard({ label, count }: { label: string; count: number }) {
+function QueueCard({
+  label,
+  count,
+  inQueue,
+}: {
+  label: string
+  count: number
+  inQueue: number
+}) {
   return (
     <Card>
       <CardHeader className='pb-2'>
@@ -51,6 +61,7 @@ function QueueCard({ label, count }: { label: string; count: number }) {
         <p className='text-muted-foreground text-sm'>
           active {count === 1 ? 'match' : 'matches'}
         </p>
+        <p className='mt-1 text-muted-foreground text-sm'>{inQueue} in queue</p>
       </CardContent>
     </Card>
   )
