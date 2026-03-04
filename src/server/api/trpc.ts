@@ -11,6 +11,7 @@ import { initTRPC, TRPCError } from '@trpc/server'
 import superjson from 'superjson'
 import { ZodError } from 'zod'
 
+import { env } from '@/env'
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 
@@ -58,7 +59,7 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
     }
 
     // Clear stack trace in production to prevent retention
-    if (process.env.NODE_ENV === 'production') {
+    if (env.NODE_ENV === 'production') {
       const { stack: _stack, ...safeFormatted } =
         formatted as typeof formatted & {
           stack?: unknown

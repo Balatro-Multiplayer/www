@@ -3,6 +3,7 @@
 import * as AvatarPrimitive from '@radix-ui/react-avatar'
 import type * as React from 'react'
 
+import { env } from '@/env'
 import { cn } from '@/lib/utils'
 import { CDN_URL } from '@/shared/constants'
 
@@ -27,7 +28,7 @@ function AvatarImage({
   src,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
-  const isDev = process.env.NODE_ENV === 'development'
+  const isDev = env.NODE_ENV === 'development'
   let finalSrc = src
   if (typeof src === 'string' && src.startsWith('/') && !isDev) {
     finalSrc = `${CDN_URL}${src}`

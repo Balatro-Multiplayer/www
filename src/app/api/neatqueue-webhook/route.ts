@@ -1,11 +1,12 @@
 import crypto from 'node:crypto'
 import { type NextRequest, NextResponse } from 'next/server'
+import { env } from '@/env'
 import { globalEmitter } from '@/lib/events'
 import type { PlayerState } from '@/server/api/routers/player-state'
 import { PLAYER_STATE_KEY, redis } from '@/server/redis'
 import { leaderboardService } from '@/server/services/leaderboard'
 
-const EXPECTED_QUERY_SECRET = process.env.WEBHOOK_QUERY_SECRET
+const EXPECTED_QUERY_SECRET = env.WEBHOOK_QUERY_SECRET
 
 type WebhookPlayer = {
   id?: string | number

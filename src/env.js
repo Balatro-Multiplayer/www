@@ -24,6 +24,16 @@ export const env = createEnv({
     MINIO_BUCKET_NAME: z.string(),
     MINIO_LEADERBOARD_BUCKET_NAME: z.string(),
     MINIO_USE_SSL: z.enum(['true', 'false']).default('false'),
+    API_TOKEN: z.string(),
+    VERCEL_URL: z.string().optional(),
+    PORT: z.string().optional(),
+    IS_PREVIEW: z.string().optional(),
+  },
+
+  /**
+   * Shared variables available on both client and server (e.g. NODE_ENV).
+   */
+  shared: {
     NODE_ENV: z
       .enum(['development', 'test', 'production'])
       .default('development'),
@@ -59,6 +69,10 @@ export const env = createEnv({
     MINIO_LEADERBOARD_BUCKET_NAME: process.env.MINIO_LEADERBOARD_BUCKET_NAME,
     MINIO_USE_SSL: process.env.MINIO_USE_SSL,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    API_TOKEN: process.env.API_TOKEN,
+    VERCEL_URL: process.env.VERCEL_URL,
+    PORT: process.env.PORT,
+    IS_PREVIEW: process.env.IS_PREVIEW,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
