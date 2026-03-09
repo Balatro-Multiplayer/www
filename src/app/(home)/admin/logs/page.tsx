@@ -1,6 +1,14 @@
 import { Suspense } from 'react'
 import { LogsClient } from '@/app/(home)/admin/logs/logs-client'
 import { auth } from '@/server/auth'
+import { createMetadata } from '../../../../../lib/metadata'
+
+export const metadata = createMetadata({
+  title: 'Log Files',
+  description: 'Browse uploaded log files and diagnostics.',
+  path: '/admin/logs',
+  noIndex: true,
+})
 
 export default async function LogsPage() {
   const session = await auth()

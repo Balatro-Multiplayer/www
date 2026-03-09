@@ -2,8 +2,16 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { auth } from '@/server/auth'
+import { createMetadata } from '../../../../../lib/metadata'
 
 import { AdminBlogClient } from './blog-client'
+
+export const metadata = createMetadata({
+  title: 'Manage Blog Posts',
+  description: 'Create, edit, and publish blog posts.',
+  path: '/admin/blog',
+  noIndex: true,
+})
 
 export default async function AdminBlogPage() {
   const session = await auth()

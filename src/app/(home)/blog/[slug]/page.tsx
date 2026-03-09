@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import { formatDate } from '@/lib/utils'
 import { api } from '@/trpc/server'
+import { createMetadata } from '../../../../../lib/metadata'
 
 type Props = {
   params: Promise<{
@@ -11,17 +12,23 @@ type Props = {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+
   try {
-    const post = await api.blog.getBySlug({ slug: (await params).slug })
-    return {
+    const post = await api.blog.getBySlug({ slug })
+    return createMetadata({
       title: post.title,
       description: post.excerpt || `${post.content.substring(0, 160)}...`,
-    }
+      path: `/blog/${slug}`,
+      type: 'article',
+    })
   } catch (_error) {
-    return {
+    return createMetadata({
       title: 'Blog Post Not Found',
       description: 'The requested blog post could not be found.',
-    }
+      path: `/blog/${slug}`,
+      noIndex: true,
+    })
   }
 }
 

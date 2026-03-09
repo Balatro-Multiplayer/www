@@ -3,9 +3,17 @@ import { Suspense } from 'react'
 import { getActiveSeasonNumber, getSeasonKey } from '@/server/seasons'
 import type { Season } from '@/shared/seasons'
 import { api, HydrateClient } from '@/trpc/server'
+import { createMetadata } from '../../../../lib/metadata'
 import { StatsTabs } from './_components/stats-tabs'
 import { getStatsSeasons, resolveStatsSeason } from './search-params.constants'
 import { createStatsSearchParamsParsersServer } from './search-params.server'
+
+export const metadata = createMetadata({
+  title: 'Stats',
+  description:
+    'Explore Balatro Multiplayer charts for game activity, deck popularity, stake trends, and rating distribution.',
+  path: '/stats',
+})
 
 export default async function StatsPage({
   searchParams,

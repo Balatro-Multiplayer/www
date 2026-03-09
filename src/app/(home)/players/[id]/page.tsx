@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import {
   LEGACY_QUEUE_ID,
@@ -6,19 +7,52 @@ import {
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
 import { api, HydrateClient } from '@/trpc/server'
+import { createMetadata } from '../../../../../lib/metadata'
+import {
+  DEFAULT_PLAYER_PROFILE_SEASON,
+  resolvePlayerPageName,
+  unescapePlayerName,
+} from './player-name'
 import { UserInfo } from './user'
 
-export default async function PlayerPage({
-  params,
-  searchParams,
-}: {
+type Props = {
   params: Promise<{ id: string }>
   searchParams: Promise<{
     page?: string
     sortBy?: string
     sortOrder?: string
   }>
-}) {
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params
+
+  try {
+    const [user, games] = await Promise.all([
+      api.discord.get_user_by_id({ user_id: id }),
+      api.history.user_games({ user_id: id }),
+    ])
+    const name = unescapePlayerName(
+      resolvePlayerPageName(games, user.username, DEFAULT_PLAYER_PROFILE_SEASON)
+    )
+
+    return createMetadata({
+      title: `${name} Profile`,
+      description: `View ${name}'s Balatro Multiplayer profile, match history, ranks, and deck performance.`,
+      path: `/players/${id}`,
+    })
+  } catch (_error) {
+    return createMetadata({
+      title: 'Player Profile',
+      description:
+        'View Balatro Multiplayer player history, ranks, and season performance.',
+      path: `/players/${id}`,
+      noIndex: true,
+    })
+  }
+}
+
+export default async function PlayerPage({ params, searchParams }: Props) {
   const { id } = await params
   const sp = await searchParams
 

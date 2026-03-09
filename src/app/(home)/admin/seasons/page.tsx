@@ -1,7 +1,15 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/server/auth'
 import { api } from '@/trpc/server'
+import { createMetadata } from '../../../../../lib/metadata'
 import { type SeasonListRow, SeasonsClient } from './seasons-client'
+
+export const metadata = createMetadata({
+  title: 'Manage Seasons',
+  description: 'Create seasons, track active status, and manage snapshots.',
+  path: '/admin/seasons',
+  noIndex: true,
+})
 
 async function loadSeasonRows(): Promise<SeasonListRow[]> {
   const seasonRows = await api.seasons.list()

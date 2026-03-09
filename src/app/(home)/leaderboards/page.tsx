@@ -7,6 +7,14 @@ import {
 import type { PaginationOptions } from '@/server/services/leaderboard'
 import { type Season, SeasonSchema } from '@/shared/seasons'
 import { api, HydrateClient } from '@/trpc/server'
+import { createMetadata } from '../../../../lib/metadata'
+
+export const metadata = createMetadata({
+  title: 'Leaderboards',
+  description:
+    'Track ranked, vanilla, smallworld, and legacy Balatro Multiplayer standings across every season.',
+  path: '/leaderboards',
+})
 
 function getDefaultQueueType(snapshots: Array<{ queueType: string }>) {
   return snapshots[0]?.queueType ?? 'ranked'

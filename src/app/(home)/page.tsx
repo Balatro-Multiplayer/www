@@ -12,6 +12,14 @@ import { GithubLinks } from '@/app/_components/github-links'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { createMetadata } from '../../../lib/metadata'
+
+export const metadata = createMetadata({
+  title: 'Play Balatro Against Your Friends',
+  description:
+    'Download the Balatro Multiplayer mod, join ranked queues, and play direct matches with your friends.',
+  path: '/',
+})
 
 export default function Home() {
   return (

@@ -64,6 +64,11 @@ import {
   type Season,
 } from '@/shared/seasons'
 import { api } from '@/trpc/react'
+import {
+  DEFAULT_PLAYER_PROFILE_SEASON,
+  resolvePlayerPageName,
+  unescapePlayerName,
+} from './player-name'
 
 const numberFormatter = new Intl.NumberFormat('en-US', {
   signDisplay: 'exceptZero',
@@ -75,10 +80,6 @@ export function UserInfo() {
       <UserInfoComponent />
     </TimeZoneProvider>
   )
-}
-
-function unescapeName(str: string) {
-  return str.replaceAll('\\', '')
 }
 
 function getChannelIdForSeason(
@@ -136,7 +137,7 @@ function UserInfoComponent() {
   const [filter, setFilter] = useState('all')
   const format = useFormatter()
   const timeZone = useTimeZone()
-  const [season, setSeason] = useState<Season>('season6')
+  const [season, setSeason] = useState<Season>(DEFAULT_PLAYER_PROFILE_SEASON)
   const rankedChannelId = getChannelIdForSeason('ranked', season)
   const vanillaChannelId = getChannelIdForSeason('vanilla', season)
   const smallworldChannelId = getChannelIdForSeason('smallworld', season)
@@ -266,8 +267,11 @@ function UserInfoComponent() {
   }
 
   const aliases = [...new Set(seasonFilteredGames.map((g) => g.playerName))]
-  const lastGame = seasonFilteredGames.at(0)
-  const currentName = lastGame?.playerName ?? discord_user.username
+  const currentName = resolvePlayerPageName(
+    games,
+    discord_user.username,
+    season
+  )
   const meaningful_games = games_played - ties
   const winRate =
     meaningful_games > 0 ? Math.ceil((wins / meaningful_games) * 100) : 0
@@ -364,10 +368,10 @@ function UserInfoComponent() {
               <Avatar className='size-16 ring-2 ring-border sm:size-20'>
                 <AvatarImage
                   src={discord_user.avatar_url}
-                  alt={unescapeName(currentName)}
+                  alt={unescapePlayerName(currentName)}
                 />
                 <AvatarFallback className='bg-muted font-bold text-muted-foreground text-xl'>
-                  {unescapeName(currentName).slice(0, 2).toUpperCase()}
+                  {unescapePlayerName(currentName).slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
 
@@ -377,7 +381,7 @@ function UserInfoComponent() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <h1 className='truncate font-bold text-2xl leading-tight sm:text-3xl'>
-                          {unescapeName(currentName)}
+                          {unescapePlayerName(currentName)}
                         </h1>
                       </TooltipTrigger>
                       {aliases.length > 1 && (
@@ -387,7 +391,7 @@ function UserInfoComponent() {
                           </p>
                           <ul className='list-disc pl-4 text-xs'>
                             {aliases.map((alias) => (
-                              <li key={alias}>{unescapeName(alias)}</li>
+                              <li key={alias}>{unescapePlayerName(alias)}</li>
                             ))}
                           </ul>
                         </TooltipContent>

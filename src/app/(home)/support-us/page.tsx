@@ -14,6 +14,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { createMetadata } from '../../../../lib/metadata'
+
+export const metadata = createMetadata({
+  title: 'Support Us',
+  description:
+    'Support Balatro Multiplayer, the website, and Botlatro to help fund hosting, development, and community tools.',
+  path: '/support-us',
+})
 
 export default async function SupportUsPage() {
   return (

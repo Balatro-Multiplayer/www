@@ -9,12 +9,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { createMetadata } from '../../../../lib/metadata'
 import { FileUploader } from './file-uploader'
 
-export const metadata = {
+export const metadata = createMetadata({
   title: 'Fix Corrupted Profile',
-  description: 'Fix your corrupted profile.jkr file.',
-}
+  description:
+    'Repair a broken Balatro `profile.jkr` file and recover a playable save.',
+  path: '/profile-fix',
+})
 
 export default async function Home() {
   return (

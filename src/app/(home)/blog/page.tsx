@@ -1,12 +1,14 @@
-import type { Metadata } from 'next'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
 import { api } from '@/trpc/server'
+import { createMetadata } from '../../../../lib/metadata'
 
-export const metadata: Metadata = {
+export const metadata = createMetadata({
   title: 'Blog',
-  description: 'Latest news and updates about Balatro Multiplayer',
-}
+  description:
+    'Latest Balatro Multiplayer news, release notes, and community updates.',
+  path: '/blog',
+})
 
 export default async function BlogPage() {
   const posts = await api.blog.getAllPublished()

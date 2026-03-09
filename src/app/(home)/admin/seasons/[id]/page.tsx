@@ -1,7 +1,9 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/server/auth'
 import { api } from '@/trpc/server'
+import { createMetadata } from '../../../../../../lib/metadata'
 import {
   SeasonDetailClient,
   type SeasonDetailPageData,
@@ -32,6 +34,33 @@ async function loadSnapshots(
   seasonId: number
 ): Promise<SeasonSnapshotPageData[]> {
   return api.seasons.list_snapshots({ seasonId })
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const seasonId = Number.parseInt(id, 10)
+
+  if (!Number.isInteger(seasonId) || seasonId <= 0) {
+    return createMetadata({
+      title: 'Season',
+      description: 'Season management tools.',
+      path: '/admin/seasons',
+      noIndex: true,
+    })
+  }
+
+  const season = await loadSeason(seasonId)
+
+  return createMetadata({
+    title: season?.name ?? `Season ${seasonId}`,
+    description: 'Edit season metadata and manage leaderboard snapshot files.',
+    path: `/admin/seasons/${seasonId}`,
+    noIndex: true,
+  })
 }
 
 export default async function AdminSeasonDetailPage({

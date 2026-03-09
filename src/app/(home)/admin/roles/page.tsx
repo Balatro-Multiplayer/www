@@ -2,7 +2,15 @@ import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { auth } from '@/server/auth'
 import { api, HydrateClient } from '@/trpc/server'
+import { createMetadata } from '../../../../../lib/metadata'
 import { RolesClient } from './roles-client'
+
+export const metadata = createMetadata({
+  title: 'Manage Roles',
+  description: 'Owner-only role management for Balatro Multiplayer users.',
+  path: '/admin/roles',
+  noIndex: true,
+})
 
 export default async function RolesManagerPage() {
   const session = await auth()

@@ -11,13 +11,29 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import CustomSearchDialog from '@/app/_components/custom-search-dialog'
 import { Toaster } from '@/components/ui/sonner'
 import { TRPCReactProvider } from '@/trpc/react'
+import { siteConfig } from '../../lib/metadata'
 export const metadata: Metadata = {
   title: {
-    template: '%s | Balatro Multiplayer',
-    default: 'Balatro Multiplayer',
+    template: `%s | ${siteConfig.name}`,
+    default: siteConfig.name,
   },
-  description: 'The official Balatro Multiplayer Mod website',
-  metadataBase: new URL('https://balatromp.com'),
+  description: siteConfig.description,
+  metadataBase: new URL(siteConfig.url),
+  openGraph: {
+    title: siteConfig.name,
+    description: siteConfig.description,
+    url: '/',
+    siteName: siteConfig.name,
+    locale: 'en_US',
+    type: 'website',
+    images: [siteConfig.ogImage],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: siteConfig.name,
+    description: siteConfig.description,
+    images: [siteConfig.ogImage],
+  },
   icons: [{ rel: 'icon', url: '/favicon.ico' }],
 }
 

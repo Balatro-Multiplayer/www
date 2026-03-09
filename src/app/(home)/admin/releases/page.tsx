@@ -2,6 +2,14 @@ import { Suspense } from 'react'
 import { ReleasesClient } from '@/app/(home)/admin/releases/releases-client'
 import { auth } from '@/server/auth'
 import { api, HydrateClient } from '@/trpc/server'
+import { createMetadata } from '../../../../../lib/metadata'
+
+export const metadata = createMetadata({
+  title: 'Releases',
+  description: 'Manage release records and associated branches.',
+  path: '/admin/releases',
+  noIndex: true,
+})
 
 export default async function ReleasesPage() {
   const session = await auth()

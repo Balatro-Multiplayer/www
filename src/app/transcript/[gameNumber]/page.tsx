@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { auth } from '@/server/auth'
+import { createMetadata } from '../../../../lib/metadata'
 
 type Props = {
   params: Promise<{
@@ -10,9 +11,12 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const gameNumber = Number.parseInt((await params).gameNumber, 10)
-  return {
+  return createMetadata({
     title: `Game Transcript #${gameNumber}`,
-  }
+    description: `Internal transcript view for game #${gameNumber}.`,
+    path: `/transcript/${gameNumber}`,
+    noIndex: true,
+  })
 }
 
 export default async function TranscriptPage({ params }: Props) {
