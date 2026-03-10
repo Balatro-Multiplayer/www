@@ -68,6 +68,30 @@ export default function Home() {
             </div>
           </div>
         </section>
+        <section className='container mx-auto py-8 md:py-12 lg:py-16'>
+          <div className='mx-auto max-w-2xl space-y-4 text-center'>
+            <p className='font-medium text-muted-foreground text-sm uppercase tracking-wider'>
+              Officially unofficial&trade;
+            </p>
+            <h2 className='font-bold text-2xl leading-tight tracking-tighter md:text-3xl'>
+              &ldquo;There&rsquo;s a cool mod if you want that&rdquo;
+            </h2>
+            <p className='text-muted-foreground leading-normal sm:text-lg'>
+              That&rsquo;s the closest thing to a blessing we&rsquo;ll ever get
+              from localthunk, and we&rsquo;re running with it.
+            </p>
+            <div className='mx-auto mt-6 max-w-md overflow-hidden rounded-lg border bg-card shadow-lg'>
+              <Image
+                src='/localthunk_on_multiplayer.png'
+                width={800}
+                height={400}
+                alt='localthunk on Discord: no balatro multiplayer, there is a cool mod if you want that'
+                className='w-full'
+              />
+            </div>
+          </div>
+        </section>
+
         <section className='container mx-auto space-y-6 py-8 md:py-12 lg:py-24'>
           <div className='mx-auto flex max-w-[58rem] flex-col items-center space-y-4 text-center'>
             <h2 className='font-bold text-3xl leading-tight tracking-tighter md:text-4xl'>
