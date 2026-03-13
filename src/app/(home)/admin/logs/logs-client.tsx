@@ -2,7 +2,12 @@
 
 import { ExternalLink, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
+import {
+  parseAsBoolean,
+  parseAsInteger,
+  parseAsString,
+  useQueryStates,
+} from 'nuqs'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useDebounceCallback, useLocalStorage } from 'usehooks-ts'
@@ -25,14 +30,14 @@ import {
 
 type LogFile = {
   id: number
+  logIds: number[]
   fileName: string
   fileUrl: string
   createdAt: string
-  userId: string | null
-  userName: string | null
-  userEmail: string | null
   ownerConnectionIds: string[]
   ownerNames: string[]
+  uploadedBy: string[]
+  mergedCount: number
 }
 
 type SortBy = 'createdAt' | 'fileName' | 'userName'
@@ -98,11 +103,12 @@ export function LogsClient() {
       search: parseAsString,
       sortBy: parseAsString.withDefault('createdAt'),
       sortOrder: parseAsString.withDefault('desc'),
+      dedupe: parseAsBoolean.withDefault(true),
     },
     { history: 'push' }
   )
 
-  const { page, search } = queryParams
+  const { page, search, dedupe } = queryParams
   const sortBy = (['createdAt', 'fileName', 'userName'] as const).includes(
     queryParams.sortBy as SortBy
   )
@@ -126,6 +132,7 @@ export function LogsClient() {
       const params = new URLSearchParams()
       params.set('page', String(page))
       params.set('pageSize', String(pageSize))
+      params.set('dedupe', String(dedupe))
       if (search) params.set('search', search)
       if (sortBy) params.set('sortBy', sortBy)
       if (sortOrder) params.set('sortOrder', sortOrder)
@@ -156,7 +163,7 @@ export function LogsClient() {
     } finally {
       setIsLoading(false)
     }
-  }, [page, search, sortBy, sortOrder, setQueryParams])
+  }, [page, search, sortBy, sortOrder, setQueryParams, dedupe])
 
   useEffect(() => {
     fetchLogs()
@@ -205,6 +212,16 @@ export function LogsClient() {
           onChange={(e) => updateSearch(e.target.value)}
           className='w-full sm:max-w-sm'
         />
+        <div className='flex items-center gap-2 self-start sm:self-auto'>
+          <Switch
+            id='dedupe-log-results'
+            checked={dedupe}
+            onCheckedChange={(checked) =>
+              setQueryParams({ dedupe: checked, page: 1 })
+            }
+          />
+          <Label htmlFor='dedupe-log-results'>Deduplicate</Label>
+        </div>
         <div className='flex items-center gap-2 self-start sm:self-auto'>
           <Switch
             id='highlight-log-search-matches'
@@ -273,11 +290,20 @@ export function LogsClient() {
                 logs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell>
-                      {renderHighlightedText(
-                        log.fileName,
-                        search,
-                        highlightMatches
-                      )}
+                      <div className='flex flex-col gap-1'>
+                        <span>
+                          {renderHighlightedText(
+                            log.fileName,
+                            search,
+                            highlightMatches
+                          )}
+                        </span>
+                        {log.mergedCount > 1 && (
+                          <span className='text-muted-foreground text-xs'>
+                            {log.mergedCount} merged uploads
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {log.ownerNames.length > 0 ? (
@@ -324,11 +350,20 @@ export function LogsClient() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {renderHighlightedText(
-                        log.userName || log.userEmail || 'Anonymous',
-                        search,
-                        highlightMatches
-                      )}
+                      <div className='flex flex-wrap gap-1.5'>
+                        {log.uploadedBy.map((uploader) => (
+                          <Badge
+                            key={`${log.id}-${uploader}`}
+                            variant='outline'
+                          >
+                            {renderHighlightedText(
+                              uploader,
+                              search,
+                              highlightMatches
+                            )}
+                          </Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {new Date(log.createdAt).toLocaleString()}
@@ -345,7 +380,12 @@ export function LogsClient() {
                         variant='destructive'
                         size='icon'
                         onClick={() => handleDelete(log.id)}
-                        disabled={isDeleting}
+                        disabled={isDeleting || log.mergedCount > 1}
+                        title={
+                          log.mergedCount > 1
+                            ? 'Disable deduplication to delete individual uploads'
+                            : undefined
+                        }
                       >
                         <Trash2 className='h-4 w-4' />
                       </Button>

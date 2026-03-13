@@ -1,4 +1,4 @@
-import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
+import { asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   extractLogOwnerConnectionIds,
@@ -8,6 +8,7 @@ import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 import {
   logFileConnections,
+  logFileOwnerConnections,
   logFilePlayers,
   logFiles,
   users,
@@ -41,6 +42,220 @@ function buildConnectionIdSearchFilter(search: string) {
   `
 }
 
+type DedupedLogRow = {
+  id: number
+  fileUrl: string
+  fileName: string
+  createdAt: Date
+  logIds: number[]
+  ownerConnectionIds: string[]
+  uploadedBy: string[]
+  uploadedBySort: string
+  mergedCount: number
+}
+
+type LogListItem = {
+  id: number
+  logIds: number[]
+  fileName: string
+  fileUrl: string
+  createdAt: Date
+  ownerConnectionIds: string[]
+  ownerNames: string[]
+  uploadedBy: string[]
+  mergedCount: number
+}
+
+function uniqueStrings(values: string[]) {
+  const seen = new Set<string>()
+  const deduped: string[] = []
+
+  for (const value of values) {
+    const normalized = value.trim().toLowerCase()
+    if (!normalized || seen.has(normalized)) {
+      continue
+    }
+
+    seen.add(normalized)
+    deduped.push(value)
+  }
+
+  return deduped.sort((a, b) => a.localeCompare(b))
+}
+
+function buildOwnerNamesByLogIds(
+  rows: Array<{ id: number; parsedJson: unknown }>
+): Map<number, string[]> {
+  return new Map(
+    rows.map((row) => [row.id, extractLogOwnerNames(row.parsedJson)] as const)
+  )
+}
+
+function buildDedupedSearchWhere(search: string) {
+  if (!search) {
+    return sql``
+  }
+
+  const searchTerm = `%${search}%`
+  const searchTermLower = `%${search.toLowerCase()}%`
+
+  return sql`
+    where
+      g.file_name ilike ${searchTerm}
+      or exists (
+        select 1
+        from ${logFiles}
+        left join ${users} on ${users.id} = ${logFiles.userId}
+        where
+          ${logFiles.id} = any(g.log_ids)
+          and coalesce(${users.name}, ${users.email}, 'Anonymous') ilike ${searchTerm}
+      )
+      or exists (
+        select 1
+        from ${logFilePlayers}
+        where
+          ${logFilePlayers.logFileId} = any(g.log_ids)
+          and ${logFilePlayers.playerNameLower} like ${searchTermLower}
+      )
+      or exists (
+        select 1
+        from ${logFileConnections}
+        where
+          ${logFileConnections.logFileId} = any(g.log_ids)
+          and ${logFileConnections.connectionIdLower} like ${searchTermLower}
+      )
+  `
+}
+
+function buildDedupedOrderBy(sortBy: string, sortOrder: 'asc' | 'desc') {
+  const direction = sql.raw(sortOrder === 'asc' ? 'asc' : 'desc')
+
+  if (sortBy === 'fileName') {
+    return sql`g.file_name ${direction}, g.created_at desc, g.id desc`
+  }
+
+  if (sortBy === 'userName') {
+    return sql`g.uploaded_by_sort ${direction}, g.created_at desc, g.id desc`
+  }
+
+  return sql`g.created_at ${direction}, g.id desc`
+}
+
+async function getDedupedLogs({
+  page,
+  pageSize,
+  offset,
+  sortBy,
+  sortOrder,
+  search,
+}: {
+  page: number
+  pageSize: number
+  offset: number
+  sortBy: string
+  sortOrder: 'asc' | 'desc'
+  search: string
+}) {
+  const groupedLogsSql = sql`
+    with grouped_logs as (
+      select
+        (array_agg(${logFiles.id} order by ${logFiles.createdAt} desc, ${logFiles.id} desc))[1] as id,
+        (array_agg(${logFiles.fileUrl} order by ${logFiles.createdAt} desc, ${logFiles.id} desc))[1] as file_url,
+        ${logFiles.fileName} as file_name,
+        max(${logFiles.createdAt}) as created_at,
+        array_agg(${logFiles.id} order by ${logFiles.createdAt} desc, ${logFiles.id} desc) as log_ids,
+        coalesce(
+          array_remove(array_agg(distinct ${logFileOwnerConnections.connectionId}), null),
+          '{}'::text[]
+        ) as owner_connection_ids,
+        coalesce(
+          array_remove(
+            array_agg(distinct coalesce(${users.name}, ${users.email}, 'Anonymous')),
+            null
+          ),
+          '{}'::text[]
+        ) as uploaded_by,
+        min(coalesce(${users.name}, ${users.email}, 'Anonymous')) as uploaded_by_sort,
+        count(*)::int as merged_count
+      from ${logFiles}
+      left join ${users} on ${users.id} = ${logFiles.userId}
+      left join ${logFileOwnerConnections}
+        on ${logFileOwnerConnections.logFileId} = ${logFiles.id}
+      group by
+        ${logFiles.fileName},
+        coalesce(${logFileOwnerConnections.connectionIdLower}, '')
+    ),
+    filtered_logs as (
+      select *
+      from grouped_logs g
+      ${buildDedupedSearchWhere(search)}
+    )
+  `
+
+  const [{ total } = { total: 0 }] = await db.execute<{ total: number }>(sql`
+    ${groupedLogsSql}
+    select count(*)::int as total
+    from filtered_logs
+  `)
+
+  const logs = await db.execute<DedupedLogRow>(sql`
+    ${groupedLogsSql}
+    select
+      g.id,
+      g.file_url as "fileUrl",
+      g.file_name as "fileName",
+      g.created_at as "createdAt",
+      g.log_ids as "logIds",
+      g.owner_connection_ids as "ownerConnectionIds",
+      g.uploaded_by as "uploadedBy",
+      g.uploaded_by_sort as "uploadedBySort",
+      g.merged_count as "mergedCount"
+    from filtered_logs g
+    order by ${buildDedupedOrderBy(sortBy, sortOrder)}
+    limit ${pageSize}
+    offset ${offset}
+  `)
+
+  const logIds = [...new Set(logs.flatMap((log) => log.logIds))]
+
+  const parsedLogs =
+    logIds.length > 0
+      ? await db
+          .select({
+            id: logFiles.id,
+            parsedJson: logFiles.parsedJson,
+          })
+          .from(logFiles)
+          .where(inArray(logFiles.id, logIds))
+      : []
+
+  const ownerNamesByLogId = buildOwnerNamesByLogIds(parsedLogs)
+  const data: LogListItem[] = logs.map((log) => ({
+    id: log.id,
+    logIds: log.logIds,
+    fileName: log.fileName,
+    fileUrl: log.fileUrl,
+    createdAt: log.createdAt,
+    ownerConnectionIds: uniqueStrings(log.ownerConnectionIds),
+    ownerNames: uniqueStrings(
+      log.logIds.flatMap((logId) => ownerNamesByLogId.get(logId) ?? [])
+    ),
+    uploadedBy: uniqueStrings(log.uploadedBy),
+    mergedCount: log.mergedCount,
+  }))
+
+  const totalNum = Number(total ?? 0)
+
+  return {
+    data,
+    page,
+    pageSize,
+    total: totalNum,
+    totalPages: Math.max(1, Math.ceil(totalNum / pageSize)),
+    search: search || null,
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     // Get the log file ID from the request
@@ -48,6 +263,7 @@ export async function GET(req: NextRequest) {
     const id = searchParams.get('id')
     const pageParam = searchParams.get('page')
     const pageSizeParam = searchParams.get('pageSize')
+    const dedupeParam = searchParams.get('dedupe')
     const sortBy = (searchParams.get('sortBy') ?? 'createdAt').trim()
     const sortOrder = (searchParams.get('sortOrder') ?? 'desc').trim() as
       | 'asc'
@@ -132,6 +348,20 @@ export async function GET(req: NextRequest) {
       Math.max(1, Number.parseInt(pageSizeParam ?? '50', 10) || 50)
     )
     const offset = (page - 1) * pageSize
+    const dedupe = dedupeParam !== 'false'
+
+    if (dedupe) {
+      return NextResponse.json(
+        await getDedupedLogs({
+          page,
+          pageSize,
+          offset,
+          sortBy,
+          sortOrder,
+          search,
+        })
+      )
+    }
 
     const dir = sortOrder === 'asc' ? asc : desc
     const orderBy =
@@ -207,10 +437,13 @@ export async function GET(req: NextRequest) {
     const totalPages = Math.max(1, Math.ceil(totalNum / pageSize))
 
     return NextResponse.json({
-      data: logs.map(({ parsedJson, ...log }) => ({
+      data: logs.map(({ parsedJson, userName, userEmail, ...log }) => ({
         ...log,
+        logIds: [log.id],
         ownerConnectionIds: extractLogOwnerConnectionIds(parsedJson),
         ownerNames: extractLogOwnerNames(parsedJson),
+        uploadedBy: [userName || userEmail || 'Anonymous'],
+        mergedCount: 1,
       })),
       page,
       pageSize,
