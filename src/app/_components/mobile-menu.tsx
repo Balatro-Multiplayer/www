@@ -6,6 +6,7 @@ import {
   BookOpen,
   CircleDollarSign,
   FileText,
+  Flag,
   LogIn,
   LogOut,
   Menu as MenuIcon,
@@ -70,6 +71,9 @@ export function MobileMenu({
 }) {
   const { data: session, status } = useSession()
   const isAuthenticated = status === 'authenticated'
+  const isHelper =
+    isAuthenticated &&
+    ['helper', 'admin', 'owner'].includes(session?.user?.role ?? '')
   const isAdmin = isAuthenticated && session?.user?.role === 'admin'
   const isOwner = isAuthenticated && session?.user?.role === 'owner'
   const [open, setOpen] = useState(false)
@@ -223,7 +227,7 @@ export function MobileMenu({
           )}
 
           {/* Admin */}
-          {(isAdmin || isOwner) && (
+          {isHelper && (
             <>
               <Separator />
               <div className='px-3 py-3'>
@@ -231,6 +235,13 @@ export function MobileMenu({
                   <Shield className='mr-1 inline size-3' />
                   Admin
                 </p>
+                <MobileMenuLink
+                  href='/admin/moderation'
+                  icon={<Flag className='size-4' />}
+                  onClick={close}
+                >
+                  Moderation
+                </MobileMenuLink>
                 {isOwner && (
                   <MobileMenuLink
                     href='/admin/roles'
@@ -249,41 +260,45 @@ export function MobileMenu({
                     Seasons
                   </MobileMenuLink>
                 )}
-                <MobileMenuLink
-                  href='/admin/blog'
-                  icon={<FileText className='size-4' />}
-                  onClick={close}
-                >
-                  Blog
-                </MobileMenuLink>
-                <MobileMenuLink
-                  href='/admin/logs'
-                  icon={<FileText className='size-4' />}
-                  onClick={close}
-                >
-                  Logs
-                </MobileMenuLink>
-                <MobileMenuLink
-                  href='/admin/games'
-                  icon={<Trophy className='size-4' />}
-                  onClick={close}
-                >
-                  Games
-                </MobileMenuLink>
-                <MobileMenuLink
-                  href='/admin/releases'
-                  icon={<FileText className='size-4' />}
-                  onClick={close}
-                >
-                  Releases
-                </MobileMenuLink>
-                <MobileMenuLink
-                  href='/admin/stream/obs-control-panel'
-                  icon={<Tv className='size-4' />}
-                  onClick={close}
-                >
-                  OBS Control Panel
-                </MobileMenuLink>
+                {(isAdmin || isOwner) && (
+                  <>
+                    <MobileMenuLink
+                      href='/admin/blog'
+                      icon={<FileText className='size-4' />}
+                      onClick={close}
+                    >
+                      Blog
+                    </MobileMenuLink>
+                    <MobileMenuLink
+                      href='/admin/logs'
+                      icon={<FileText className='size-4' />}
+                      onClick={close}
+                    >
+                      Logs
+                    </MobileMenuLink>
+                    <MobileMenuLink
+                      href='/admin/games'
+                      icon={<Trophy className='size-4' />}
+                      onClick={close}
+                    >
+                      Games
+                    </MobileMenuLink>
+                    <MobileMenuLink
+                      href='/admin/releases'
+                      icon={<FileText className='size-4' />}
+                      onClick={close}
+                    >
+                      Releases
+                    </MobileMenuLink>
+                    <MobileMenuLink
+                      href='/admin/stream/obs-control-panel'
+                      icon={<Tv className='size-4' />}
+                      onClick={close}
+                    >
+                      OBS Control Panel
+                    </MobileMenuLink>
+                  </>
+                )}
               </div>
             </>
           )}

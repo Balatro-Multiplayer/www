@@ -6,9 +6,41 @@ import { redis } from '../redis'
 
 const BOTLATRO_URL = 'http://balatro.virtualized.dev:4931/'
 const TRANSCRIPT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7
+const GUILD_MEMBER_SEARCH_CACHE_TTL_SECONDS = 60 * 60 * 24
 
 export const TRANSCRIPT_CACHE_KEY = (gameNumber: number) =>
   `transcript:${gameNumber}`
+export const GUILD_MEMBER_SEARCH_CACHE_KEY = (query: string) =>
+  `discord:guild-member-search:${query.toLowerCase()}`
+
+async function botlatroAuthedRequest<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  const headers = new Headers(init.headers)
+  headers.set('Authorization', `Bearer ${env.API_TOKEN}`)
+
+  if (init.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
+  const url = `${BOTLATRO_URL}${path}`
+  console.log(`[botlatro] ${init.method ?? 'GET'} ${url}`)
+  console.log(`[botlatro] Token: ${env.API_TOKEN?.slice(0, 8)}...`)
+
+  const response = await fetch(url, {
+    ...init,
+    headers,
+  })
+
+  if (!response.ok) {
+    const body = await response.text()
+    console.error(`[botlatro] ${response.status} ${response.statusText}: ${body}`)
+    throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
+  }
+
+  return (await response.json()) as T
+}
 
 export const botlatro_service = {
   get_active_matches: async (): Promise<ActiveMatchQueue[]> => {
@@ -149,6 +181,118 @@ export const botlatro_service = {
       throw error
     }
   },
+
+  listPlayersWithStrikes: async ({
+    page = 1,
+    limit = 20,
+    search,
+    sort = 'recent',
+    include_bans = false,
+  }: ModerationPlayerListInput = {}) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      sort,
+    })
+
+    if (search?.trim()) {
+      params.set('search', search.trim())
+    }
+
+    if (include_bans) {
+      params.set('include_bans', 'true')
+    }
+
+    return botlatroAuthedRequest<ModerationPlayersResponse>(
+      `api/moderation/strikes?${params.toString()}`
+    )
+  },
+
+  getUserStrikes: async (user_id: string) => {
+    return botlatroAuthedRequest<ModerationPlayerResponse>(
+      `api/moderation/strikes/${encodeURIComponent(user_id)}`
+    )
+  },
+
+  giveStrike: async (input: GiveStrikeInput) => {
+    return botlatroAuthedRequest<GiveStrikeResponse>('api/moderation/strikes', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+
+  removeStrike: async ({ id, ...input }: RemoveStrikeInput) => {
+    return botlatroAuthedRequest<ModerationMutationSuccess>(
+      `api/moderation/strikes/${id}`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify(input),
+      }
+    )
+  },
+
+  listActiveBans: async ({
+    page = 1,
+    limit = 20,
+    search,
+  }: ModerationBanListInput = {}) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    })
+
+    if (search?.trim()) {
+      params.set('search', search.trim())
+    }
+
+    return botlatroAuthedRequest<ModerationPlayersResponse>(
+      `api/moderation/bans?${params.toString()}`
+    )
+  },
+
+  banUser: async (input: BanUserInput) => {
+    return botlatroAuthedRequest<BanUserResponse>('api/moderation/bans', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  },
+
+  unbanUser: async ({ user_id, ...input }: UnbanUserInput) => {
+    return botlatroAuthedRequest<ModerationMutationSuccess>(
+      `api/moderation/bans/${encodeURIComponent(user_id)}`,
+      {
+        method: 'DELETE',
+        body: JSON.stringify(input),
+      }
+    )
+  },
+
+  searchGuildMembers: async (query: string) => {
+    const normalizedQuery = query.trim().toLowerCase()
+
+    if (!normalizedQuery) {
+      return [] as ModerationUser[]
+    }
+
+    const cacheKey = GUILD_MEMBER_SEARCH_CACHE_KEY(normalizedQuery)
+    const cached = await redis.get(cacheKey)
+
+    if (cached) {
+      return JSON.parse(cached) as ModerationUser[]
+    }
+
+    const result = await botlatroAuthedRequest<GuildMemberSearchResponse>(
+      `api/moderation/users/search?q=${encodeURIComponent(normalizedQuery)}`
+    )
+
+    await redis.setEx(
+      cacheKey,
+      GUILD_MEMBER_SEARCH_CACHE_TTL_SECONDS,
+      JSON.stringify(result.data)
+    )
+
+    return result.data
+  },
 }
 
 export type LeaderboardEntry = {
@@ -206,4 +350,108 @@ export type ActiveMatchQueue = {
   queue_name: string
   active_matches: number
   players_in_queue: number
+}
+
+export type ModerationUser = {
+  discord_id: string
+  username: string
+  display_name: string
+  avatar_url: string | null
+}
+
+export type ModerationBan = {
+  id: number
+  user_id: string
+  reason: string
+  expires_at: string | null
+  related_strike_ids: number[] | null
+  allowed_queue_ids: number[] | null
+}
+
+export type ModerationStrike = {
+  id: number
+  user_id: string
+  reason: string
+  issued_by_id: string
+  issued_at: string
+  expires_at: string | null
+  amount: number
+  reference: string
+  issued_by: ModerationUser | null
+}
+
+export type ModerationPlayer = ModerationUser & {
+  strikes: ModerationStrike[]
+  active_ban: ModerationBan | null
+  total_strike_points: number
+  latest_strike_at: string | null
+}
+
+export type ModerationPlayersResponse = {
+  data: ModerationPlayer[]
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+export type ModerationPlayerResponse = {
+  player: ModerationPlayer
+}
+
+export type ModerationPlayerListInput = {
+  page?: number
+  limit?: number
+  search?: string
+  sort?: 'recent' | 'alphabetical'
+  include_bans?: boolean
+}
+
+export type ModerationBanListInput = {
+  page?: number
+  limit?: number
+  search?: string
+}
+
+export type GiveStrikeInput = {
+  user_id: string
+  amount: number
+  reason?: string
+  reference?: string
+  issued_by_id: string
+}
+
+export type GiveStrikeResponse = {
+  strike: ModerationStrike
+}
+
+export type RemoveStrikeInput = {
+  id: number
+  removed_by_id: string
+  reason?: string
+}
+
+export type BanUserInput = {
+  user_id: string
+  length: number
+  reason?: string
+  banned_by_id: string
+}
+
+export type BanUserResponse = {
+  ban: ModerationBan
+}
+
+export type UnbanUserInput = {
+  user_id: string
+  unbanned_by_id: string
+  reason?: string
+}
+
+export type ModerationMutationSuccess = {
+  success: true
+}
+
+export type GuildMemberSearchResponse = {
+  data: ModerationUser[]
 }
