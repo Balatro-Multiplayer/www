@@ -50,6 +50,9 @@ export async function POST(req: NextRequest) {
       fileName: logFile.fileName,
       fileUrl: logFile.fileUrl,
       createdAt: logFile.createdAt,
+      userId,
+      userName: session?.user?.name ?? null,
+      userEmail: session?.user?.email ?? null,
     })
   } catch (error) {
     console.error('Error uploading log file:', error)

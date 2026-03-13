@@ -120,6 +120,11 @@ type Game = {
   currentPvpBlind: number | null // Current PVP blind number
 }
 
+type LogFileMeta = {
+  fileName: string | null
+  uploaderName: string | null
+}
+
 // Helper to initialize a new game object
 const initGame = (id: number, startDate: Date): Game => ({
   id,
@@ -230,7 +235,7 @@ export default function LogParser() {
   const formatter = useFormatter()
   const searchParams = useSearchParams()
   const [parsedGames, setParsedGames] = useState<Game[]>([])
-  console.log(parsedGames)
+  const [logFileMeta, setLogFileMeta] = useState<LogFileMeta | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -238,6 +243,7 @@ export default function LogParser() {
     setIsLoading(true)
     setError(null)
     setParsedGames([])
+    setLogFileMeta(null)
 
     try {
       const formData = new FormData()
@@ -255,6 +261,13 @@ export default function LogParser() {
 
       const responseData = await response.json()
       const logFileId = responseData.id
+      setLogFileMeta({
+        fileName: responseData.fileName ?? file.name,
+        uploaderName:
+          responseData.userName ??
+          responseData.userEmail ??
+          (responseData.userId ? 'Unknown user' : 'Anonymous'),
+      })
 
       const content = await file.text()
       await parseLogContent(content, logFileId)
@@ -901,6 +914,7 @@ export default function LogParser() {
       setIsLoading(true)
       setError(null)
       setParsedGames([])
+      setLogFileMeta(null)
 
       fetch(`/api/logs?id=${logId}`)
         .then((response) => {
@@ -910,6 +924,13 @@ export default function LogParser() {
           return response.json()
         })
         .then((data) => {
+          setLogFileMeta({
+            fileName: data.fileName ?? null,
+            uploaderName:
+              data.userName ??
+              data.userEmail ??
+              (data.userId ? 'Unknown user' : 'Anonymous'),
+          })
           // Use the parsed JSON data directly from the database
           if (data.parsedJson && Array.isArray(data.parsedJson)) {
             const parsedGamesWithDates = convertDates(data.parsedJson)
@@ -930,6 +951,7 @@ export default function LogParser() {
       setIsLoading(true)
       setError(null)
       setParsedGames([])
+      setLogFileMeta(null)
 
       fetch(fileUrl)
         .then((response) => {
@@ -999,6 +1021,31 @@ export default function LogParser() {
 
         {isLoading && <p>Loading and parsing log...</p>}
         {error && <p className='text-red-500'>{error}</p>}
+        {logFileMeta && (
+          <Card>
+            <CardHeader>
+              <CardTitle className='text-lg'>Log File</CardTitle>
+            </CardHeader>
+            <CardContent className='grid gap-4 sm:grid-cols-2'>
+              <div className='space-y-1'>
+                <p className='font-medium text-muted-foreground text-sm'>
+                  File Name
+                </p>
+                <p className='break-all font-medium'>
+                  {logFileMeta.fileName || 'Unknown file'}
+                </p>
+              </div>
+              <div className='space-y-1'>
+                <p className='font-medium text-muted-foreground text-sm'>
+                  Uploaded By
+                </p>
+                <p className='font-medium'>
+                  {logFileMeta.uploaderName || 'Anonymous'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {parsedGames.length > 0 && (
           <Tabs

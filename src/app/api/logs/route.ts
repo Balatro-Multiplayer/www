@@ -57,8 +57,11 @@ export async function GET(req: NextRequest) {
           parsedJson: logFiles.parsedJson,
           createdAt: logFiles.createdAt,
           userId: logFiles.userId,
+          userName: users.name,
+          userEmail: users.email,
         })
         .from(logFiles)
+        .leftJoin(users, eq(logFiles.userId, users.id))
         .where(eq(logFiles.id, idNum))
         .limit(1)
 
