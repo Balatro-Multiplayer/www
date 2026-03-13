@@ -230,6 +230,12 @@ function convertDates<T>(obj: T): T {
   return result as T
 }
 
+function getGameTabValue(
+  game: Pick<Game, 'id' | 'logOwnerName' | 'opponentName'>
+) {
+  return `game-${game.id}-${game.logOwnerName || 'LogOwner'}-vs-${game.opponentName || 'Opponent'}`
+}
+
 // Main component
 export default function LogParser() {
   const formatter = useFormatter()
@@ -238,6 +244,7 @@ export default function LogParser() {
   const [logFileMeta, setLogFileMeta] = useState<LogFileMeta | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState('')
 
   const parseLogFile = async (file: File) => {
     setIsLoading(true)
@@ -975,12 +982,28 @@ export default function LogParser() {
     parseLogContent,
   ])
 
-  // Generate a default tab value using determined names or fallbacks
-  const lastParsedGame = parsedGames.at(-1)
-  const defaultTabValue =
-    lastParsedGame !== undefined
-      ? `game-${lastParsedGame.id}-${lastParsedGame.logOwnerName || 'LogOwner'}-vs-${lastParsedGame.opponentName || 'Opponent'}`
-      : ''
+  useEffect(() => {
+    if (parsedGames.length === 0) {
+      setActiveTab('')
+      return
+    }
+
+    const gameParam = Number.parseInt(searchParams.get('game') ?? '', 10)
+    const nextIndex =
+      Number.isInteger(gameParam) &&
+      gameParam >= 0 &&
+      gameParam < parsedGames.length
+        ? gameParam
+        : 0
+
+    const nextGame = parsedGames[nextIndex] ?? parsedGames[0]
+    if (!nextGame) {
+      setActiveTab('')
+      return
+    }
+
+    setActiveTab(getGameTabValue(nextGame))
+  }, [parsedGames, searchParams])
 
   return (
     <TooltipProvider>
@@ -1049,7 +1072,8 @@ export default function LogParser() {
 
         {parsedGames.length > 0 && (
           <Tabs
-            defaultValue={defaultTabValue}
+            value={activeTab}
+            onValueChange={setActiveTab}
             className='flex flex-1 flex-col px-0 py-4 md:py-6'
           >
             <TabsList
@@ -1070,7 +1094,7 @@ export default function LogParser() {
                 return (
                   <TabsTrigger
                     key={`${game.id}-trigger`}
-                    value={`game-${game.id}-${game.logOwnerName || 'LogOwner'}-vs-${game.opponentName || 'Opponent'}`}
+                    value={getGameTabValue(game)}
                   >
                     Game {game.id} vs{' '}
                     {game.winner === 'opponent'
@@ -1098,7 +1122,7 @@ export default function LogParser() {
               return (
                 <TabsContent
                   key={`${game.id}-content`}
-                  value={`game-${game.id}-${game.logOwnerName || 'LogOwner'}-vs-${game.opponentName || 'Opponent'}`}
+                  value={getGameTabValue(game)}
                   className='mt-4'
                 >
                   <Card>

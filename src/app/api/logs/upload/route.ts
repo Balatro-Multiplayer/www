@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
+  extractGameRows,
   extractLogConnectionIds,
   extractLogFilePlayers,
   extractLogOwnerConnectionIds,
@@ -8,6 +9,7 @@ import {
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 import {
+  games,
   logFileConnections,
   logFileOwnerConnections,
   logFilePlayers,
@@ -98,6 +100,7 @@ export async function PUT(req: NextRequest) {
     const players = extractLogFilePlayers(parsedGames)
     const allConnectionIds = extractLogConnectionIds(parsedGames)
     const connectionIds = extractLogOwnerConnectionIds(parsedGames)
+    const gameRows = extractGameRows(parsedGames, logFileId)
 
     await db.transaction(async (tx) => {
       await tx
@@ -118,6 +121,8 @@ export async function PUT(req: NextRequest) {
       await tx
         .delete(logFileOwnerConnections)
         .where(eq(logFileOwnerConnections.logFileId, logFileId))
+
+      await tx.delete(games).where(eq(games.logFileId, logFileId))
 
       if (players.length > 0) {
         await tx.insert(logFilePlayers).values(
@@ -147,6 +152,10 @@ export async function PUT(req: NextRequest) {
             connectionIdLower: connectionId.toLowerCase(),
           }))
         )
+      }
+
+      if (gameRows.length > 0) {
+        await tx.insert(games).values(gameRows)
       }
     })
 

@@ -264,6 +264,13 @@ export function MobileMenu({
                   Logs
                 </MobileMenuLink>
                 <MobileMenuLink
+                  href='/admin/games'
+                  icon={<Trophy className='size-4' />}
+                  onClick={close}
+                >
+                  Games
+                </MobileMenuLink>
+                <MobileMenuLink
                   href='/admin/releases'
                   icon={<FileText className='size-4' />}
                   onClick={close}

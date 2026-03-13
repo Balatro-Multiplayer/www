@@ -180,6 +180,70 @@ export const logFiles = pgTable('log_files', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
+export const games = pgTable(
+  'games',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    logFileId: integer('log_file_id')
+      .references(() => logFiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    gameIndex: integer('game_index').notNull(),
+    host: text('host'),
+    guest: text('guest'),
+    logOwnerName: text('log_owner_name'),
+    opponentName: text('opponent_name'),
+    isHost: boolean('is_host'),
+    hostConnectionId: text('host_connection_id'),
+    guestConnectionId: text('guest_connection_id'),
+    hostEncryptId: text('host_encrypt_id'),
+    guestEncryptId: text('guest_encrypt_id'),
+    deck: text('deck'),
+    seed: text('seed'),
+    stake: integer('stake'),
+    ruleset: text('ruleset'),
+    options: json('options').$type<Record<string, unknown> | null>(),
+    winner: text('winner'),
+    startDate: timestamp('start_date').notNull(),
+    endDate: timestamp('end_date'),
+    durationSeconds: integer('duration_seconds'),
+    moneyGained: integer('money_gained'),
+    moneySpent: integer('money_spent'),
+    opponentMoneySpent: integer('opponent_money_spent'),
+    rerolls: integer('rerolls'),
+    rerollCostTotal: integer('reroll_cost_total'),
+    opponentRerolls: integer('opponent_rerolls'),
+    opponentRerollCostTotal: integer('opponent_reroll_cost_total'),
+    logOwnerFinalJokers: json('log_owner_final_jokers')
+      .$type<string[]>()
+      .notNull(),
+    opponentFinalJokers: json('opponent_final_jokers')
+      .$type<string[]>()
+      .notNull(),
+    logOwnerVouchers: json('log_owner_vouchers').$type<string[]>().notNull(),
+    opponentVouchers: json('opponent_vouchers').$type<string[]>().notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('games_log_file_id_idx').on(t.logFileId),
+    index('games_host_idx').on(t.host),
+    index('games_guest_idx').on(t.guest),
+    index('games_host_connection_id_idx').on(t.hostConnectionId),
+    index('games_guest_connection_id_idx').on(t.guestConnectionId),
+    index('games_host_encrypt_id_idx').on(t.hostEncryptId),
+    index('games_guest_encrypt_id_idx').on(t.guestEncryptId),
+    index('games_deck_idx').on(t.deck),
+    index('games_seed_idx').on(t.seed),
+    index('games_stake_idx').on(t.stake),
+    index('games_ruleset_idx').on(t.ruleset),
+    index('games_winner_idx').on(t.winner),
+    index('games_start_date_idx').on(t.startDate),
+    uniqueIndex('games_log_file_id_game_index_unique').on(
+      t.logFileId,
+      t.gameIndex
+    ),
+  ]
+)
+
 export const logFilePlayers = pgTable(
   'log_file_players',
   {
@@ -221,9 +285,17 @@ export const logFilesRelations = relations(logFiles, ({ many, one }) => ({
     fields: [logFiles.userId],
     references: [users.id],
   }),
+  games: many(games),
   connections: many(logFileConnections),
   players: many(logFilePlayers),
   ownerConnections: many(logFileOwnerConnections),
+}))
+
+export const gamesRelations = relations(games, ({ one }) => ({
+  logFile: one(logFiles, {
+    fields: [games.logFileId],
+    references: [logFiles.id],
+  }),
 }))
 
 export const logFilePlayersRelations = relations(logFilePlayers, ({ one }) => ({

@@ -43,6 +43,13 @@
       "when": 1773418398610,
       "tag": "0005_ancient_zodiak",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773427180788,
+      "tag": "0006_furry_leper_queen",
+      "breakpoints": true
     }
   ]
 }

@@ -114,6 +114,12 @@ export function Header({
                   View and manage logs
                 </p>
               </NavbarMenuLink>
+              <NavbarMenuLink href='/admin/games'>
+                <p className='-mb-1 font-medium text-sm'>Games</p>
+                <p className='text-[13px] text-fd-muted-foreground'>
+                  Browse extracted game rows
+                </p>
+              </NavbarMenuLink>
               <NavbarMenuLink href='/admin/releases'>
                 <p className='-mb-1 font-medium text-sm'>Releases</p>
                 <p className='text-[13px] text-fd-muted-foreground'>

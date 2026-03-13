@@ -10,6 +10,7 @@
     "check:unsafe": "biome check --write --unsafe .",
     "check:write": "biome check --write .",
     "db:generate": "drizzle-kit generate",
+    "db:backfill-games": "bun run scripts/backfill-games.ts",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed:past-seasons": "bun run scripts/seed-past-season-snapshots.ts",
