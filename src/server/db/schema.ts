@@ -180,10 +180,30 @@ export const logFiles = pgTable('log_files', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
-export const logFilesRelations = relations(logFiles, ({ one }) => ({
+export const logFilePlayers = pgTable(
+  'log_file_players',
+  {
+    logFileId: integer('log_file_id')
+      .references(() => logFiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    playerName: text('player_name').notNull(),
+    playerNameLower: text('player_name_lower').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.logFileId, t.playerNameLower] })]
+)
+
+export const logFilesRelations = relations(logFiles, ({ many, one }) => ({
   user: one(users, {
     fields: [logFiles.userId],
     references: [users.id],
+  }),
+  players: many(logFilePlayers),
+}))
+
+export const logFilePlayersRelations = relations(logFilePlayers, ({ one }) => ({
+  logFile: one(logFiles, {
+    fields: [logFilePlayers.logFileId],
+    references: [logFiles.id],
   }),
 }))
 

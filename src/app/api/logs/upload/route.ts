@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
+import { extractLogFilePlayers } from '@/lib/log-file-players'
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
-import { logFiles } from '@/server/db/schema'
+import { logFilePlayers, logFiles } from '@/server/db/schema'
 import { uploadFile } from '@/server/minio'
 
 export async function POST(req: NextRequest) {
@@ -82,13 +83,30 @@ export async function PUT(req: NextRequest) {
       )
     }
 
-    // Update the log file record with the parsed games
-    await db
-      .update(logFiles)
-      .set({
-        parsedJson: parsedGames,
-      })
-      .where(eq(logFiles.id, logFileId))
+    const players = extractLogFilePlayers(parsedGames)
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(logFiles)
+        .set({
+          parsedJson: parsedGames,
+        })
+        .where(eq(logFiles.id, logFileId))
+
+      await tx
+        .delete(logFilePlayers)
+        .where(eq(logFilePlayers.logFileId, logFileId))
+
+      if (players.length > 0) {
+        await tx.insert(logFilePlayers).values(
+          players.map((player) => ({
+            logFileId,
+            playerName: player.playerName,
+            playerNameLower: player.playerNameLower,
+          }))
+        )
+      }
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

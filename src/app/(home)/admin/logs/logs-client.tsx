@@ -1,7 +1,7 @@
 'use client'
 
-import { Trash2 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { ExternalLink, Trash2 } from 'lucide-react'
+import Link from 'next/link'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useEffect, useState } from 'react'
 import { useDebounceCallback } from 'usehooks-ts'
@@ -37,7 +37,6 @@ export function LogsClient() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const router = useRouter()
 
   const [queryParams, setQueryParams] = useQueryStates(
     {
@@ -117,11 +116,6 @@ export function LogsClient() {
     [setQueryParams, sortBy, sortOrder]
   )
 
-  const handleViewInParser = (id: number) => {
-    // Navigate to the log parser page with the log ID as a query parameter
-    router.push(`/log-parser?logId=${id}`)
-  }
-
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this log file?')) return
 
@@ -151,7 +145,7 @@ export function LogsClient() {
       <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
         <Input
           key={search ?? ''}
-          placeholder='Search by file or user'
+          placeholder='Search by file, uploader, or player'
           defaultValue={search ?? ''}
           onChange={(e) => updateSearch(e.target.value)}
           className='w-full sm:max-w-sm'
@@ -219,12 +213,13 @@ export function LogsClient() {
                       {new Date(log.createdAt).toLocaleString()}
                     </TableCell>
                     <TableCell className='flex gap-2'>
-                      <Button
-                        variant='outline'
-                        onClick={() => handleViewInParser(log.id)}
+                      <Link
+                        href={`/log-parser?logId=${log.id}`}
+                        className='inline-flex items-center gap-1 self-center font-medium text-primary text-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
                       >
                         View in Parser
-                      </Button>
+                        <ExternalLink className='size-3.5' />
+                      </Link>
                       <Button
                         variant='destructive'
                         size='icon'

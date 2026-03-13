@@ -2,7 +2,21 @@ import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
-import { logFiles, users } from '@/server/db/schema'
+import { logFilePlayers, logFiles, users } from '@/server/db/schema'
+
+function buildPlayerSearchFilter(search: string) {
+  const searchTerm = `%${search.trim().toLowerCase()}%`
+
+  return sql`
+    exists (
+      select 1
+      from ${logFilePlayers}
+      where
+        ${logFilePlayers.logFileId} = ${logFiles.id}
+        and ${logFilePlayers.playerNameLower} like ${searchTerm}
+    )
+  `
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -96,7 +110,8 @@ export async function GET(req: NextRequest) {
       ? or(
           ilike(logFiles.fileName, `%${search}%`),
           ilike(users.name, `%${search}%`),
-          ilike(users.email, `%${search}%`)
+          ilike(users.email, `%${search}%`),
+          buildPlayerSearchFilter(search)
         )
       : undefined
 
