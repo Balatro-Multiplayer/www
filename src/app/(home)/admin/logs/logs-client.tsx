@@ -9,8 +9,14 @@ import {
   useQueryStates,
 } from 'nuqs'
 import type { ReactNode } from 'react'
-import { useCallback, useEffect, useState } from 'react'
-import { useDebounceCallback, useLocalStorage } from 'usehooks-ts'
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
+import { useLocalStorage } from 'usehooks-ts'
 import { PaginationControls } from '@/app/_components/pagination-controls'
 import { SortableHeader } from '@/app/_components/sortable-header'
 import { TableShell } from '@/app/_components/table-shell'
@@ -120,9 +126,33 @@ export function LogsClient() {
 
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
-  const updateSearch = useDebounceCallback((nextSearch: string) => {
-    setQueryParams({ search: nextSearch || null, page: 1 })
-  }, 400)
+  const searchQuery = search ?? ''
+  const [searchInput, setSearchInput] = useState(searchQuery)
+  const lastSubmittedSearchRef = useRef(searchQuery)
+
+  useEffect(() => {
+    if (searchInput === lastSubmittedSearchRef.current) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      lastSubmittedSearchRef.current = searchInput
+      startTransition(() => {
+        void setQueryParams({ search: searchInput || null, page: 1 })
+      })
+    }, 400)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [searchInput, setQueryParams])
+
+  useEffect(() => {
+    if (searchQuery === lastSubmittedSearchRef.current) {
+      return
+    }
+
+    lastSubmittedSearchRef.current = searchQuery
+    setSearchInput(searchQuery)
+  }, [searchQuery])
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -206,10 +236,9 @@ export function LogsClient() {
     <div className='flex w-full flex-col gap-4'>
       <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
         <Input
-          key={search ?? ''}
           placeholder='Search by file, uploader, player, or connection ID'
-          defaultValue={search ?? ''}
-          onChange={(e) => updateSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className='w-full sm:max-w-sm'
         />
         <div className='flex items-center gap-2 self-start sm:self-auto'>
