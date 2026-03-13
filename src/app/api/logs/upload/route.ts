@@ -1,9 +1,18 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
-import { extractLogFilePlayers } from '@/lib/log-file-players'
+import {
+  extractLogConnectionIds,
+  extractLogFilePlayers,
+  extractLogOwnerConnectionIds,
+} from '@/lib/log-file-players'
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
-import { logFilePlayers, logFiles } from '@/server/db/schema'
+import {
+  logFileConnections,
+  logFileOwnerConnections,
+  logFilePlayers,
+  logFiles,
+} from '@/server/db/schema'
 import { uploadFile } from '@/server/minio'
 
 export async function POST(req: NextRequest) {
@@ -87,6 +96,8 @@ export async function PUT(req: NextRequest) {
     }
 
     const players = extractLogFilePlayers(parsedGames)
+    const allConnectionIds = extractLogConnectionIds(parsedGames)
+    const connectionIds = extractLogOwnerConnectionIds(parsedGames)
 
     await db.transaction(async (tx) => {
       await tx
@@ -100,12 +111,40 @@ export async function PUT(req: NextRequest) {
         .delete(logFilePlayers)
         .where(eq(logFilePlayers.logFileId, logFileId))
 
+      await tx
+        .delete(logFileConnections)
+        .where(eq(logFileConnections.logFileId, logFileId))
+
+      await tx
+        .delete(logFileOwnerConnections)
+        .where(eq(logFileOwnerConnections.logFileId, logFileId))
+
       if (players.length > 0) {
         await tx.insert(logFilePlayers).values(
           players.map((player) => ({
             logFileId,
             playerName: player.playerName,
             playerNameLower: player.playerNameLower,
+          }))
+        )
+      }
+
+      if (connectionIds.length > 0) {
+        await tx.insert(logFileOwnerConnections).values(
+          connectionIds.map((connectionId) => ({
+            logFileId,
+            connectionId,
+            connectionIdLower: connectionId.toLowerCase(),
+          }))
+        )
+      }
+
+      if (allConnectionIds.length > 0) {
+        await tx.insert(logFileConnections).values(
+          allConnectionIds.map((connectionId) => ({
+            logFileId,
+            connectionId,
+            connectionIdLower: connectionId.toLowerCase(),
           }))
         )
       }

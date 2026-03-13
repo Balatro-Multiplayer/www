@@ -192,12 +192,38 @@ export const logFilePlayers = pgTable(
   (t) => [primaryKey({ columns: [t.logFileId, t.playerNameLower] })]
 )
 
+export const logFileOwnerConnections = pgTable(
+  'log_file_owner_connections',
+  {
+    logFileId: integer('log_file_id')
+      .references(() => logFiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    connectionId: text('connection_id').notNull(),
+    connectionIdLower: text('connection_id_lower').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.logFileId, t.connectionIdLower] })]
+)
+
+export const logFileConnections = pgTable(
+  'log_file_connections',
+  {
+    logFileId: integer('log_file_id')
+      .references(() => logFiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    connectionId: text('connection_id').notNull(),
+    connectionIdLower: text('connection_id_lower').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.logFileId, t.connectionIdLower] })]
+)
+
 export const logFilesRelations = relations(logFiles, ({ many, one }) => ({
   user: one(users, {
     fields: [logFiles.userId],
     references: [users.id],
   }),
+  connections: many(logFileConnections),
   players: many(logFilePlayers),
+  ownerConnections: many(logFileOwnerConnections),
 }))
 
 export const logFilePlayersRelations = relations(logFilePlayers, ({ one }) => ({
@@ -206,6 +232,26 @@ export const logFilePlayersRelations = relations(logFilePlayers, ({ one }) => ({
     references: [logFiles.id],
   }),
 }))
+
+export const logFileOwnerConnectionsRelations = relations(
+  logFileOwnerConnections,
+  ({ one }) => ({
+    logFile: one(logFiles, {
+      fields: [logFileOwnerConnections.logFileId],
+      references: [logFiles.id],
+    }),
+  })
+)
+
+export const logFileConnectionsRelations = relations(
+  logFileConnections,
+  ({ one }) => ({
+    logFile: one(logFiles, {
+      fields: [logFileConnections.logFileId],
+      references: [logFiles.id],
+    }),
+  })
+)
 
 export const leaderboardSnapshots = pgTable('leaderboard_snapshots', {
   id: integer('id').primaryKey().generatedByDefaultAsIdentity(),

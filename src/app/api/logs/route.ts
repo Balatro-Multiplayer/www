@@ -1,8 +1,17 @@
 import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
+import {
+  extractLogOwnerConnectionIds,
+  extractLogOwnerNames,
+} from '@/lib/log-file-players'
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
-import { logFilePlayers, logFiles, users } from '@/server/db/schema'
+import {
+  logFileConnections,
+  logFilePlayers,
+  logFiles,
+  users,
+} from '@/server/db/schema'
 
 function buildPlayerSearchFilter(search: string) {
   const searchTerm = `%${search.trim().toLowerCase()}%`
@@ -14,6 +23,20 @@ function buildPlayerSearchFilter(search: string) {
       where
         ${logFilePlayers.logFileId} = ${logFiles.id}
         and ${logFilePlayers.playerNameLower} like ${searchTerm}
+    )
+  `
+}
+
+function buildConnectionIdSearchFilter(search: string) {
+  const searchTerm = `%${search.trim().toLowerCase()}%`
+
+  return sql`
+    exists (
+      select 1
+      from ${logFileConnections}
+      where
+        ${logFileConnections.logFileId} = ${logFiles.id}
+        and ${logFileConnections.connectionIdLower} like ${searchTerm}
     )
   `
 }
@@ -72,17 +95,31 @@ export async function GET(req: NextRequest) {
         )
       }
 
+      const selectedLogFile = logFile.at(0)
+      if (!selectedLogFile) {
+        return NextResponse.json(
+          { error: 'Log file not found' },
+          { status: 404 }
+        )
+      }
+
       // Check if user is authorized to access this log file
       // Allow access if user is admin or the owner of the log file
       if (
         !session ||
         (!['admin', 'owner'].includes(session.user.role) &&
-          logFile?.[0]?.userId !== session.user.id)
+          selectedLogFile.userId !== session.user.id)
       ) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
 
-      return NextResponse.json(logFile[0])
+      return NextResponse.json({
+        ...selectedLogFile,
+        ownerConnectionIds: extractLogOwnerConnectionIds(
+          selectedLogFile.parsedJson
+        ),
+        ownerNames: extractLogOwnerNames(selectedLogFile.parsedJson),
+      })
     }
     // Fetching all log files (admin only)
     if (!session || !['admin', 'owner'].includes(session.user.role)) {
@@ -114,7 +151,8 @@ export async function GET(req: NextRequest) {
           ilike(logFiles.fileName, `%${search}%`),
           ilike(users.name, `%${search}%`),
           ilike(users.email, `%${search}%`),
-          buildPlayerSearchFilter(search)
+          buildPlayerSearchFilter(search),
+          buildConnectionIdSearchFilter(search)
         )
       : undefined
 
@@ -137,6 +175,7 @@ export async function GET(req: NextRequest) {
             fileName: logFiles.fileName,
             fileUrl: logFiles.fileUrl,
             createdAt: logFiles.createdAt,
+            parsedJson: logFiles.parsedJson,
             userId: logFiles.userId,
             userName: users.name,
             userEmail: users.email,
@@ -153,6 +192,7 @@ export async function GET(req: NextRequest) {
             fileName: logFiles.fileName,
             fileUrl: logFiles.fileUrl,
             createdAt: logFiles.createdAt,
+            parsedJson: logFiles.parsedJson,
             userId: logFiles.userId,
             userName: users.name,
             userEmail: users.email,
@@ -167,7 +207,11 @@ export async function GET(req: NextRequest) {
     const totalPages = Math.max(1, Math.ceil(totalNum / pageSize))
 
     return NextResponse.json({
-      data: logs,
+      data: logs.map(({ parsedJson, ...log }) => ({
+        ...log,
+        ownerConnectionIds: extractLogOwnerConnectionIds(parsedJson),
+        ownerNames: extractLogOwnerNames(parsedJson),
+      })),
       page,
       pageSize,
       total: totalNum,

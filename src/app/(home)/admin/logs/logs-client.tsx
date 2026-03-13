@@ -3,13 +3,17 @@
 import { ExternalLink, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
+import type { ReactNode } from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useDebounceCallback } from 'usehooks-ts'
+import { useDebounceCallback, useLocalStorage } from 'usehooks-ts'
 import { PaginationControls } from '@/app/_components/pagination-controls'
 import { SortableHeader } from '@/app/_components/sortable-header'
 import { TableShell } from '@/app/_components/table-shell'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -27,9 +31,55 @@ type LogFile = {
   userId: string | null
   userName: string | null
   userEmail: string | null
+  ownerConnectionIds: string[]
+  ownerNames: string[]
 }
 
 type SortBy = 'createdAt' | 'fileName' | 'userName'
+
+function escapeRegExp(value: string) {
+  return value.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function renderHighlightedText(
+  text: string,
+  search: string | null,
+  shouldHighlight: boolean
+): ReactNode {
+  const searchValue = search?.trim()
+  if (!shouldHighlight || !searchValue) {
+    return text
+  }
+
+  const regex = new RegExp(`(${escapeRegExp(searchValue)})`, 'ig')
+  const parts = text.split(regex)
+
+  if (parts.length === 1) {
+    return text
+  }
+
+  const nodes: ReactNode[] = []
+  let cursor = 0
+
+  for (const part of parts) {
+    const key = `${text}-${cursor}-${part}`
+    const partLength = part.length
+
+    nodes.push(
+      part.toLowerCase() === searchValue.toLowerCase() ? (
+        <mark key={key} className='rounded bg-amber-200 px-0.5 text-foreground'>
+          {part}
+        </mark>
+      ) : (
+        <span key={key}>{part}</span>
+      )
+    )
+
+    cursor += partLength
+  }
+
+  return nodes
+}
 
 export function LogsClient() {
   const pageSize = 50
@@ -37,6 +87,10 @@ export function LogsClient() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [highlightMatches, setHighlightMatches] = useLocalStorage(
+    'admin-logs-highlight-matches',
+    true
+  )
 
   const [queryParams, setQueryParams] = useQueryStates(
     {
@@ -87,6 +141,7 @@ export function LogsClient() {
         pageSize: number
         total: number
         totalPages: number
+        search: string | null
       }
 
       setLogs(data.data)
@@ -145,11 +200,21 @@ export function LogsClient() {
       <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
         <Input
           key={search ?? ''}
-          placeholder='Search by file, uploader, or player'
+          placeholder='Search by file, uploader, player, or connection ID'
           defaultValue={search ?? ''}
           onChange={(e) => updateSearch(e.target.value)}
           className='w-full sm:max-w-sm'
         />
+        <div className='flex items-center gap-2 self-start sm:self-auto'>
+          <Switch
+            id='highlight-log-search-matches'
+            checked={highlightMatches}
+            onCheckedChange={setHighlightMatches}
+          />
+          <Label htmlFor='highlight-log-search-matches'>
+            Highlight Matches
+          </Label>
+        </div>
       </div>
 
       <TableShell className='overflow-hidden'>
@@ -166,6 +231,8 @@ export function LogsClient() {
                     onSort={handleSort}
                   />
                 </TableHead>
+                <TableHead>Log Owner IGN</TableHead>
+                <TableHead>serversideConnectionID</TableHead>
                 <TableHead>
                   <SortableHeader
                     column='userName'
@@ -190,24 +257,78 @@ export function LogsClient() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={4}>Loading logs...</TableCell>
+                  <TableCell colSpan={6}>Loading logs...</TableCell>
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={4} className='text-red-500'>
+                  <TableCell colSpan={6} className='text-red-500'>
                     {error}
                   </TableCell>
                 </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4}>No logs found</TableCell>
+                  <TableCell colSpan={6}>No logs found</TableCell>
                 </TableRow>
               ) : (
                 logs.map((log) => (
                   <TableRow key={log.id}>
-                    <TableCell>{log.fileName}</TableCell>
                     <TableCell>
-                      {log.userName || log.userEmail || 'Anonymous'}
+                      {renderHighlightedText(
+                        log.fileName,
+                        search,
+                        highlightMatches
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {log.ownerNames.length > 0 ? (
+                        <div className='flex flex-wrap gap-1.5'>
+                          {log.ownerNames.map((ownerName) => (
+                            <Badge
+                              key={`${log.id}-${ownerName}`}
+                              variant='outline'
+                            >
+                              {renderHighlightedText(
+                                ownerName,
+                                search,
+                                highlightMatches
+                              )}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className='text-muted-foreground text-sm'>
+                          Unknown
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {log.ownerConnectionIds.length > 0 ? (
+                        <div className='flex flex-wrap gap-1.5'>
+                          {log.ownerConnectionIds.map((connectionId) => (
+                            <Badge
+                              key={`${log.id}-${connectionId}`}
+                              variant='outline'
+                            >
+                              {renderHighlightedText(
+                                connectionId,
+                                search,
+                                highlightMatches
+                              )}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className='text-muted-foreground text-sm'>
+                          Unknown
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {renderHighlightedText(
+                        log.userName || log.userEmail || 'Anonymous',
+                        search,
+                        highlightMatches
+                      )}
                     </TableCell>
                     <TableCell>
                       {new Date(log.createdAt).toLocaleString()}
