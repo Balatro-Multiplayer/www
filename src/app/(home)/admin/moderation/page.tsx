@@ -37,22 +37,7 @@ export default async function ModerationPage() {
   return (
     <Suspense>
       <HydrateClient>
-        <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-6 py-8'>
-          <div className='space-y-2'>
-            <p className='font-medium text-muted-foreground text-sm uppercase tracking-[0.2em]'>
-              Admin
-            </p>
-            <div className='space-y-1'>
-              <h1 className='font-bold text-3xl tracking-tight'>Moderation</h1>
-              <p className='max-w-2xl text-muted-foreground'>
-                Review strikes fast, search recent incidents, and handle bans
-                without leaving the site.
-              </p>
-            </div>
-          </div>
-
-          <ModerationClient role={role as 'helper' | 'admin' | 'owner'} />
-        </div>
+        <ModerationClient role={role as 'helper' | 'admin' | 'owner'} />
       </HydrateClient>
     </Suspense>
   )
