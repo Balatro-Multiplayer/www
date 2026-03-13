@@ -32,6 +32,8 @@ type ParsedGameLike = {
 
 const CONNECTION_ID_REGEX = /^serversideConnectionID=(.+)$/i
 const ENCRYPT_ID_REGEX = /^encryptID=(.+)$/i
+const POSTGRES_INT_MIN = -2147483648
+const POSTGRES_INT_MAX = 2147483647
 
 function collectUniqueNames(
   parsedGames: unknown,
@@ -199,7 +201,13 @@ function normalizeInteger(value: unknown) {
     return null
   }
 
-  return Math.trunc(normalized)
+  const truncated = Math.trunc(normalized)
+
+  if (truncated < POSTGRES_INT_MIN || truncated > POSTGRES_INT_MAX) {
+    return null
+  }
+
+  return truncated
 }
 
 function normalizeBoolean(value: unknown) {
