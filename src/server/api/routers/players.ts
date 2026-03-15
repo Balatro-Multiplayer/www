@@ -3,10 +3,10 @@ import { z } from 'zod'
 import { createTRPCRouter, publicProcedure } from '@/server/api/trpc'
 import { db } from '@/server/db'
 import { users } from '@/server/db/schema'
-import { discord_service } from '@/server/services/discord.service'
+import { botlatro_service } from '@/server/services/botlatro.service'
 import { DISCORD_SNOWFLAKE_REGEX } from '@/shared/discord'
 
-export const discord_router = createTRPCRouter({
+export const playersRouter = createTRPCRouter({
   get_user_by_id: publicProcedure
     .input(
       z.object({
@@ -16,9 +16,8 @@ export const discord_router = createTRPCRouter({
       })
     )
     .query(async ({ input }) => {
-      const discordUser = await discord_service.get_user_by_id(input.user_id)
+      const member = await botlatro_service.getUser(input.user_id)
 
-      // Get social media links from the database
       const userData = await db.query.users.findFirst({
         where: eq(users.discord_id, input.user_id),
         columns: {
@@ -28,7 +27,11 @@ export const discord_router = createTRPCRouter({
       })
 
       return {
-        ...discordUser,
+        username: member.username,
+        display_name: member.display_name,
+        avatar_url:
+          member.avatar_url ??
+          'https://cdn.discordapp.com/embed/avatars/0.png',
         twitch_url: userData?.twitch_url || null,
         youtube_url: userData?.youtube_url || null,
       }

@@ -42,7 +42,20 @@ async function botlatroAuthedRequest<T>(
   return (await response.json()) as T
 }
 
+type GuildMemberUser = {
+  user_id: string
+  username: string
+  display_name: string
+  avatar_url: string | null
+}
+
 export const botlatro_service = {
+  getUser: async (user_id: string): Promise<GuildMemberUser> => {
+    return botlatroAuthedRequest<GuildMemberUser>(
+      `api/users/${encodeURIComponent(user_id)}`
+    )
+  },
+
   get_active_matches: async (): Promise<ActiveMatchQueue[]> => {
     const response = await fetch(`${BOTLATRO_URL}api/matches/active-counts`, {
       headers: {

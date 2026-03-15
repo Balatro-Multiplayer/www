@@ -8,11 +8,6 @@ import {
 } from '@/shared/constants'
 import { api, HydrateClient } from '@/trpc/server'
 import { createMetadata } from '../../../../../lib/metadata'
-import {
-  DEFAULT_PLAYER_PROFILE_SEASON,
-  resolvePlayerPageName,
-  unescapePlayerName,
-} from './player-name'
 import { UserInfo } from './user'
 
 type Props = {
@@ -28,13 +23,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
 
   try {
-    const [user, games] = await Promise.all([
-      api.discord.get_user_by_id({ user_id: id }),
-      api.history.user_games({ user_id: id }),
-    ])
-    const name = unescapePlayerName(
-      resolvePlayerPageName(games, user.username, DEFAULT_PLAYER_PROFILE_SEASON)
-    )
+    const user = await api.players.get_user_by_id({ user_id: id })
+    const name = user.display_name
 
     return createMetadata({
       title: `${name} Profile`,
@@ -85,7 +75,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
         sortBy,
         sortOrder,
       }),
-      api.discord.get_user_by_id.prefetch({
+      api.players.get_user_by_id.prefetch({
         user_id: id,
       }),
       api.leaderboard.get_leaderboard.prefetch({

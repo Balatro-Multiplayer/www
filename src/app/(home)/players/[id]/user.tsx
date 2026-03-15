@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
-import { useFormatter, useTimeZone } from 'next-intl'
 import { useMemo, useState } from 'react'
 import { isNonNullish } from 'remeda'
 import {
@@ -66,7 +65,6 @@ import {
 import { api } from '@/trpc/react'
 import {
   DEFAULT_PLAYER_PROFILE_SEASON,
-  resolvePlayerPageName,
   unescapePlayerName,
 } from './player-name'
 
@@ -135,8 +133,6 @@ const TAB_OPTIONS = [
 function UserInfoComponent() {
   const [activeTab, setActiveTab] = useState('matches')
   const [filter, setFilter] = useState('all')
-  const format = useFormatter()
-  const timeZone = useTimeZone()
   const [season, setSeason] = useState<Season>(DEFAULT_PLAYER_PROFILE_SEASON)
   const rankedChannelId = getChannelIdForSeason('ranked', season)
   const vanillaChannelId = getChannelIdForSeason('vanilla', season)
@@ -148,7 +144,7 @@ function UserInfoComponent() {
 
   const gamesQuery = api.history.user_games.useSuspenseQuery({ user_id: id })
   const games = gamesQuery[0] || []
-  const [discord_user] = api.discord.get_user_by_id.useSuspenseQuery({
+  const [discord_user] = api.players.get_user_by_id.useSuspenseQuery({
     user_id: id,
   })
 
@@ -267,16 +263,10 @@ function UserInfoComponent() {
   }
 
   const aliases = [...new Set(seasonFilteredGames.map((g) => g.playerName))]
-  const currentName = resolvePlayerPageName(
-    games,
-    discord_user.username,
-    season
-  )
+  const currentName = discord_user.display_name
   const meaningful_games = games_played - ties
   const winRate =
     meaningful_games > 0 ? Math.ceil((wins / meaningful_games) * 100) : 0
-
-  const overallFirstGame = games.at(-1)
 
   const lastRankedGame = seasonFilteredGames
     .filter((game) => game.gameType === 'ranked')
@@ -368,10 +358,10 @@ function UserInfoComponent() {
               <Avatar className='size-16 ring-2 ring-border sm:size-20'>
                 <AvatarImage
                   src={discord_user.avatar_url}
-                  alt={unescapePlayerName(currentName)}
+                  alt={currentName}
                 />
                 <AvatarFallback className='bg-muted font-bold text-muted-foreground text-xl'>
-                  {unescapePlayerName(currentName).slice(0, 2).toUpperCase()}
+                  {currentName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
 
@@ -381,7 +371,7 @@ function UserInfoComponent() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <h1 className='truncate font-bold text-2xl leading-tight sm:text-3xl'>
-                          {unescapePlayerName(currentName)}
+                          {currentName}
                         </h1>
                       </TooltipTrigger>
                       {aliases.length > 1 && (
@@ -401,9 +391,7 @@ function UserInfoComponent() {
                 </div>
 
                 <p className='mt-0.5 text-muted-foreground text-sm'>
-                  {overallFirstGame
-                    ? `Playing since ${format.dateTime(overallFirstGame.gameTime, { month: 'long', year: 'numeric', timeZone })}`
-                    : 'No games played yet'}
+                  @{discord_user.username}
                 </p>
 
                 <div className='mt-2 flex items-center gap-1.5'>
