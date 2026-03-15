@@ -292,7 +292,14 @@ function PlayerInfo({
           )}
         >
           <div>Streak:</div>
-          <div className='font-bold text-emerald-400'>{playerData.streak}</div>
+          <div
+            className={cn(
+              'font-bold text-emerald-400',
+              playerData.streak < 0 && 'text-rose-400'
+            )}
+          >
+            {playerData.streak}
+          </div>
         </div>
       )}
 
