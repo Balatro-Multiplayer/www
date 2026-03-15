@@ -425,8 +425,7 @@ export function ModerationPlayerCard({
                       {format(new Date(strike.issued_at), 'MMM d, yyyy')}
                       {strike.reference ? ` · ${strike.reference}` : ''}
                       {' · '}
-                      {strike.issued_by?.display_name ??
-                        strike.issued_by?.username ??
+                      {strike.issued_by?.username ??
                         strike.issued_by_id}
                     </p>
                   </div>
