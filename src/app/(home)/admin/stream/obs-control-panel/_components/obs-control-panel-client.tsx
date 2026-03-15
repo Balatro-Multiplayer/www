@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select'
 import { OBSController } from '@/lib/obs-connection'
 import { RANKED_QUEUE_ID } from '@/shared/constants'
+import { filterGamesBySeason, getActiveSeason } from '@/shared/seasons'
 import { api } from '@/trpc/react'
 import { PlayerSelector } from './player-selector'
 
@@ -55,6 +56,8 @@ export function ObsControlPanelClient() {
   const players = api.leaderboard.get_leaderboard.useQuery({
     channel_id: RANKED_QUEUE_ID,
   })
+  const seasonsQuery = api.seasons.list.useQuery()
+  const activeSeason = getActiveSeason(seasonsQuery.data)
 
   const playersForSelect = players.data?.data?.map((player) => ({
     value: player.id,
@@ -101,6 +104,7 @@ export function ObsControlPanelClient() {
     {
       channel_id: RANKED_QUEUE_ID,
       user_id: value1 ?? '',
+      season: activeSeason ?? undefined,
     },
     { enabled: !!value1 }
   )
@@ -108,24 +112,39 @@ export function ObsControlPanelClient() {
     {
       channel_id: RANKED_QUEUE_ID,
       user_id: value2 ?? '',
+      season: activeSeason ?? undefined,
     },
     { enabled: !!value2 }
   )
+  const player1SeasonGames = useMemo(
+    () =>
+      activeSeason && player1Games
+        ? filterGamesBySeason(player1Games, activeSeason)
+        : [],
+    [activeSeason, player1Games]
+  )
+  const player2SeasonGames = useMemo(
+    () =>
+      activeSeason && player2Games
+        ? filterGamesBySeason(player2Games, activeSeason)
+        : [],
+    [activeSeason, player2Games]
+  )
   const player1Data = useMemo(() => {
     return player1Info && player1Games
-      ? getPlayerData(player1Info.data, player1Games)
+      ? getPlayerData(player1Info.data, player1SeasonGames)
       : null
-  }, [player1Info, player1Games])
+  }, [player1Games, player1Info, player1SeasonGames])
   const player2Data = useMemo(() => {
     return player2Info && player2Games
-      ? getPlayerData(player2Info.data, player2Games)
+      ? getPlayerData(player2Info.data, player2SeasonGames)
       : null
-  }, [player2Info, player2Games])
+  }, [player2Games, player2Info, player2SeasonGames])
 
   let _winsVsOpponent = 0
   let _lossesVsOpponent = 0
-  if (value1 && player1Games && value2) {
-    for (const game of player1Games) {
+  if (value1 && player1SeasonGames.length && value2) {
+    for (const game of player1SeasonGames) {
       if (game.opponentId === value2) {
         if (game.result === 'win') {
           _winsVsOpponent++

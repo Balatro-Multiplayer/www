@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import type { SelectGames } from '@/server/db/types'
 import type { LeaderboardEntry } from '@/server/services/botlatro.service'
 import { RANKED_QUEUE_ID } from '@/shared/constants'
-import { filterGamesBySeason } from '@/shared/seasons'
+import { filterGamesBySeason, getActiveSeason } from '@/shared/seasons'
 import { api } from '@/trpc/react'
 
 export function getPlayerData(
@@ -62,15 +62,18 @@ export function getPlayerData(
 export function StreamCardClient() {
   const { id } = useParams<{ id: string }>()
 
+  const [seasonRows] = api.seasons.list.useSuspenseQuery()
+  const activeSeason = getActiveSeason(seasonRows)
   const [gamesQueryResult, gamesQuery] =
     api.history.user_games.useSuspenseQuery({ user_id: id })
   const allGames = gamesQueryResult || []
-  const games = filterGamesBySeason(allGames, 'season5')
+  const games = activeSeason ? filterGamesBySeason(allGames, activeSeason) : []
 
   const [rankedUserRank, rankedUserQuery] =
     api.leaderboard.get_user_rank.useSuspenseQuery({
       channel_id: RANKED_QUEUE_ID,
       user_id: id,
+      season: activeSeason ?? undefined,
     })
 
   const result = api.playerState.onStateChange.useSubscription(
@@ -168,15 +171,18 @@ function QueueTimer({ startTime }: { startTime: number }) {
 }
 
 function Opponent({ id, wins }: { id: string; wins?: number }) {
+  const { data: seasonRows } = api.seasons.list.useQuery()
+  const activeSeason = getActiveSeason(seasonRows)
   const { data: gamesQueryResult } = api.history.user_games.useQuery({
     user_id: id,
   })
   const allGames = gamesQueryResult || []
-  const games = filterGamesBySeason(allGames, 'season5')
+  const games = activeSeason ? filterGamesBySeason(allGames, activeSeason) : []
 
   const { data: rankedUserRank } = api.leaderboard.get_user_rank.useQuery({
     channel_id: RANKED_QUEUE_ID,
     user_id: id,
+    season: activeSeason ?? undefined,
   })
   if (!rankedUserRank || !games?.length) {
     return null

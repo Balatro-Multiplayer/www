@@ -11,6 +11,11 @@ export const SEASON_6_START_DATE = new Date('2026-02-27T18:00:00.000Z')
 export const SeasonSchema = z.string().regex(/^season\d+$/)
 export type Season = string
 
+type SeasonRowLike = {
+  id: number
+  isActive: boolean
+}
+
 export function isSeason(value: unknown): value is Season {
   return SeasonSchema.safeParse(value).success
 }
@@ -21,6 +26,21 @@ export function filterGamesBySeason<T extends { season?: string | null }>(
   season: Season
 ): T[] {
   return games.filter((game) => game.season === season)
+}
+
+export function getSeasonKey(seasonId: number): Season {
+  return `season${seasonId}`
+}
+
+export function getActiveSeason(
+  seasons: SeasonRowLike[] | undefined
+): Season | null {
+  if (!seasons?.length) return null
+
+  const activeSeason =
+    seasons.find((season) => season.isActive) ?? seasons.at(-1)
+
+  return activeSeason ? getSeasonKey(activeSeason.id) : null
 }
 
 // Helper function to get a display name for a season
