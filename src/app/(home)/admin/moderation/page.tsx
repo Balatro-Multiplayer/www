@@ -21,18 +21,10 @@ export default async function ModerationPage() {
     redirect('/')
   }
 
-  await Promise.all([
-    api.moderation.listPlayersWithStrikes.prefetch({
-      page: 1,
-      limit: 12,
-      sort: 'recent',
-      includeBans: false,
-    }),
-    api.moderation.listActiveBans.prefetch({
-      page: 1,
-      limit: 12,
-    }),
-  ])
+  await api.moderation.listAllMembers.prefetch({
+    page: 1,
+    limit: 12,
+  })
 
   return (
     <Suspense>

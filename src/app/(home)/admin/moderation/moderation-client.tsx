@@ -1,19 +1,18 @@
 'use client'
 
-import { formatISO } from 'date-fns'
-import { Ban, Check, ChevronDown, Plus, Search, Shield, X } from 'lucide-react'
-import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
+import { format, formatISO } from 'date-fns'
+import { Ban, ChevronRight, Plus, Search, Shield, X } from 'lucide-react'
+import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import {
   startTransition,
-  useDeferredValue,
   useOptimistic,
-  useRef,
   useState,
 } from 'react'
 import { toast } from 'sonner'
 import { useDebounceCallback } from 'usehooks-ts'
 import { PaginationControls } from '@/app/_components/pagination-controls'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -25,43 +24,39 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { api, type RouterOutputs } from '@/trpc/react'
 import { ModerationPlayerCard } from './moderation-player-card'
 
 const PAGE_SIZE = 12
+const FILTER_OPTIONS = ['all', 'banned', 'striked'] as const
+type MemberFilter = (typeof FILTER_OPTIONS)[number]
+const FILTER_LABELS: Record<MemberFilter, string> = {
+  all: 'All',
+  banned: 'Banned',
+  striked: 'Striked',
+}
 
-const STRIKE_OPTIONS = [
-  { value: '0', label: '0 · Warning' },
-  { value: '1', label: '1 · No punishment' },
-  { value: '2', label: '2 · 1d QTO' },
-  { value: '3', label: '3 · 3d QTO' },
-  { value: '4', label: '4 · 7d QTO + ban' },
-  { value: '5', label: '5 · Month QTO + ban' },
-  { value: '6', label: '6 · Perma blacklist' },
-] as const
-
-type ModerationTab = 'recent' | 'active-bans' | 'all'
 type Role = 'helper' | 'admin' | 'owner'
-type ModerationList = RouterOutputs['moderation']['listPlayersWithStrikes']
+type ModerationList = RouterOutputs['moderation']['listAllMembers']
 type ModerationPlayer = ModerationList['data'][number]
 type ModerationStrike = ModerationPlayer['strikes'][number]
-type ModerationUser = RouterOutputs['moderation']['searchGuildMembers'][number]
 type ModerationBan = NonNullable<ModerationPlayer['active_ban']>
 
 type OptimisticAction =
   | {
       type: 'give-strike'
-      user: ModerationUser
+      user_id: string
       strike: ModerationStrike
     }
   | {
@@ -71,7 +66,7 @@ type OptimisticAction =
     }
   | {
       type: 'ban-user'
-      user: ModerationUser
+      user_id: string
       ban: ModerationBan
     }
   | {
@@ -79,7 +74,40 @@ type OptimisticAction =
       user_id: string
     }
 
-type ActionPanel = 'strike' | 'ban' | null
+function applyOptimisticAction(
+  players: ModerationPlayer[],
+  action: OptimisticAction
+) {
+  return players.map((player) => {
+    if (player.discord_id !== action.user_id) return player
+
+    if (action.type === 'give-strike') {
+      return {
+        ...player,
+        strikes: [action.strike, ...player.strikes],
+        total_strike_points: player.total_strike_points + action.strike.amount,
+        latest_strike_at: action.strike.issued_at,
+      }
+    }
+
+    if (action.type === 'remove-strike') {
+      const strikes = player.strikes.filter((s) => s.id !== action.strike_id)
+      return {
+        ...player,
+        strikes,
+        total_strike_points: strikes.reduce((sum, s) => sum + s.amount, 0),
+        latest_strike_at: strikes[0]?.issued_at ?? null,
+      }
+    }
+
+    if (action.type === 'ban-user') {
+      return { ...player, active_ban: action.ban }
+    }
+
+    // unban-user
+    return { ...player, active_ban: null }
+  })
+}
 
 function initials(name: string) {
   return name
@@ -90,258 +118,209 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-function searchMatches(
-  user: Pick<ModerationUser, 'discord_id' | 'username' | 'display_name'>,
-  search?: string | null
-) {
-  const query = search?.trim().toLowerCase()
-  if (!query) return true
-  return [user.discord_id, user.username, user.display_name].some((value) =>
-    value.toLowerCase().includes(query)
-  )
+function playerStatus(player: ModerationPlayer) {
+  if (player.active_ban) return 'banned' as const
+  if (player.strikes.length > 0) return 'striked' as const
+  return 'normal' as const
 }
 
-function sortPlayers(players: ModerationPlayer[], tab: ModerationTab) {
-  return [...players].sort((left, right) => {
-    if (tab === 'active-bans') {
-      const leftExpiry = left.active_ban?.expires_at
-        ? Date.parse(left.active_ban.expires_at)
-        : Number.MAX_SAFE_INTEGER
-      const rightExpiry = right.active_ban?.expires_at
-        ? Date.parse(right.active_ban.expires_at)
-        : Number.MAX_SAFE_INTEGER
-      return leftExpiry - rightExpiry
-    }
-    const leftTime = left.latest_strike_at
-      ? Date.parse(left.latest_strike_at)
-      : 0
-    const rightTime = right.latest_strike_at
-      ? Date.parse(right.latest_strike_at)
-      : 0
-    return rightTime - leftTime
-  })
-}
-
-function makePlayer(user: ModerationUser): ModerationPlayer {
-  return {
-    discord_id: user.discord_id,
-    username: user.username,
-    display_name: user.display_name,
-    avatar_url: user.avatar_url,
-    strikes: [],
-    active_ban: null,
-    total_strike_points: 0,
-    latest_strike_at: null,
-  }
-}
-
-function applyOptimisticAction(
-  players: ModerationPlayer[],
-  action: OptimisticAction,
-  tab: ModerationTab,
-  search?: string | null
-) {
-  const nextPlayers = [...players]
-
-  if (action.type === 'give-strike') {
-    const existingIndex = nextPlayers.findIndex(
-      (player) => player.discord_id === action.user.discord_id
-    )
-    if (existingIndex >= 0) {
-      const player = nextPlayers.at(existingIndex)
-      if (!player) return nextPlayers
-      nextPlayers[existingIndex] = {
-        ...player,
-        strikes: [action.strike, ...player.strikes],
-        total_strike_points: player.total_strike_points + action.strike.amount,
-        latest_strike_at: action.strike.issued_at,
-      }
-      return sortPlayers(nextPlayers, tab)
-    }
-    if (tab === 'active-bans' || !searchMatches(action.user, search)) {
-      return nextPlayers
-    }
-    return sortPlayers(
-      [
-        {
-          ...makePlayer(action.user),
-          strikes: [action.strike],
-          total_strike_points: action.strike.amount,
-          latest_strike_at: action.strike.issued_at,
-        },
-        ...nextPlayers,
-      ],
-      tab
-    )
-  }
-
-  if (action.type === 'remove-strike') {
-    return sortPlayers(
-      nextPlayers.flatMap((player) => {
-        if (player.discord_id !== action.user_id) return [player]
-        const strikes = player.strikes.filter((s) => s.id !== action.strike_id)
-        const total = strikes.reduce((sum, s) => sum + s.amount, 0)
-        const nextPlayer = {
-          ...player,
-          strikes,
-          total_strike_points: total,
-          latest_strike_at: strikes[0]?.issued_at ?? null,
-        }
-        if (!nextPlayer.active_ban && strikes.length === 0) return []
-        return [nextPlayer]
-      }),
-      tab
-    )
-  }
-
-  if (action.type === 'ban-user') {
-    const existingIndex = nextPlayers.findIndex(
-      (player) => player.discord_id === action.user.discord_id
-    )
-    if (existingIndex >= 0) {
-      const player = nextPlayers.at(existingIndex)
-      if (!player) return nextPlayers
-      nextPlayers[existingIndex] = { ...player, active_ban: action.ban }
-      return sortPlayers(nextPlayers, tab)
-    }
-    if (
-      (tab === 'all' || tab === 'active-bans') &&
-      searchMatches(action.user, search)
-    ) {
-      return sortPlayers(
-        [{ ...makePlayer(action.user), active_ban: action.ban }, ...nextPlayers],
-        tab
-      )
-    }
-    return nextPlayers
-  }
-
-  return sortPlayers(
-    nextPlayers.flatMap((player) => {
-      if (player.discord_id !== action.user_id) return [player]
-      const nextPlayer = { ...player, active_ban: null }
-      if (tab === 'active-bans') return []
-      if (nextPlayer.strikes.length === 0) return []
-      return [nextPlayer]
-    }),
-    tab
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Inline member search — no overlays
-// ---------------------------------------------------------------------------
-
-function MemberSearchInline({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: ModerationUser | null
-  onChange: (user: ModerationUser | null) => void
-  disabled?: boolean
-}) {
-  const [query, setQuery] = useState('')
-  const deferredQuery = useDeferredValue(query.trim())
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const searchQ = api.moderation.searchGuildMembers.useQuery(
-    { q: deferredQuery },
-    {
-      enabled: deferredQuery.length > 0,
-      refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 5,
-    }
-  )
-
-  const results = searchQ.data ?? []
-
-  if (value) {
+function StatusBadge({ status }: { status: ReturnType<typeof playerStatus> }) {
+  if (status === 'banned') {
     return (
-      <div className='flex items-center gap-2 rounded-lg border px-3 py-2'>
-        <Avatar className='h-6 w-6'>
-          <AvatarImage src={value.avatar_url ?? ''} alt={value.display_name} />
-          <AvatarFallback>{initials(value.display_name)}</AvatarFallback>
-        </Avatar>
-        <span className='flex-1 truncate text-sm font-medium'>
-          {value.display_name}
-        </span>
-        <button
-          type='button'
-          className='rounded p-0.5 text-muted-foreground hover:text-foreground'
-          onClick={() => {
-            onChange(null)
-            setQuery('')
-            requestAnimationFrame(() => inputRef.current?.focus())
-          }}
-          disabled={disabled}
-        >
-          <X className='h-4 w-4' />
-        </button>
-      </div>
+      <Badge variant='destructive' className='gap-0.5 px-1.5 py-0 text-[11px]'>
+        <Ban className='h-3 w-3' />
+        Banned
+      </Badge>
     )
   }
+  if (status === 'striked') {
+    return (
+      <Badge variant='secondary' className='px-1.5 py-0 text-[11px] bg-amber-500/15 text-amber-700 dark:text-amber-400'>
+        Striked
+      </Badge>
+    )
+  }
+  return (
+    <Badge variant='secondary' className='px-1.5 py-0 text-[11px]'>
+      Normal
+    </Badge>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Desktop table row with expandable details
+// ---------------------------------------------------------------------------
+
+function ModerationTableRow({
+  player,
+  canManageStrikes,
+  canManageBans,
+  isMutating,
+  expanded,
+  onToggleExpand,
+  onGiveStrike,
+  onRemoveStrike,
+  onBanUser,
+  onLiftBan,
+}: {
+  player: ModerationPlayer
+  canManageStrikes: boolean
+  canManageBans: boolean
+  isMutating: boolean
+  expanded: boolean
+  onToggleExpand: () => void
+  onGiveStrike: (
+    player: ModerationPlayer,
+    data: { amount: number; reason?: string; reference?: string }
+  ) => void
+  onRemoveStrike: (player: ModerationPlayer, strike: ModerationStrike) => void
+  onBanUser: (
+    player: ModerationPlayer,
+    data: { length: number; reason?: string }
+  ) => void
+  onLiftBan: (player: ModerationPlayer) => void
+}) {
+  const status = playerStatus(player)
 
   return (
-    <div>
-      <Input
-        ref={inputRef}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder='Search guild members...'
-        autoComplete='off'
-        disabled={disabled}
-      />
-      {query.trim().length > 0 ? (
-        <div className='mt-1 max-h-48 overflow-y-auto rounded-lg border'>
-          {searchQ.isLoading ? (
-            <div className='space-y-2 p-2'>
-              <Skeleton className='h-10 w-full' />
-              <Skeleton className='h-10 w-full' />
+    <>
+      <TableRow
+        className={cn('cursor-pointer', expanded && 'bg-muted/30')}
+        onClick={onToggleExpand}
+      >
+        {/* Player */}
+        <TableCell>
+          <div className='flex items-center gap-2.5'>
+            <ChevronRight
+              className={cn(
+                'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+                expanded && 'rotate-90'
+              )}
+            />
+            <Avatar className='h-7 w-7 shrink-0'>
+              <AvatarImage
+                src={player.avatar_url ?? ''}
+                alt={player.display_name}
+              />
+              <AvatarFallback className='text-[10px]'>
+                {initials(player.display_name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className='min-w-0'>
+              <p className='truncate font-medium text-sm'>
+                {player.display_name}
+              </p>
+              <p className='truncate text-muted-foreground text-xs'>
+                @{player.username}
+              </p>
             </div>
-          ) : results.length === 0 ? (
-            <p className='py-4 text-center text-muted-foreground text-sm'>
-              No matches
-            </p>
+          </div>
+        </TableCell>
+
+        {/* Status */}
+        <TableCell>
+          <StatusBadge status={status} />
+        </TableCell>
+
+        {/* Strikes */}
+        <TableCell className='text-center tabular-nums'>
+          {player.strikes.length > 0 ? (
+            <span>
+              {player.strikes.length}{' '}
+              <span className='text-muted-foreground'>
+                ({player.total_strike_points}pts)
+              </span>
+            </span>
           ) : (
-            results.map((user) => (
-              <button
-                key={user.discord_id}
-                type='button'
-                className='flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted'
-                onClick={() => onChange(user)}
-              >
-                <Avatar className='h-7 w-7'>
-                  <AvatarImage
-                    src={user.avatar_url ?? ''}
-                    alt={user.display_name}
-                  />
-                  <AvatarFallback>{initials(user.display_name)}</AvatarFallback>
-                </Avatar>
-                <div className='min-w-0 flex-1'>
-                  <p className='truncate font-medium'>{user.display_name}</p>
-                  <p className='truncate text-muted-foreground text-xs'>
-                    @{user.username} · {user.discord_id}
-                  </p>
-                </div>
-              </button>
-            ))
+            <span className='text-muted-foreground'>0</span>
           )}
-        </div>
+        </TableCell>
+
+        {/* Banned until */}
+        <TableCell className='text-xs'>
+          {player.active_ban ? (
+            player.active_ban.expires_at ? (
+              format(new Date(player.active_ban.expires_at), 'MMM d, yyyy')
+            ) : (
+              'Permanent'
+            )
+          ) : (
+            <span className='text-muted-foreground'>—</span>
+          )}
+        </TableCell>
+
+        {/* Actions */}
+        <TableCell>
+          <div className='flex items-center justify-end gap-1' onClick={(e) => e.stopPropagation()}>
+            {canManageStrikes ? (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-7 gap-1 px-2 text-xs'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onGiveStrike(player, { amount: 1 })
+                }}
+                disabled={isMutating}
+              >
+                <Plus className='h-3 w-3' />
+                Strike
+              </Button>
+            ) : null}
+            {canManageBans && !player.active_ban ? (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-7 gap-1 px-2 text-xs'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onBanUser(player, { length: 7 })
+                }}
+                disabled={isMutating}
+              >
+                <Ban className='h-3 w-3' />
+                Ban
+              </Button>
+            ) : null}
+            {canManageBans && player.active_ban ? (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onLiftBan(player)
+                }}
+                disabled={isMutating}
+              >
+                Lift Ban
+              </Button>
+            ) : null}
+          </div>
+        </TableCell>
+      </TableRow>
+
+      {/* Expanded detail row */}
+      {expanded ? (
+        <tr>
+          <td colSpan={5} className='border-b bg-muted/20 p-0'>
+            <ModerationPlayerCard
+              player={player}
+              canManageStrikes={canManageStrikes}
+              canManageBans={canManageBans}
+              isMutating={isMutating}
+              onGiveStrike={onGiveStrike}
+              onRemoveStrike={onRemoveStrike}
+              onBanUser={onBanUser}
+              onLiftBan={onLiftBan}
+              embedded
+            />
+          </td>
+        </tr>
       ) : null}
-    </div>
+    </>
   )
 }
-
-// ---------------------------------------------------------------------------
-// Tabs config
-// ---------------------------------------------------------------------------
-
-const TABS: { value: ModerationTab; label: string }[] = [
-  { value: 'active-bans', label: 'Bans' },
-  { value: 'recent', label: 'Strikes' },
-  { value: 'all', label: 'All' },
-]
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -356,16 +335,13 @@ export function ModerationClient({ role }: { role: Role }) {
     {
       page: parseAsInteger.withDefault(1),
       search: parseAsString,
-      tab: parseAsString.withDefault('recent'),
+      filter: parseAsStringLiteral(FILTER_OPTIONS).withDefault('all'),
     },
     { history: 'push' }
   )
   const page = queryParams.page
   const search = queryParams.search
-  const tab: ModerationTab =
-    queryParams.tab === 'active-bans' || queryParams.tab === 'all'
-      ? queryParams.tab
-      : 'recent'
+  const filter = queryParams.filter
 
   // Search
   const [searchValue, setSearchValue] = useState(search ?? '')
@@ -378,45 +354,26 @@ export function ModerationClient({ role }: { role: Role }) {
   }
 
   // Data
-  const strikesQ = api.moderation.listPlayersWithStrikes.useQuery(
+  const membersQ = api.moderation.listAllMembers.useQuery(
     {
       page,
       limit: PAGE_SIZE,
       search: search || undefined,
-      sort: 'recent' as 'recent',
-      includeBans: tab === 'all',
+      filter,
     },
-    { enabled: tab !== 'active-bans', refetchOnWindowFocus: false }
-  )
-  const bansQ = api.moderation.listActiveBans.useQuery(
-    { page, limit: PAGE_SIZE, search: search || undefined },
-    { enabled: tab === 'active-bans', refetchOnWindowFocus: false }
+    { refetchOnWindowFocus: false }
   )
 
-  const currentData = tab === 'active-bans' ? bansQ.data : strikesQ.data
-  const currentPlayers = currentData?.data ?? []
+  const currentPlayers = membersQ.data?.data ?? []
   const [optimisticPlayers, addOptimisticPlayer] = useOptimistic(
     currentPlayers,
-    (state, action: OptimisticAction) =>
-      applyOptimisticAction(state, action, tab, search)
+    (state, action: OptimisticAction) => applyOptimisticAction(state, action)
   )
 
-  // Action panel (inline, no modals)
-  const [actionPanel, setActionPanel] = useState<ActionPanel>(null)
+  // Expanded row tracking (desktop table)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  // Strike form
-  const [strikeUser, setStrikeUser] = useState<ModerationUser | null>(null)
-  const [strikeAmount, setStrikeAmount] =
-    useState<(typeof STRIKE_OPTIONS)[number]['value']>('1')
-  const [strikeReason, setStrikeReason] = useState('')
-  const [strikeReference, setStrikeReference] = useState('')
-
-  // Ban form
-  const [banUser, setBanUser] = useState<ModerationUser | null>(null)
-  const [banLength, setBanLength] = useState('7')
-  const [banReason, setBanReason] = useState('')
-
-  // Confirmation dialogs (simple — no nested overlays)
+  // Confirmation dialogs
   const [strikeToRemove, setStrikeToRemove] = useState<{
     player: ModerationPlayer
     strike: ModerationStrike
@@ -439,40 +396,23 @@ export function ModerationClient({ role }: { role: Role }) {
 
   const invalidateModeration = () => {
     startTransition(() => {
-      void utils.moderation.listPlayersWithStrikes.invalidate()
-      void utils.moderation.listActiveBans.invalidate()
+      void utils.moderation.listAllMembers.invalidate()
     })
   }
 
-  const openPanel = (panel: ActionPanel) => {
-    setActionPanel(panel)
-    // Reset forms
-    setStrikeUser(null)
-    setStrikeAmount('1')
-    setStrikeReason('')
-    setStrikeReference('')
-    setBanUser(null)
-    setBanLength('7')
-    setBanReason('')
-  }
-
-  const closePanel = () => setActionPanel(null)
-
-  const handleGiveStrike = async () => {
-    if (!strikeUser) {
-      toast.error('Pick a player first.')
-      return
-    }
-    const amount = Number(strikeAmount)
+  const handleGiveStrike = async (
+    player: ModerationPlayer,
+    data: { amount: number; reason?: string; reference?: string }
+  ) => {
     const optimisticStrike: ModerationStrike = {
       id: -Date.now(),
-      user_id: strikeUser.discord_id,
-      reason: strikeReason.trim() || 'No reason provided',
+      user_id: player.discord_id,
+      reason: data.reason || 'No reason provided',
       issued_by_id: 'self',
       issued_at: formatISO(new Date()),
       expires_at: null,
-      amount,
-      reference: strikeReference.trim() || 'No reference provided',
+      amount: data.amount,
+      reference: data.reference || 'No reference provided',
       issued_by: {
         discord_id: 'self',
         username: 'you',
@@ -482,18 +422,17 @@ export function ModerationClient({ role }: { role: Role }) {
     }
     addOptimisticPlayer({
       type: 'give-strike',
-      user: strikeUser,
+      user_id: player.discord_id,
       strike: optimisticStrike,
     })
-    closePanel()
     try {
       await giveStrike.mutateAsync({
-        user_id: strikeUser.discord_id,
-        amount,
-        reason: strikeReason.trim() || undefined,
-        reference: strikeReference.trim() || undefined,
+        user_id: player.discord_id,
+        amount: data.amount,
+        reason: data.reason,
+        reference: data.reference,
       })
-      toast.success(`Strike added to ${strikeUser.display_name}.`)
+      toast.success(`Strike added to ${player.display_name}.`)
     } catch (error) {
       console.error(error)
       toast.error('Failed to add strike.')
@@ -502,39 +441,32 @@ export function ModerationClient({ role }: { role: Role }) {
     }
   }
 
-  const handleBanUser = async () => {
-    if (!banUser) {
-      toast.error('Pick a player first.')
-      return
-    }
-    const length = Number(banLength)
-    if (!Number.isFinite(length) || length <= 0) {
-      toast.error('Ban length must be a positive number.')
-      return
-    }
+  const handleBanUser = async (
+    player: ModerationPlayer,
+    data: { length: number; reason?: string }
+  ) => {
     const optimisticBan: ModerationBan = {
       id: -Date.now(),
-      user_id: banUser.discord_id,
-      reason: banReason.trim() || 'None provided',
+      user_id: player.discord_id,
+      reason: data.reason || 'None provided',
       expires_at: formatISO(
-        new Date(Date.now() + length * 24 * 60 * 60 * 1000)
+        new Date(Date.now() + data.length * 24 * 60 * 60 * 1000)
       ),
       related_strike_ids: null,
       allowed_queue_ids: null,
     }
     addOptimisticPlayer({
       type: 'ban-user',
-      user: banUser,
+      user_id: player.discord_id,
       ban: optimisticBan,
     })
-    closePanel()
     try {
       await banMutation.mutateAsync({
-        user_id: banUser.discord_id,
-        length,
-        reason: banReason.trim() || undefined,
+        user_id: player.discord_id,
+        length: data.length,
+        reason: data.reason,
       })
-      toast.success(`Banned ${banUser.display_name}.`)
+      toast.success(`Banned ${player.display_name}.`)
     } catch (error) {
       console.error(error)
       toast.error('Failed to ban user.')
@@ -590,197 +522,45 @@ export function ModerationClient({ role }: { role: Role }) {
     }
   }
 
-  const isLoading = tab === 'active-bans' ? bansQ.isLoading : strikesQ.isLoading
-  const visiblePlayers = optimisticPlayers
+  const sharedCardProps = {
+    canManageStrikes: true,
+    canManageBans,
+    isMutating,
+    onGiveStrike: handleGiveStrike,
+    onRemoveStrike: (selectedPlayer: ModerationPlayer, strike: ModerationStrike) => {
+      setStrikeToRemove({ player: selectedPlayer, strike })
+      setRemoveStrikeReason('')
+    },
+    onBanUser: handleBanUser,
+    onLiftBan: (selectedPlayer: ModerationPlayer) => {
+      setBanToLift(selectedPlayer)
+      setLiftBanReason('')
+    },
+  }
 
   return (
-    <div className='mx-auto w-[calc(100%-1rem)] max-w-fd-container pb-24 md:pb-8'>
+    <div className='mx-auto w-[calc(100%-1rem)] max-w-fd-container pb-8'>
       {/* Header */}
       <div className='flex items-center justify-between py-6'>
         <h1 className='font-bold text-2xl tracking-tight'>Moderation</h1>
-        <div className='hidden items-center gap-2 md:flex'>
-          <Button
-            size='sm'
-            variant={actionPanel === 'strike' ? 'secondary' : 'default'}
-            onClick={() =>
-              actionPanel === 'strike' ? closePanel() : openPanel('strike')
-            }
-          >
-            <Plus className='h-4 w-4' />
-            Strike
-          </Button>
-          {canManageBans ? (
-            <Button
-              size='sm'
-              variant={actionPanel === 'ban' ? 'secondary' : 'outline'}
-              onClick={() =>
-                actionPanel === 'ban' ? closePanel() : openPanel('ban')
-              }
-            >
-              <Ban className='h-4 w-4' />
-              Ban
-            </Button>
-          ) : null}
-        </div>
       </div>
 
-      {/* Inline action panel */}
-      {actionPanel === 'strike' ? (
-        <div className='mb-4 rounded-lg border bg-card p-4'>
-          <div className='mb-3 flex items-center justify-between'>
-            <h2 className='font-semibold text-sm'>Give Strike</h2>
-            <button
-              type='button'
-              onClick={closePanel}
-              className='rounded p-1 text-muted-foreground hover:text-foreground'
-            >
-              <X className='h-4 w-4' />
-            </button>
-          </div>
-          <div className='grid gap-3 sm:grid-cols-2'>
-            <div className='space-y-1.5'>
-              <Label className='text-xs'>Player</Label>
-              <MemberSearchInline
-                value={strikeUser}
-                onChange={setStrikeUser}
-                disabled={isMutating}
-              />
-            </div>
-            <div className='space-y-1.5'>
-              <Label className='text-xs'>Amount</Label>
-              <Select
-                value={strikeAmount}
-                onValueChange={(v) =>
-                  setStrikeAmount(v as typeof strikeAmount)
-                }
-              >
-                <SelectTrigger className='w-full'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STRIKE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className='space-y-1.5'>
-              <Label className='text-xs'>Reason</Label>
-              <Textarea
-                value={strikeReason}
-                onChange={(e) => setStrikeReason(e.target.value)}
-                rows={2}
-                placeholder='AFK in queue, abusive DM...'
-              />
-            </div>
-            <div className='space-y-1.5'>
-              <Label className='text-xs'>Reference</Label>
-              <Input
-                value={strikeReference}
-                onChange={(e) => setStrikeReference(e.target.value)}
-                placeholder='Queue ID, thread, ticket...'
-              />
-            </div>
-          </div>
-          <div className='mt-3 flex justify-end gap-2'>
-            <Button
-              size='sm'
-              variant='outline'
-              onClick={closePanel}
-              disabled={isMutating}
-            >
-              Cancel
-            </Button>
-            <Button
-              size='sm'
-              onClick={handleGiveStrike}
-              disabled={isMutating || !strikeUser}
-            >
-              Confirm Strike
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {actionPanel === 'ban' ? (
-        <div className='mb-4 rounded-lg border bg-card p-4'>
-          <div className='mb-3 flex items-center justify-between'>
-            <h2 className='font-semibold text-sm'>Ban User</h2>
-            <button
-              type='button'
-              onClick={closePanel}
-              className='rounded p-1 text-muted-foreground hover:text-foreground'
-            >
-              <X className='h-4 w-4' />
-            </button>
-          </div>
-          <div className='grid gap-3 sm:grid-cols-2'>
-            <div className='space-y-1.5'>
-              <Label className='text-xs'>Player</Label>
-              <MemberSearchInline
-                value={banUser}
-                onChange={setBanUser}
-                disabled={isMutating}
-              />
-            </div>
-            <div className='space-y-1.5'>
-              <Label className='text-xs'>Length (days)</Label>
-              <Input
-                type='number'
-                min={1}
-                value={banLength}
-                onChange={(e) => setBanLength(e.target.value)}
-                placeholder='7'
-              />
-            </div>
-            <div className='sm:col-span-2 space-y-1.5'>
-              <Label className='text-xs'>Reason</Label>
-              <Textarea
-                value={banReason}
-                onChange={(e) => setBanReason(e.target.value)}
-                rows={2}
-                placeholder='Repeated offenses, severe harassment...'
-              />
-            </div>
-          </div>
-          <div className='mt-3 flex justify-end gap-2'>
-            <Button
-              size='sm'
-              variant='outline'
-              onClick={closePanel}
-              disabled={isMutating}
-            >
-              Cancel
-            </Button>
-            <Button
-              size='sm'
-              onClick={handleBanUser}
-              disabled={isMutating || !banUser}
-            >
-              Confirm Ban
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Toolbar: tabs + search */}
+      {/* Toolbar: filter + search */}
       <div className='flex flex-col gap-3 pb-4 sm:flex-row sm:items-center'>
         <div className='flex rounded-lg border bg-muted/50 p-0.5'>
-          {TABS.map((t) => (
+          {FILTER_OPTIONS.map((f) => (
             <button
-              key={t.value}
+              key={f}
               type='button'
-              onClick={() => setQueryParams({ tab: t.value, page: 1 })}
+              onClick={() => setQueryParams({ filter: f, page: 1 })}
               className={cn(
                 'rounded-md px-3 py-1.5 font-medium text-sm transition-colors',
-                tab === t.value
+                filter === f
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              {t.label}
+              {FILTER_LABELS[f]}
             </button>
           ))}
         </div>
@@ -789,107 +569,104 @@ export function ModerationClient({ role }: { role: Role }) {
           <Search className='pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground' />
           <Input
             value={searchValue}
-            placeholder='Search players...'
+            placeholder='Search members...'
             onChange={(e) => updateSearch(e.target.value)}
             className='h-9 pl-8 text-sm'
           />
+          {searchValue ? (
+            <button
+              type='button'
+              className='absolute top-1/2 right-2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground'
+              onClick={() => updateSearch('')}
+            >
+              <X className='h-3.5 w-3.5' />
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* Player list */}
-      <div className='space-y-2'>
-        {isLoading ? (
-          <div className='space-y-2'>
-            {[1, 2, 3, 4].map((key) => (
-              <div
-                key={key}
-                className='flex items-center gap-3 rounded-lg border p-3'
-              >
-                <Skeleton className='h-10 w-10 rounded-full' />
-                <div className='flex-1 space-y-1.5'>
-                  <Skeleton className='h-4 w-32' />
-                  <Skeleton className='h-3 w-48' />
-                </div>
+      {/* Loading */}
+      {membersQ.isLoading ? (
+        <div className='space-y-2'>
+          {[1, 2, 3, 4].map((key) => (
+            <div
+              key={key}
+              className='flex items-center gap-3 rounded-lg border p-3'
+            >
+              <Skeleton className='h-10 w-10 rounded-full' />
+              <div className='flex-1 space-y-1.5'>
+                <Skeleton className='h-4 w-32' />
+                <Skeleton className='h-3 w-48' />
               </div>
+            </div>
+          ))}
+        </div>
+      ) : optimisticPlayers.length === 0 ? (
+        <div className='flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center'>
+          <Shield className='h-6 w-6 text-muted-foreground' />
+          <p className='text-muted-foreground text-sm'>No members found</p>
+        </div>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <div className='hidden rounded-lg border md:block'>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className='min-w-[200px]'>Player</TableHead>
+                  <TableHead className='w-[100px]'>Status</TableHead>
+                  <TableHead className='w-[100px] text-center'>Strikes</TableHead>
+                  <TableHead className='w-[120px]'>Banned until</TableHead>
+                  <TableHead className='w-[150px] text-right'>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {optimisticPlayers.map((player) => (
+                  <ModerationTableRow
+                    key={player.discord_id}
+                    player={player}
+                    expanded={expandedId === player.discord_id}
+                    onToggleExpand={() =>
+                      setExpandedId(
+                        expandedId === player.discord_id
+                          ? null
+                          : player.discord_id
+                      )
+                    }
+                    {...sharedCardProps}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className='space-y-2 md:hidden'>
+            {optimisticPlayers.map((player) => (
+              <ModerationPlayerCard
+                key={player.discord_id}
+                player={player}
+                {...sharedCardProps}
+              />
             ))}
           </div>
-        ) : visiblePlayers.length === 0 ? (
-          <div className='flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center'>
-            <Shield className='h-6 w-6 text-muted-foreground' />
-            <p className='text-muted-foreground text-sm'>No players found</p>
-          </div>
-        ) : (
-          visiblePlayers.map((player) => (
-            <ModerationPlayerCard
-              key={player.discord_id}
-              player={player}
-              canManageStrikes
-              canManageBans={canManageBans}
-              onRemoveStrike={(selectedPlayer, strike) => {
-                setStrikeToRemove({ player: selectedPlayer, strike })
-                setRemoveStrikeReason('')
-              }}
-              onLiftBan={(selectedPlayer) => {
-                setBanToLift(selectedPlayer)
-                setLiftBanReason('')
-              }}
-            />
-          ))
-        )}
-      </div>
+        </>
+      )}
 
-      {currentData && currentData.totalPages > 1 ? (
+      {membersQ.data && membersQ.data.totalPages > 1 ? (
         <div className='mt-4'>
           <PaginationControls
             currentPage={page}
-            totalPages={currentData.totalPages}
-            total={currentData.total}
+            totalPages={membersQ.data.totalPages}
+            total={membersQ.data.total}
             pageSize={PAGE_SIZE}
-            itemLabel='players'
+            itemLabel='members'
             onPageChange={(nextPage) => setQueryParams({ page: nextPage })}
           />
         </div>
       ) : null}
 
-      {/* Mobile bottom bar */}
-      <div className='fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur md:hidden'>
-        <div className='mx-auto flex max-w-fd-container gap-2'>
-          <Button
-            className='flex-1'
-            size='sm'
-            variant={actionPanel === 'strike' ? 'secondary' : 'default'}
-            onClick={() =>
-              actionPanel === 'strike' ? closePanel() : openPanel('strike')
-            }
-          >
-            {actionPanel === 'strike' ? (
-              <ChevronDown className='h-4 w-4' />
-            ) : (
-              <Plus className='h-4 w-4' />
-            )}
-            Strike
-          </Button>
-          {canManageBans ? (
-            <Button
-              variant={actionPanel === 'ban' ? 'secondary' : 'outline'}
-              size='sm'
-              className='flex-1'
-              onClick={() =>
-                actionPanel === 'ban' ? closePanel() : openPanel('ban')
-              }
-            >
-              {actionPanel === 'ban' ? (
-                <ChevronDown className='h-4 w-4' />
-              ) : (
-                <Ban className='h-4 w-4' />
-              )}
-              Ban
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Remove Strike — simple dialog, no nested overlays */}
+      {/* Remove Strike dialog */}
       <Dialog
         open={Boolean(strikeToRemove)}
         onOpenChange={(open) => {
@@ -948,7 +725,7 @@ export function ModerationClient({ role }: { role: Role }) {
         </DialogContent>
       </Dialog>
 
-      {/* Lift Ban — simple dialog, no nested overlays */}
+      {/* Lift Ban dialog */}
       <Dialog
         open={Boolean(banToLift)}
         onOpenChange={(open) => {

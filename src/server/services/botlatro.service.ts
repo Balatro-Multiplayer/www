@@ -280,6 +280,27 @@ export const botlatro_service = {
     )
   },
 
+  listAllMembers: async ({
+    page = 1,
+    limit = 20,
+    search,
+    filter = 'all',
+  }: ModerationMembersListInput = {}) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      filter,
+    })
+
+    if (search?.trim()) {
+      params.set('search', search.trim())
+    }
+
+    return botlatroAuthedRequest<ModerationPlayersResponse>(
+      `api/moderation/members?${params.toString()}`
+    )
+  },
+
   searchGuildMembers: async (query: string) => {
     const normalizedQuery = query.trim().toLowerCase()
 
@@ -424,6 +445,13 @@ export type ModerationBanListInput = {
   page?: number
   limit?: number
   search?: string
+}
+
+export type ModerationMembersListInput = {
+  page?: number
+  limit?: number
+  search?: string
+  filter?: 'all' | 'banned' | 'striked'
 }
 
 export type GiveStrikeInput = {

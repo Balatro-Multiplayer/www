@@ -1,16 +1,26 @@
 'use client'
 
 import { format, formatDistanceToNowStrict } from 'date-fns'
-import { Ban, ChevronRight, ShieldAlert, Trash2 } from 'lucide-react'
+import { Ban, ChevronRight, Plus, ShieldAlert, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import type { RouterOutputs } from '@/trpc/react'
 
 type ModerationPlayer =
-  RouterOutputs['moderation']['listPlayersWithStrikes']['data'][number]
+  RouterOutputs['moderation']['listAllMembers']['data'][number]
 type ModerationStrike = ModerationPlayer['strikes'][number]
 
 const STRIKE_LABELS: Record<number, string> = {
@@ -22,6 +32,16 @@ const STRIKE_LABELS: Record<number, string> = {
   5: 'Month QTO + ban',
   6: 'Perma blacklist',
 }
+
+const STRIKE_OPTIONS = [
+  { value: '0', label: '0 · Warning' },
+  { value: '1', label: '1 · No punishment' },
+  { value: '2', label: '2 · 1d QTO' },
+  { value: '3', label: '3 · 3d QTO' },
+  { value: '4', label: '4 · 7d QTO + ban' },
+  { value: '5', label: '5 · Month QTO + ban' },
+  { value: '6', label: '6 · Perma blacklist' },
+] as const
 
 function relativeTime(value: string | null) {
   if (!value) return 'never'
@@ -41,69 +61,311 @@ export function ModerationPlayerCard({
   player,
   canManageStrikes,
   canManageBans,
+  isMutating,
+  onGiveStrike,
   onRemoveStrike,
+  onBanUser,
   onLiftBan,
+  embedded = false,
 }: {
   player: ModerationPlayer
   canManageStrikes: boolean
   canManageBans: boolean
+  isMutating: boolean
+  onGiveStrike: (
+    player: ModerationPlayer,
+    data: { amount: number; reason?: string; reference?: string }
+  ) => void
   onRemoveStrike: (player: ModerationPlayer, strike: ModerationStrike) => void
+  onBanUser: (
+    player: ModerationPlayer,
+    data: { length: number; reason?: string }
+  ) => void
   onLiftBan: (player: ModerationPlayer) => void
+  embedded?: boolean
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(embedded)
+  const [actionPanel, setActionPanel] = useState<'strike' | 'ban' | null>(null)
   const strikeCount = player.strikes.length
 
+  // Strike form
+  const [strikeAmount, setStrikeAmount] =
+    useState<(typeof STRIKE_OPTIONS)[number]['value']>('1')
+  const [strikeReason, setStrikeReason] = useState('')
+  const [strikeReference, setStrikeReference] = useState('')
+
+  // Ban form
+  const [banLength, setBanLength] = useState('7')
+  const [banReason, setBanReason] = useState('')
+
+  const resetForms = () => {
+    setStrikeAmount('1')
+    setStrikeReason('')
+    setStrikeReference('')
+    setBanLength('7')
+    setBanReason('')
+  }
+
+  const handleSubmitStrike = () => {
+    onGiveStrike(player, {
+      amount: Number(strikeAmount),
+      reason: strikeReason.trim() || undefined,
+      reference: strikeReference.trim() || undefined,
+    })
+    setActionPanel(null)
+    resetForms()
+  }
+
+  const handleSubmitBan = () => {
+    const length = Number(banLength)
+    if (!Number.isFinite(length) || length <= 0) return
+    onBanUser(player, {
+      length,
+      reason: banReason.trim() || undefined,
+    })
+    setActionPanel(null)
+    resetForms()
+  }
+
   return (
-    <div className='rounded-lg border bg-card transition-colors'>
-      {/* Summary row */}
-      <button
-        type='button'
-        onClick={() => setExpanded(!expanded)}
-        className='flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-muted/40'
-      >
-        <Avatar className='h-9 w-9 shrink-0'>
-          <AvatarImage
-            src={player.avatar_url ?? ''}
-            alt={player.display_name}
-          />
-          <AvatarFallback className='text-xs'>
-            {initials(player.display_name)}
-          </AvatarFallback>
-        </Avatar>
+    <div className={cn(!embedded && 'rounded-lg border bg-card transition-colors')}>
+      {/* Summary row — hidden when embedded in table */}
+      {!embedded ? <div className='flex w-full items-center gap-3 p-3'>
+        <button
+          type='button'
+          onClick={() => setExpanded(!expanded)}
+          className='flex min-w-0 flex-1 items-center gap-3 text-left transition-colors hover:opacity-80'
+        >
+          <Avatar className='h-9 w-9 shrink-0'>
+            <AvatarImage
+              src={player.avatar_url ?? ''}
+              alt={player.display_name}
+            />
+            <AvatarFallback className='text-xs'>
+              {initials(player.display_name)}
+            </AvatarFallback>
+          </Avatar>
 
-        <div className='min-w-0 flex-1'>
-          <div className='flex items-center gap-2'>
-            <span className='truncate font-medium text-sm'>
-              {player.display_name}
-            </span>
-            {player.active_ban ? (
-              <Badge
-                variant='destructive'
-                className='shrink-0 gap-0.5 px-1.5 py-0 text-[11px]'
-              >
-                <Ban className='h-3 w-3' />
-                banned
-              </Badge>
-            ) : null}
+          <div className='min-w-0 flex-1'>
+            <div className='flex items-center gap-2'>
+              <span className='truncate font-medium text-sm'>
+                {player.display_name}
+              </span>
+              {player.active_ban ? (
+                <Badge
+                  variant='destructive'
+                  className='shrink-0 gap-0.5 px-1.5 py-0 text-[11px]'
+                >
+                  <Ban className='h-3 w-3' />
+                  banned
+                </Badge>
+              ) : null}
+              {strikeCount > 0 ? (
+                <Badge
+                  variant='secondary'
+                  className='shrink-0 px-1.5 py-0 text-[11px]'
+                >
+                  {player.total_strike_points}pts · {strikeCount}{' '}
+                  {strikeCount === 1 ? 'strike' : 'strikes'}
+                </Badge>
+              ) : null}
+            </div>
+            <p className='truncate text-muted-foreground text-xs'>
+              @{player.username}
+              {strikeCount > 0
+                ? ` · last ${relativeTime(player.latest_strike_at)}`
+                : ''}
+            </p>
           </div>
-          <p className='truncate text-muted-foreground text-xs'>
-            @{player.username} · {player.total_strike_points}pts ·{' '}
-            {strikeCount} {strikeCount === 1 ? 'strike' : 'strikes'} · last{' '}
-            {relativeTime(player.latest_strike_at)}
-          </p>
-        </div>
 
-        <ChevronRight
-          className={cn(
-            'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-            expanded && 'rotate-90'
-          )}
-        />
-      </button>
+          <ChevronRight
+            className={cn(
+              'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+              expanded && 'rotate-90'
+            )}
+          />
+        </button>
+
+        {/* Action buttons — outside the expand button */}
+        <div className='flex shrink-0 items-center gap-1'>
+          {canManageStrikes ? (
+            <Button
+              variant='ghost'
+              size='sm'
+              className='h-7 gap-1 px-2 text-xs'
+              onClick={() => {
+                setExpanded(true)
+                setActionPanel(actionPanel === 'strike' ? null : 'strike')
+              }}
+            >
+              <Plus className='h-3 w-3' />
+              Strike
+            </Button>
+          ) : null}
+          {canManageBans && !player.active_ban ? (
+            <Button
+              variant='ghost'
+              size='sm'
+              className='h-7 gap-1 px-2 text-xs'
+              onClick={() => {
+                setExpanded(true)
+                setActionPanel(actionPanel === 'ban' ? null : 'ban')
+              }}
+            >
+              <Ban className='h-3 w-3' />
+              Ban
+            </Button>
+          ) : null}
+        </div>
+      </div> : null}
 
       {/* Expanded details */}
       {expanded ? (
-        <div className='border-t px-3 py-3 space-y-3'>
+        <div className={cn(!embedded && 'border-t', 'px-3 py-3 space-y-3')}>
+          {/* Inline strike form */}
+          {actionPanel === 'strike' ? (
+            <div className='rounded-md border bg-muted/30 p-3 space-y-3'>
+              <div className='flex items-center justify-between'>
+                <h3 className='font-semibold text-xs'>
+                  Give Strike to {player.display_name}
+                </h3>
+                <button
+                  type='button'
+                  onClick={() => {
+                    setActionPanel(null)
+                    resetForms()
+                  }}
+                  className='rounded p-0.5 text-muted-foreground hover:text-foreground'
+                >
+                  <span className='sr-only'>Close</span>
+                  &times;
+                </button>
+              </div>
+              <div className='grid gap-2 sm:grid-cols-2'>
+                <div className='space-y-1'>
+                  <Label className='text-xs'>Amount</Label>
+                  <Select
+                    value={strikeAmount}
+                    onValueChange={(v) =>
+                      setStrikeAmount(v as typeof strikeAmount)
+                    }
+                  >
+                    <SelectTrigger className='w-full'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STRIKE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='space-y-1'>
+                  <Label className='text-xs'>Reference</Label>
+                  <Input
+                    value={strikeReference}
+                    onChange={(e) => setStrikeReference(e.target.value)}
+                    placeholder='Queue ID, thread, ticket...'
+                  />
+                </div>
+                <div className='sm:col-span-2 space-y-1'>
+                  <Label className='text-xs'>Reason</Label>
+                  <Textarea
+                    value={strikeReason}
+                    onChange={(e) => setStrikeReason(e.target.value)}
+                    rows={2}
+                    placeholder='AFK in queue, abusive DM...'
+                  />
+                </div>
+              </div>
+              <div className='flex justify-end gap-2'>
+                <Button
+                  size='sm'
+                  variant='outline'
+                  onClick={() => {
+                    setActionPanel(null)
+                    resetForms()
+                  }}
+                  disabled={isMutating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size='sm'
+                  onClick={handleSubmitStrike}
+                  disabled={isMutating}
+                >
+                  Confirm Strike
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Inline ban form */}
+          {actionPanel === 'ban' ? (
+            <div className='rounded-md border bg-muted/30 p-3 space-y-3'>
+              <div className='flex items-center justify-between'>
+                <h3 className='font-semibold text-xs'>
+                  Ban {player.display_name}
+                </h3>
+                <button
+                  type='button'
+                  onClick={() => {
+                    setActionPanel(null)
+                    resetForms()
+                  }}
+                  className='rounded p-0.5 text-muted-foreground hover:text-foreground'
+                >
+                  <span className='sr-only'>Close</span>
+                  &times;
+                </button>
+              </div>
+              <div className='grid gap-2 sm:grid-cols-2'>
+                <div className='space-y-1'>
+                  <Label className='text-xs'>Length (days)</Label>
+                  <Input
+                    type='number'
+                    min={1}
+                    value={banLength}
+                    onChange={(e) => setBanLength(e.target.value)}
+                    placeholder='7'
+                  />
+                </div>
+                <div className='space-y-1'>
+                  <Label className='text-xs'>Reason</Label>
+                  <Textarea
+                    value={banReason}
+                    onChange={(e) => setBanReason(e.target.value)}
+                    rows={2}
+                    placeholder='Repeated offenses, severe harassment...'
+                  />
+                </div>
+              </div>
+              <div className='flex justify-end gap-2'>
+                <Button
+                  size='sm'
+                  variant='outline'
+                  onClick={() => {
+                    setActionPanel(null)
+                    resetForms()
+                  }}
+                  disabled={isMutating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size='sm'
+                  onClick={handleSubmitBan}
+                  disabled={isMutating}
+                >
+                  Confirm Ban
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           {/* Ban info */}
           {player.active_ban ? (
             <div className='flex items-start justify-between gap-2 rounded-md border border-destructive/20 bg-destructive/5 p-2.5'>
