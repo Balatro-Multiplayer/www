@@ -35,7 +35,9 @@ async function botlatroAuthedRequest<T>(
 
   if (!response.ok) {
     const body = await response.text()
-    console.error(`[botlatro] ${response.status} ${response.statusText}: ${body}`)
+    console.error(
+      `[botlatro] ${response.status} ${response.statusText}: ${body}`
+    )
     throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
   }
 
@@ -327,6 +329,18 @@ export const botlatro_service = {
 
     return result.data
   },
+
+  sendFirstShopOverspendWarning: async (
+    input: FirstShopOverspendWarningInput
+  ) => {
+    return botlatroAuthedRequest<MonitoringSuccess>(
+      'api/monitoring/cheat-warning',
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }
+    )
+  },
 }
 
 export type LeaderboardEntry = {
@@ -495,4 +509,24 @@ export type ModerationMutationSuccess = {
 
 export type GuildMemberSearchResponse = {
   data: ModerationUser[]
+}
+
+export type FirstShopOverspendWarningInput = {
+  log_file_id: number
+  log_url: string
+  flags: Array<{
+    game_index: number
+    deck: string
+    threshold: number
+    offenders: Array<{
+      player_name: string
+      amount: number
+      role: 'logOwner' | 'opponent'
+    }>
+    start_date: string | null
+  }>
+}
+
+export type MonitoringSuccess = {
+  success: true
 }

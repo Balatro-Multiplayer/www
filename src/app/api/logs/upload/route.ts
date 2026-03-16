@@ -1,5 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
+import { env } from '@/env'
+import { detectFirstShopOverspends } from '@/lib/log-cheat-flags'
 import {
   extractGameRows,
   extractLogConnectionIds,
@@ -18,6 +20,14 @@ import {
   logFiles,
 } from '@/server/db/schema'
 import { uploadFile } from '@/server/minio'
+import { botlatro_service } from '@/server/services/botlatro.service'
+
+function getSiteBaseUrl() {
+  if (env.NODE_ENV === 'production') return 'https://balatromp.com'
+  if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`
+
+  return `http://localhost:${env.PORT ?? 3000}`
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -104,6 +114,15 @@ export async function PUT(req: NextRequest) {
     const connectionIds = extractLogOwnerConnectionIds(parsedGames)
     const lobbyCodes = extractLogLobbyCodes(parsedGames)
     const gameRows = extractGameRows(parsedGames, logFileId)
+    const cheatFlags = detectFirstShopOverspends(parsedGames)
+    const existingLogFile = await db.query.logFiles.findFirst({
+      columns: {
+        parsedJson: true,
+      },
+      where: eq(logFiles.id, logFileId),
+    })
+    const shouldSendCheatWarning =
+      cheatFlags.length > 0 && !Array.isArray(existingLogFile?.parsedJson)
 
     await db.transaction(async (tx) => {
       await tx
@@ -175,6 +194,33 @@ export async function PUT(req: NextRequest) {
         await tx.insert(games).values(gameRows)
       }
     })
+
+    if (shouldSendCheatWarning) {
+      const logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
+
+      botlatro_service
+        .sendFirstShopOverspendWarning({
+          log_file_id: logFileId,
+          log_url: logUrl,
+          flags: cheatFlags.map((flag) => ({
+            game_index: flag.gameIndex,
+            deck: flag.deck,
+            threshold: flag.threshold,
+            offenders: flag.offenders.map((offender) => ({
+              player_name: offender.playerName,
+              amount: offender.amount,
+              role: offender.role,
+            })),
+            start_date: flag.startDate,
+          })),
+        })
+        .catch((error) => {
+          console.error(
+            `Failed to send cheat warning for log ${logFileId}:`,
+            error
+          )
+        })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
