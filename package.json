@@ -13,6 +13,7 @@
     "db:backfill-games": "bun run scripts/backfill-games.ts",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
+    "db:reparse-logs": "bun run scripts/reparse-logs.ts",
     "db:seed:past-seasons": "bun run scripts/seed-past-season-snapshots.ts",
     "db:seed:seasons": "bun run scripts/seed-seasons.ts",
     "db:studio": "drizzle-kit studio",

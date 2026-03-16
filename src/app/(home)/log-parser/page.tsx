@@ -1,7 +1,9 @@
 'use client'
 
+import { Download } from 'lucide-react'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { useFormatter } from 'next-intl'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { convertLuaToJson } from '@/app/(home)/log-parser/lua-parser'
@@ -433,12 +435,18 @@ function FinalJokerList({
 export default function LogParser() {
   const formatter = useFormatter()
   const searchParams = useSearchParams()
+  const { data: session } = useSession()
   const [parsedGames, setParsedGames] = useState<Game[]>([])
   const [logFileMeta, setLogFileMeta] = useState<LogFileMeta | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isReparsingOriginalLog, setIsReparsingOriginalLog] = useState(false)
+  const [isDownloadingOriginalLog, setIsDownloadingOriginalLog] =
+    useState(false)
   const [activeTab, setActiveTab] = useState('')
+  const canDownloadOriginalLog = ['admin', 'owner'].includes(
+    session?.user?.role ?? ''
+  )
 
   const parseLogFile = async (file: File) => {
     setIsLoading(true)
@@ -1179,6 +1187,41 @@ export default function LogParser() {
     }
   }, [logFileMeta?.fileUrl, parseLogContent, searchParams])
 
+  const downloadOriginalLogFile = useCallback(async () => {
+    const fileUrl = logFileMeta?.fileUrl
+
+    if (!canDownloadOriginalLog || !fileUrl) {
+      return
+    }
+
+    setIsDownloadingOriginalLog(true)
+    setError(null)
+
+    try {
+      const response = await fetch(fileUrl)
+      if (!response.ok) {
+        throw new Error('Failed to fetch original uploaded log file')
+      }
+
+      const blob = await response.blob()
+      const objectUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = logFileMeta?.fileName || 'balatro-mp.log'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(objectUrl)
+    } catch (err) {
+      console.error('Error downloading original log:', err)
+      setError(
+        `Failed to download original log file. ${err instanceof Error ? err.message : 'Unknown error'}`
+      )
+    } finally {
+      setIsDownloadingOriginalLog(false)
+    }
+  }, [canDownloadOriginalLog, logFileMeta?.fileName, logFileMeta?.fileUrl])
+
   // Check for logId query parameter and load the parsed data if it exists
   useEffect(() => {
     const logId = searchParams.get('logId')
@@ -1338,6 +1381,22 @@ export default function LogParser() {
                   {logFileMeta.uploaderName || 'Anonymous'}
                 </p>
               </div>
+              {canDownloadOriginalLog && logFileMeta.fileUrl ? (
+                <div className='sm:col-span-2'>
+                  <Button
+                    type='button'
+                    variant='outline'
+                    onClick={downloadOriginalLogFile}
+                    disabled={isDownloadingOriginalLog}
+                    className='w-full sm:w-auto'
+                  >
+                    <Download className='mr-2 size-4' />
+                    {isDownloadingOriginalLog
+                      ? 'Downloading original upload...'
+                      : 'Download original upload'}
+                  </Button>
+                </div>
+              ) : null}
               {logFileMeta.canReparseForDeckData &&
               searchParams.get('logId') ? (
                 <div className='space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 sm:col-span-2'>
