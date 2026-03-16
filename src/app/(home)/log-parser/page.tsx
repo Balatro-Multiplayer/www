@@ -39,7 +39,9 @@ import {
 } from '@/components/ui/tooltip'
 import { jokers } from '@/shared/jokers'
 import { vouchers } from '@/shared/vouchers'
+import { DeckViewsCard } from './_components/deck-view'
 import { type PvpBlind, PvpBlindsCard } from './_components/pvp-blinds'
+import { type DeckCardSnapshot, parseDeckCardsFromString } from './deck-utils'
 
 // Define the structure for individual log events within a game
 type LogEvent = {
@@ -108,6 +110,8 @@ type Game = {
   moneySpentPerShopOpponent: (number | null)[] // Opponent's spending/skips per shop
   logOwnerFinalJokers: string[] // Log owner's final jokers
   opponentFinalJokers: string[] // Opponent's final jokers
+  logOwnerDeck: DeckCardSnapshot[]
+  opponentDeck: DeckCardSnapshot[]
   events: LogEvent[]
   rerolls: number // Log owner's reroll count
   rerollCostTotal: number // Log owner's total reroll cost
@@ -150,6 +154,8 @@ const initGame = (id: number, startDate: Date): Game => ({
   moneySpentPerShopOpponent: [],
   logOwnerFinalJokers: [],
   opponentFinalJokers: [],
+  logOwnerDeck: [],
+  opponentDeck: [],
   events: [],
   rerolls: 0,
   rerollCostTotal: 0,
@@ -330,6 +336,14 @@ export default function LogParser() {
           }
           continue
         }
+        if (line.includes('Client got receiveNemesisDeck message')) {
+          if (currentGame) {
+            currentGame.opponentDeck = parseDeckCardsFromString(
+              extractReceivedNemesisDeckString(line)
+            )
+          }
+          continue
+        }
         if (line.includes('Client got nemesisEndGameStats message')) {
           if (currentGame) {
             // Extract Opponent Reroll Count
@@ -369,6 +383,14 @@ export default function LogParser() {
             if (str) {
               currentGame.logOwnerFinalJokers = await parseJokersFromString(str)
             }
+          }
+          continue
+        }
+        if (sentAction === 'receiveNemesisDeck') {
+          if (currentGame) {
+            currentGame.logOwnerDeck = parseDeckCardsFromString(
+              getPayloadString(sentPayload, 'cards')
+            )
           }
           continue
         }
@@ -1254,6 +1276,13 @@ export default function LogParser() {
                             </p>
                           </CardContent>
                         </Card>
+                        <DeckViewsCard
+                          logOwnerDeck={game.logOwnerDeck}
+                          opponentDeck={game.opponentDeck}
+                          ownerLabel={ownerLabel}
+                          opponentLabel={opponentLabel}
+                          winner={game.winner}
+                        />
                         <Card>
                           <CardHeader>
                             <CardTitle className='text-lg'>Events</CardTitle>
@@ -1772,6 +1801,14 @@ function getPayloadNumber(
     return Number.isNaN(parsed) ? null : parsed
   }
   return null
+}
+
+function extractReceivedNemesisDeckString(line: string) {
+  const match = line.match(
+    /cards:\s*(.*?)(?=\)\s+\(action:\s*receiveNemesisDeck\)|\)$)/
+  )
+  const deck = match?.[1]?.trim().replace(/,+$/, '')
+  return deck || null
 }
 
 function applyLobbyOption(
