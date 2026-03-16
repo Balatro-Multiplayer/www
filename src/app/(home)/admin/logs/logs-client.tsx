@@ -40,6 +40,7 @@ type LogFile = {
   fileName: string
   fileUrl: string
   createdAt: string
+  lobbyCodes: string[]
   ownerConnectionIds: string[]
   ownerNames: string[]
   uploadedBy: string[]
@@ -236,7 +237,7 @@ export function LogsClient() {
     <div className='flex w-full flex-col gap-4'>
       <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
         <Input
-          placeholder='Search by file, uploader, player, or connection ID'
+          placeholder='Search by file, uploader, player, lobby code, or connection ID'
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className='w-full sm:max-w-sm'
@@ -278,6 +279,7 @@ export function LogsClient() {
                   />
                 </TableHead>
                 <TableHead>Log Owner IGN</TableHead>
+                <TableHead>Lobby Code</TableHead>
                 <TableHead>serversideConnectionID</TableHead>
                 <TableHead>
                   <SortableHeader
@@ -303,17 +305,17 @@ export function LogsClient() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6}>Loading logs...</TableCell>
+                  <TableCell colSpan={7}>Loading logs...</TableCell>
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={6} className='text-red-500'>
+                  <TableCell colSpan={7} className='text-red-500'>
                     {error}
                   </TableCell>
                 </TableRow>
               ) : logs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6}>No logs found</TableCell>
+                  <TableCell colSpan={7}>No logs found</TableCell>
                 </TableRow>
               ) : (
                 logs.map((log) => (
@@ -344,6 +346,28 @@ export function LogsClient() {
                             >
                               {renderHighlightedText(
                                 ownerName,
+                                search,
+                                highlightMatches
+                              )}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className='text-muted-foreground text-sm'>
+                          Unknown
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {log.lobbyCodes.length > 0 ? (
+                        <div className='flex flex-wrap gap-1.5'>
+                          {log.lobbyCodes.map((lobbyCode) => (
+                            <Badge
+                              key={`${log.id}-${lobbyCode}`}
+                              variant='outline'
+                            >
+                              {renderHighlightedText(
+                                lobbyCode,
                                 search,
                                 highlightMatches
                               )}

@@ -11,6 +11,7 @@ type ParsedGameLike = {
   guestMods?: unknown
   hostMods?: unknown
   isHost?: unknown
+  lobbyCode?: unknown
   logOwnerFinalJokers?: unknown
   logOwnerName?: unknown
   logOwnerVouchers?: unknown
@@ -93,6 +94,10 @@ export function extractLogOwnerNames(parsedGames: unknown) {
   return collectUniqueNames(parsedGames, (game) => game.logOwnerName, {
     skip: ['Host', 'Guest'],
   })
+}
+
+export function extractLogLobbyCodes(parsedGames: unknown) {
+  return collectUniqueNames(parsedGames, (game) => game.lobbyCode)
 }
 
 function getModsForLogOwner(game: ParsedGameLike) {

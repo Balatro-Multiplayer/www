@@ -4,6 +4,7 @@ import {
   extractGameRows,
   extractLogConnectionIds,
   extractLogFilePlayers,
+  extractLogLobbyCodes,
   extractLogOwnerConnectionIds,
 } from '@/lib/log-file-players'
 import { auth } from '@/server/auth'
@@ -11,6 +12,7 @@ import { db } from '@/server/db'
 import {
   games,
   logFileConnections,
+  logFileLobbyCodes,
   logFileOwnerConnections,
   logFilePlayers,
   logFiles,
@@ -100,6 +102,7 @@ export async function PUT(req: NextRequest) {
     const players = extractLogFilePlayers(parsedGames)
     const allConnectionIds = extractLogConnectionIds(parsedGames)
     const connectionIds = extractLogOwnerConnectionIds(parsedGames)
+    const lobbyCodes = extractLogLobbyCodes(parsedGames)
     const gameRows = extractGameRows(parsedGames, logFileId)
 
     await db.transaction(async (tx) => {
@@ -117,6 +120,10 @@ export async function PUT(req: NextRequest) {
       await tx
         .delete(logFileConnections)
         .where(eq(logFileConnections.logFileId, logFileId))
+
+      await tx
+        .delete(logFileLobbyCodes)
+        .where(eq(logFileLobbyCodes.logFileId, logFileId))
 
       await tx
         .delete(logFileOwnerConnections)
@@ -150,6 +157,16 @@ export async function PUT(req: NextRequest) {
             logFileId,
             connectionId,
             connectionIdLower: connectionId.toLowerCase(),
+          }))
+        )
+      }
+
+      if (lobbyCodes.length > 0) {
+        await tx.insert(logFileLobbyCodes).values(
+          lobbyCodes.map((lobbyCode) => ({
+            logFileId,
+            lobbyCode,
+            lobbyCodeLower: lobbyCode.toLowerCase(),
           }))
         )
       }

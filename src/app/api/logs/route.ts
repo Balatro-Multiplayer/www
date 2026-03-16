@@ -8,6 +8,7 @@ import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 import {
   logFileConnections,
+  logFileLobbyCodes,
   logFileOwnerConnections,
   logFilePlayers,
   logFiles,
@@ -42,6 +43,20 @@ function buildConnectionIdSearchFilter(search: string) {
   `
 }
 
+function buildLobbyCodeSearchFilter(search: string) {
+  const searchTerm = `%${search.trim().toLowerCase()}%`
+
+  return sql`
+    exists (
+      select 1
+      from ${logFileLobbyCodes}
+      where
+        ${logFileLobbyCodes.logFileId} = ${logFiles.id}
+        and ${logFileLobbyCodes.lobbyCodeLower} like ${searchTerm}
+    )
+  `
+}
+
 type DedupedLogRow = {
   id: number
   fileUrl: string
@@ -60,6 +75,7 @@ type LogListItem = {
   fileName: string
   fileUrl: string
   createdAt: Date
+  lobbyCodes: string[]
   ownerConnectionIds: string[]
   ownerNames: string[]
   uploadedBy: string[]
@@ -89,6 +105,37 @@ function buildOwnerNamesByLogIds(
   return new Map(
     rows.map((row) => [row.id, extractLogOwnerNames(row.parsedJson)] as const)
   )
+}
+
+function buildStringValuesByLogFileId<T extends { logFileId: number }>(
+  rows: T[],
+  getValue: (row: T) => string
+) {
+  const valuesByLogFileId = new Map<number, string[]>()
+
+  for (const row of rows) {
+    const currentValues = valuesByLogFileId.get(row.logFileId) ?? []
+    currentValues.push(getValue(row))
+    valuesByLogFileId.set(row.logFileId, currentValues)
+  }
+
+  return valuesByLogFileId
+}
+
+async function getLobbyCodesByLogFileId(logIds: number[]) {
+  if (logIds.length === 0) {
+    return new Map<number, string[]>()
+  }
+
+  const rows = await db
+    .select({
+      logFileId: logFileLobbyCodes.logFileId,
+      lobbyCode: logFileLobbyCodes.lobbyCode,
+    })
+    .from(logFileLobbyCodes)
+    .where(inArray(logFileLobbyCodes.logFileId, logIds))
+
+  return buildStringValuesByLogFileId(rows, (row) => row.lobbyCode)
 }
 
 function buildDedupedSearchWhere(search: string) {
@@ -123,6 +170,13 @@ function buildDedupedSearchWhere(search: string) {
         where
           ${logFileConnections.logFileId} = any(g.log_ids)
           and ${logFileConnections.connectionIdLower} like ${searchTermLower}
+      )
+      or exists (
+        select 1
+        from ${logFileLobbyCodes}
+        where
+          ${logFileLobbyCodes.logFileId} = any(g.log_ids)
+          and ${logFileLobbyCodes.lobbyCodeLower} like ${searchTermLower}
       )
   `
 }
@@ -230,12 +284,16 @@ async function getDedupedLogs({
       : []
 
   const ownerNamesByLogId = buildOwnerNamesByLogIds(parsedLogs)
+  const lobbyCodesByLogId = await getLobbyCodesByLogFileId(logIds)
   const data: LogListItem[] = logs.map((log) => ({
     id: log.id,
     logIds: log.logIds,
     fileName: log.fileName,
     fileUrl: log.fileUrl,
     createdAt: log.createdAt,
+    lobbyCodes: uniqueStrings(
+      log.logIds.flatMap((logId) => lobbyCodesByLogId.get(logId) ?? [])
+    ),
     ownerConnectionIds: uniqueStrings(log.ownerConnectionIds),
     ownerNames: uniqueStrings(
       log.logIds.flatMap((logId) => ownerNamesByLogId.get(logId) ?? [])
@@ -382,7 +440,8 @@ export async function GET(req: NextRequest) {
           ilike(users.name, `%${search}%`),
           ilike(users.email, `%${search}%`),
           buildPlayerSearchFilter(search),
-          buildConnectionIdSearchFilter(search)
+          buildConnectionIdSearchFilter(search),
+          buildLobbyCodeSearchFilter(search)
         )
       : undefined
 
@@ -435,11 +494,14 @@ export async function GET(req: NextRequest) {
 
     const totalNum = Number(total ?? 0)
     const totalPages = Math.max(1, Math.ceil(totalNum / pageSize))
+    const logIds = logs.map((log) => log.id)
+    const lobbyCodesByLogId = await getLobbyCodesByLogFileId(logIds)
 
     return NextResponse.json({
       data: logs.map(({ parsedJson, userName, userEmail, ...log }) => ({
         ...log,
         logIds: [log.id],
+        lobbyCodes: uniqueStrings(lobbyCodesByLogId.get(log.id) ?? []),
         ownerConnectionIds: extractLogOwnerConnectionIds(parsedJson),
         ownerNames: extractLogOwnerNames(parsedJson),
         uploadedBy: [userName || userEmail || 'Anonymous'],

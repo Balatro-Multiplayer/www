@@ -50,6 +50,13 @@
       "when": 1773427180788,
       "tag": "0006_furry_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773662796059,
+      "tag": "0007_normal_energizer",
+      "breakpoints": true
     }
   ]
 }

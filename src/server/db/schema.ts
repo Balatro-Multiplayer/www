@@ -280,6 +280,18 @@ export const logFileConnections = pgTable(
   (t) => [primaryKey({ columns: [t.logFileId, t.connectionIdLower] })]
 )
 
+export const logFileLobbyCodes = pgTable(
+  'log_file_lobby_codes',
+  {
+    logFileId: integer('log_file_id')
+      .references(() => logFiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    lobbyCode: text('lobby_code').notNull(),
+    lobbyCodeLower: text('lobby_code_lower').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.logFileId, t.lobbyCodeLower] })]
+)
+
 export const logFilesRelations = relations(logFiles, ({ many, one }) => ({
   user: one(users, {
     fields: [logFiles.userId],
@@ -287,6 +299,7 @@ export const logFilesRelations = relations(logFiles, ({ many, one }) => ({
   }),
   games: many(games),
   connections: many(logFileConnections),
+  lobbyCodes: many(logFileLobbyCodes),
   players: many(logFilePlayers),
   ownerConnections: many(logFileOwnerConnections),
 }))
@@ -320,6 +333,16 @@ export const logFileConnectionsRelations = relations(
   ({ one }) => ({
     logFile: one(logFiles, {
       fields: [logFileConnections.logFileId],
+      references: [logFiles.id],
+    }),
+  })
+)
+
+export const logFileLobbyCodesRelations = relations(
+  logFileLobbyCodes,
+  ({ one }) => ({
+    logFile: one(logFiles, {
+      fields: [logFileLobbyCodes.logFileId],
       references: [logFiles.id],
     }),
   })

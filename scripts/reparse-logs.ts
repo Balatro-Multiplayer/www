@@ -6,6 +6,7 @@ import {
   extractGameRows,
   extractLogConnectionIds,
   extractLogFilePlayers,
+  extractLogLobbyCodes,
   extractLogOwnerConnectionIds,
 } from '@/lib/log-file-players'
 import { mergeParsedGames, parseLogSource } from '@/lib/log-source-parser'
@@ -13,6 +14,7 @@ import { db } from '@/server/db'
 import {
   games,
   logFileConnections,
+  logFileLobbyCodes,
   logFileOwnerConnections,
   logFilePlayers,
   logFiles,
@@ -217,6 +219,7 @@ async function replaceDerivedData(
   const players = extractLogFilePlayers(mergedParsedJson)
   const ownerConnectionIds = extractLogOwnerConnectionIds(mergedParsedJson)
   const connectionIds = extractLogConnectionIds(mergedParsedJson)
+  const lobbyCodes = extractLogLobbyCodes(mergedParsedJson)
   const gameRows = extractGameRows(mergedParsedJson, logFileId)
 
   await db.transaction(async (tx) => {
@@ -234,6 +237,9 @@ async function replaceDerivedData(
     await tx
       .delete(logFileConnections)
       .where(eq(logFileConnections.logFileId, logFileId))
+    await tx
+      .delete(logFileLobbyCodes)
+      .where(eq(logFileLobbyCodes.logFileId, logFileId))
     await tx.delete(games).where(eq(games.logFileId, logFileId))
 
     if (players.length > 0) {
@@ -262,6 +268,16 @@ async function replaceDerivedData(
           logFileId,
           connectionId,
           connectionIdLower: connectionId.toLowerCase(),
+        }))
+      )
+    }
+
+    if (lobbyCodes.length > 0) {
+      await tx.insert(logFileLobbyCodes).values(
+        lobbyCodes.map((lobbyCode) => ({
+          logFileId,
+          lobbyCode,
+          lobbyCodeLower: lobbyCode.toLowerCase(),
         }))
       )
     }
