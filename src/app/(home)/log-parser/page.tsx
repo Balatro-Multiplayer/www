@@ -6,6 +6,7 @@ import { useFormatter } from 'next-intl'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { convertLuaToJson } from '@/app/(home)/log-parser/lua-parser'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -132,6 +133,8 @@ type Game = {
 type LogFileMeta = {
   fileName: string | null
   uploaderName: string | null
+  fileUrl: string | null
+  canReparseForDeckData: boolean
 }
 
 type PackedJokerCard = {
@@ -206,6 +209,20 @@ function normalizeParsedGames(games: Game[]) {
     logOwnerDeck: normalizeDeckCards(game.logOwnerDeck),
     opponentDeck: normalizeDeckCards(game.opponentDeck),
   }))
+}
+
+function canReparseForMissingDeckData(parsedJson: unknown) {
+  if (!Array.isArray(parsedJson) || parsedJson.length === 0) {
+    return false
+  }
+
+  return parsedJson.every((game) => {
+    if (!game || typeof game !== 'object') {
+      return false
+    }
+
+    return !('logOwnerDeck' in game) && !('opponentDeck' in game)
+  })
 }
 
 // Helper to format duration
@@ -418,6 +435,7 @@ export default function LogParser() {
   const [logFileMeta, setLogFileMeta] = useState<LogFileMeta | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isReparsingOriginalLog, setIsReparsingOriginalLog] = useState(false)
   const [activeTab, setActiveTab] = useState('')
 
   const parseLogFile = async (file: File) => {
@@ -448,6 +466,8 @@ export default function LogParser() {
           responseData.userName ??
           responseData.userEmail ??
           (responseData.userId ? 'Unknown user' : 'Anonymous'),
+        fileUrl: responseData.fileUrl ?? null,
+        canReparseForDeckData: false,
       })
 
       const content = await file.text()
@@ -1101,6 +1121,48 @@ export default function LogParser() {
     []
   )
 
+  const reparseOriginalLogFile = useCallback(async () => {
+    const logId = searchParams.get('logId')
+    const fileUrl = logFileMeta?.fileUrl
+
+    if (!logId || !fileUrl) {
+      setError('Original uploaded log file is unavailable.')
+      return
+    }
+
+    setIsReparsingOriginalLog(true)
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(fileUrl)
+      if (!response.ok) {
+        throw new Error('Failed to fetch original uploaded log file')
+      }
+
+      const content = await response.text()
+      await parseLogContent(content, Number.parseInt(logId, 10))
+      setLogFileMeta((current) => {
+        if (!current) {
+          return current
+        }
+
+        return {
+          ...current,
+          canReparseForDeckData: false,
+        }
+      })
+    } catch (err) {
+      console.error('Error re-parsing original log:', err)
+      setError(
+        `Failed to re-parse original log file. ${err instanceof Error ? err.message : 'Unknown error'}`
+      )
+    } finally {
+      setIsReparsingOriginalLog(false)
+      setIsLoading(false)
+    }
+  }, [logFileMeta?.fileUrl, parseLogContent, searchParams])
+
   // Check for logId query parameter and load the parsed data if it exists
   useEffect(() => {
     const logId = searchParams.get('logId')
@@ -1127,6 +1189,10 @@ export default function LogParser() {
               data.userName ??
               data.userEmail ??
               (data.userId ? 'Unknown user' : 'Anonymous'),
+            fileUrl: data.fileUrl ?? null,
+            canReparseForDeckData: canReparseForMissingDeckData(
+              data.parsedJson
+            ),
           })
           // Use the parsed JSON data directly from the database
           if (data.parsedJson && Array.isArray(data.parsedJson)) {
@@ -1256,6 +1322,30 @@ export default function LogParser() {
                   {logFileMeta.uploaderName || 'Anonymous'}
                 </p>
               </div>
+              {logFileMeta.canReparseForDeckData &&
+              searchParams.get('logId') ? (
+                <div className='space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 sm:col-span-2'>
+                  <div className='space-y-1'>
+                    <p className='font-medium text-sm'>
+                      This saved parse is missing deck snapshots.
+                    </p>
+                    <p className='text-muted-foreground text-sm'>
+                      Re-parse the original uploaded log file to add deck
+                      snapshots to this saved log.
+                    </p>
+                  </div>
+                  <Button
+                    type='button'
+                    onClick={reparseOriginalLogFile}
+                    disabled={isLoading || isReparsingOriginalLog}
+                    className='w-full sm:w-auto'
+                  >
+                    {isReparsingOriginalLog
+                      ? 'Re-parsing original upload...'
+                      : 'Re-parse original upload and save deck snapshots'}
+                  </Button>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         )}
