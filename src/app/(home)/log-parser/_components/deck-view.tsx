@@ -14,7 +14,11 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
-import { type DeckCardSnapshot, summarizeDeck } from '../deck-utils'
+import {
+  type DeckCardSnapshot,
+  normalizeDeckCards,
+  summarizeDeck,
+} from '../deck-utils'
 
 const CARD_WIDTH = 71
 const CARD_HEIGHT = 95
@@ -286,10 +290,11 @@ function DeckDialog({
   cards,
 }: {
   label: string
-  cards: DeckCardSnapshot[]
+  cards: DeckCardSnapshot[] | null | undefined
 }) {
-  const summary = summarizeDeck(cards)
-  const sections = getSortedDeckSections(cards)
+  const normalizedCards = normalizeDeckCards(cards)
+  const summary = summarizeDeck(normalizedCards)
+  const sections = getSortedDeckSections(normalizedCards)
 
   return (
     <Dialog>
@@ -347,10 +352,11 @@ function DeckSummaryPanel({
   won,
 }: {
   label: string
-  cards: DeckCardSnapshot[]
+  cards: DeckCardSnapshot[] | null | undefined
   won: boolean
 }) {
-  const summary = summarizeDeck(cards)
+  const normalizedCards = normalizeDeckCards(cards)
+  const summary = summarizeDeck(normalizedCards)
 
   return (
     <div className='rounded-xl border border-border/70 bg-muted/20 p-4'>
@@ -380,7 +386,7 @@ function DeckSummaryPanel({
             </p>
           )}
         </div>
-        <DeckDialog label={label} cards={cards} />
+        <DeckDialog label={label} cards={normalizedCards} />
       </div>
     </div>
   )
@@ -393,8 +399,8 @@ export function DeckViewsCard({
   opponentLabel,
   winner,
 }: {
-  logOwnerDeck: DeckCardSnapshot[]
-  opponentDeck: DeckCardSnapshot[]
+  logOwnerDeck: DeckCardSnapshot[] | null | undefined
+  opponentDeck: DeckCardSnapshot[] | null | undefined
   ownerLabel: string
   opponentLabel: string
   winner: 'logOwner' | 'opponent' | null

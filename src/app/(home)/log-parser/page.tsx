@@ -42,7 +42,11 @@ import { jokers } from '@/shared/jokers'
 import { vouchers } from '@/shared/vouchers'
 import { DeckViewsCard } from './_components/deck-view'
 import { type PvpBlind, PvpBlindsCard } from './_components/pvp-blinds'
-import { type DeckCardSnapshot, parseDeckCardsFromString } from './deck-utils'
+import {
+  type DeckCardSnapshot,
+  normalizeDeckCards,
+  parseDeckCardsFromString,
+} from './deck-utils'
 
 // Define the structure for individual log events within a game
 type LogEvent = {
@@ -195,6 +199,14 @@ const initGame = (id: number, startDate: Date): Game => ({
   pvpBlinds: [],
   currentPvpBlind: null,
 })
+
+function normalizeParsedGames(games: Game[]) {
+  return games.map((game) => ({
+    ...game,
+    logOwnerDeck: normalizeDeckCards(game.logOwnerDeck),
+    opponentDeck: normalizeDeckCards(game.opponentDeck),
+  }))
+}
 
 // Helper to format duration
 const formatDuration = (seconds: number | null): string => {
@@ -1118,8 +1130,8 @@ export default function LogParser() {
           })
           // Use the parsed JSON data directly from the database
           if (data.parsedJson && Array.isArray(data.parsedJson)) {
-            const parsedGamesWithDates = convertDates(data.parsedJson)
-            setParsedGames(parsedGamesWithDates)
+            const parsedGamesWithDates = convertDates(data.parsedJson) as Game[]
+            setParsedGames(normalizeParsedGames(parsedGamesWithDates))
           } else {
             setError('No parsed games found in the log file.')
           }

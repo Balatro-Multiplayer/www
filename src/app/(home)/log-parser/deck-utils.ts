@@ -166,12 +166,19 @@ export function parseDeckCardsFromString(rawDeck: string | null | undefined) {
   return cards
 }
 
-export function summarizeDeck(cards: DeckCardSnapshot[]) {
+export function normalizeDeckCards(
+  cards: DeckCardSnapshot[] | null | undefined
+) {
+  return Array.isArray(cards) ? cards : []
+}
+
+export function summarizeDeck(cards: DeckCardSnapshot[] | null | undefined) {
+  const normalizedCards = normalizeDeckCards(cards)
   let enhancements = 0
   let editions = 0
   let seals = 0
 
-  for (const card of cards) {
+  for (const card of normalizedCards) {
     if (card.enhancement) {
       enhancements++
     }
@@ -184,8 +191,8 @@ export function summarizeDeck(cards: DeckCardSnapshot[]) {
   }
 
   return {
-    total: cards.length,
-    modified: cards.filter((card) => {
+    total: normalizedCards.length,
+    modified: normalizedCards.filter((card) => {
       return Boolean(card.enhancement || card.edition || card.seal)
     }).length,
     enhancements,
