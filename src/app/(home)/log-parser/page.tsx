@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useFormatter } from 'next-intl'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { convertLuaToJson } from '@/app/(home)/log-parser/lua-parser'
+import { Badge } from '@/components/ui/badge'
 import {
   Card,
   CardContent,
@@ -129,6 +130,33 @@ type LogFileMeta = {
   uploaderName: string | null
 }
 
+type PackedJokerCard = {
+  save_fields?: {
+    center?: string | null
+  } | null
+  edition?: ({ type?: string | null } & Record<string, unknown>) | null
+  ability?: {
+    eternal?: boolean | null
+    perishable?: boolean | null
+    rental?: boolean | null
+  } | null
+}
+
+const FINAL_JOKER_CARD_WIDTH = 142
+const FINAL_JOKER_EDITION_LABELS: Record<string, string> = {
+  foil: 'Foil',
+  holo: 'Holographic',
+  holographic: 'Holographic',
+  polychrome: 'Polychrome',
+  negative: 'Negative',
+  mp_phantom: 'Phantom',
+}
+const FINAL_JOKER_MODIFIER_LABELS: Record<string, string> = {
+  eternal: 'Eternal',
+  perishable: 'Perishable',
+  rental: 'Rental',
+}
+
 // Helper to initialize a new game object
 const initGame = (id: number, startDate: Date): Game => ({
   id,
@@ -240,6 +268,134 @@ function getGameTabValue(
   game: Pick<Game, 'id' | 'logOwnerName' | 'opponentName'>
 ) {
   return `game-${game.id}-${game.logOwnerName || 'LogOwner'}-vs-${game.opponentName || 'Opponent'}`
+}
+
+function getPackedJokerEdition(
+  edition: PackedJokerCard['edition']
+): string | null {
+  if (!edition || typeof edition !== 'object') {
+    return null
+  }
+  if (typeof edition.type === 'string' && edition.type) {
+    return edition.type
+  }
+  return (
+    Object.entries(edition).find(
+      ([key, value]) => key !== 'type' && value === true
+    )?.[0] ?? null
+  )
+}
+
+function serializePackedJoker(card: PackedJokerCard): string | null {
+  const jokerKey = card.save_fields?.center?.trim()
+  if (!jokerKey) {
+    return null
+  }
+
+  const edition = getPackedJokerEdition(card.edition) ?? 'none'
+  const modifier = card.ability?.eternal
+    ? 'eternal'
+    : card.ability?.perishable
+      ? 'perishable'
+      : 'none'
+  const rental = card.ability?.rental ? 'rental' : 'none'
+
+  return [jokerKey, edition, modifier, rental].join('-')
+}
+
+function formatFinalJokerModifier(token: string): string {
+  const normalized = token.trim().toLowerCase()
+
+  return (
+    FINAL_JOKER_EDITION_LABELS[normalized] ??
+    FINAL_JOKER_MODIFIER_LABELS[normalized] ??
+    normalized
+      .replace(/[_-]+/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+  )
+}
+
+function parseFinalJoker(joker: string) {
+  const [jokerNameRaw, editionRaw, modifierRaw, rentalRaw] = joker.split('-')
+  const jokerName = jokerNameRaw?.trim()
+
+  if (!jokerName) {
+    return null
+  }
+
+  return {
+    cleanName: jokers[jokerName]?.name ?? cleanJokerKey(jokerName),
+    imageSrc: `/cards/${jokerName}.${jokerName === 'j_hologram' ? 'gif' : 'png'}`,
+    tags: [editionRaw, modifierRaw, rentalRaw]
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value && value !== 'none'))
+      .map(formatFinalJokerModifier),
+  }
+}
+
+function FinalJokerList({
+  jokersList,
+  slots,
+}: {
+  jokersList: string[]
+  slots: number
+}) {
+  const normalizedSlots = Math.max(slots, jokersList.length, 1)
+  const cardWidth = `min(${FINAL_JOKER_CARD_WIDTH}px, calc((100% - ${(normalizedSlots - 1) * 0.5}rem) / ${normalizedSlots}))`
+  const seenJokers = new Map<string, number>()
+  const jokerEntries = jokersList.flatMap((joker) => {
+    const parsedJoker = parseFinalJoker(joker)
+    if (!parsedJoker) {
+      return []
+    }
+
+    const occurrence = (seenJokers.get(joker) ?? 0) + 1
+    seenJokers.set(joker, occurrence)
+
+    return [{ key: `${joker}-${occurrence}`, parsedJoker }]
+  })
+
+  return (
+    <ul className='mt-3 flex gap-2'>
+      {jokerEntries.map(({ key, parsedJoker }) => {
+        return (
+          <li
+            key={key}
+            className='min-w-0 list-none'
+            style={{ width: cardWidth }}
+          >
+            <div className='flex w-full shrink-0 flex-col items-center gap-2 text-center'>
+              <Image
+                src={parsedJoker.imageSrc}
+                alt={parsedJoker.cleanName}
+                width={FINAL_JOKER_CARD_WIDTH}
+                height={190}
+                className='h-auto w-full'
+              />
+              <div className='flex min-h-12 flex-col items-center gap-1'>
+                <span className='text-xs leading-tight md:text-sm'>
+                  {parsedJoker.cleanName}
+                </span>
+                {parsedJoker.tags.length > 0 ? (
+                  <div className='flex flex-wrap items-center justify-center gap-1'>
+                    {parsedJoker.tags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant='outline'
+                        className='rounded-full border-border/70 bg-muted/40 px-1.5 py-0 font-semibold text-[9px] tracking-[0.08em] md:px-2 md:text-[10px]'
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </li>
+        )
+      })}
+    </ul>
+  )
 }
 
 // Main component
@@ -1375,35 +1531,14 @@ export default function LogParser() {
                                 {game.winner === 'logOwner' ? ' 🏆' : ''}:
                               </strong>
                               {game.logOwnerFinalJokers.length > 0 ? (
-                                <ul className='mt-3 ml-4 flex list-inside gap-3'>
-                                  {game.logOwnerFinalJokers.map((joker, i) => {
-                                    const jokerName = joker.split('-')[0] // Remove any suffix after the key
-                                    if (!jokerName) {
-                                      return null
-                                    }
-                                    const cleanName =
-                                      jokers[jokerName]?.name ??
-                                      cleanJokerKey(jokerName)
-                                    return (
-                                      // biome-ignore lint/suspicious/noArrayIndexKey: Simple list
-                                      <li key={i} className={'list-none'}>
-                                        <div
-                                          className={
-                                            'flex flex-col items-center justify-center gap-2'
-                                          }
-                                        >
-                                          <Image
-                                            src={`/cards/${jokerName}.${jokerName === 'j_hologram' ? 'gif' : 'png'}`}
-                                            alt={cleanName}
-                                            width={142}
-                                            height={190}
-                                          />
-                                          <span>{cleanName}</span>
-                                        </div>
-                                      </li>
-                                    )
-                                  })}
-                                </ul>
+                                <FinalJokerList
+                                  jokersList={game.logOwnerFinalJokers}
+                                  slots={Math.max(
+                                    game.logOwnerFinalJokers.length,
+                                    game.opponentFinalJokers.length,
+                                    1
+                                  )}
+                                />
                               ) : (
                                 <p className='text-gray-500 italic'>
                                   No data found.
@@ -1416,35 +1551,14 @@ export default function LogParser() {
                                 {game.winner === 'opponent' ? ' 🏆' : ''}:
                               </strong>
                               {game.opponentFinalJokers.length > 0 ? (
-                                <ul className='mt-3 ml-4 flex list-inside gap-3'>
-                                  {game.opponentFinalJokers.map((joker, i) => {
-                                    const jokerName = joker.split('-')[0] // Remove any suffix after the key
-                                    if (!jokerName) {
-                                      return null
-                                    }
-                                    const cleanName =
-                                      jokers[jokerName]?.name ??
-                                      cleanJokerKey(jokerName)
-                                    return (
-                                      // biome-ignore lint/suspicious/noArrayIndexKey: Simple list
-                                      <li key={i} className={'list-none'}>
-                                        <div
-                                          className={
-                                            'flex flex-col items-center justify-center gap-2'
-                                          }
-                                        >
-                                          <Image
-                                            src={`/cards/${jokerName}.${jokerName === 'j_hologram' ? 'gif' : 'png'}`}
-                                            alt={cleanName}
-                                            width={142}
-                                            height={190}
-                                          />
-                                          <span>{cleanName}</span>
-                                        </div>
-                                      </li>
-                                    )
-                                  })}
-                                </ul>
+                                <FinalJokerList
+                                  jokersList={game.opponentFinalJokers}
+                                  slots={Math.max(
+                                    game.logOwnerFinalJokers.length,
+                                    game.opponentFinalJokers.length,
+                                    1
+                                  )}
+                                />
                               ) : (
                                 <p className='text-gray-500 italic'>
                                   No data found.
@@ -2121,9 +2235,11 @@ async function parseJokersFromString(str: string) {
       const decoded = await decodePackedString(str)
       if (decoded && typeof decoded === 'object' && 'cards' in decoded) {
         const { cards } = decoded as {
-          cards: Record<string, { save_fields: { center: string } }>
+          cards: Record<string, PackedJokerCard> | PackedJokerCard[]
         }
-        return Object.values(cards).map((card) => card.save_fields.center)
+        return Object.values(cards)
+          .map(serializePackedJoker)
+          .filter((joker): joker is string => Boolean(joker))
       }
     }
   } catch (error) {
