@@ -96,6 +96,7 @@ type Game = {
   id: number // Simple identifier for keys
   host: string | null
   guest: string | null
+  lobbyCode: string | null
   logOwnerName: string | null // Name of the player whose log this is for this game
   opponentName: string | null // Name of the opponent relative to the log owner
   hostMods: string[]
@@ -169,6 +170,7 @@ const initGame = (id: number, startDate: Date): Game => ({
   id,
   host: null,
   guest: null,
+  lobbyCode: null,
   logOwnerName: null, // Initialize
   opponentName: null, // Initialize
   hostMods: [],
@@ -490,6 +492,8 @@ export default function LogParser() {
       const games: Game[] = []
       let currentGame: Game | null = null
       let lastSeenLobbyOptions: GameOptions | null = null
+      let pendingLobbyCode: string | null = null
+      let lastAssignedLobbyCode: string | null = null
       let gameCounter = 0
 
       const gameStartInfos = extractGameStartInfo(logLines)
@@ -502,7 +506,13 @@ export default function LogParser() {
         const lineLower = line.toLowerCase()
         const sentPayload = parseClientSentPayload(line)
         const sentAction = getPayloadString(sentPayload, 'action')
+        const lobbyCode = extractLobbyCodeFromLine(line, sentPayload)
         _lastProcessedTimestamp = timestamp
+
+        if (lobbyCode) {
+          pendingLobbyCode = lobbyCode
+        }
+
         // --- Game Lifecycle ---
         if (line.includes('Client got receiveEndGameJokers message')) {
           if (currentGame) {
@@ -629,6 +639,12 @@ export default function LogParser() {
           currentGame.hostMods = currentInfo.lobbyInfo?.hostHash ?? []
           currentGame.guestMods = currentInfo.lobbyInfo?.guestHash ?? []
           currentGame.isHost = currentInfo.lobbyInfo?.isHost ?? null // Log owner's role
+          currentGame.lobbyCode = pendingLobbyCode ?? lastAssignedLobbyCode
+
+          if (currentGame.lobbyCode) {
+            lastAssignedLobbyCode = currentGame.lobbyCode
+          }
+          pendingLobbyCode = null
 
           // *** Determine Log Owner and Opponent Names based on isHost ***
           if (currentGame.isHost !== null) {
@@ -1486,6 +1502,12 @@ export default function LogParser() {
                               <strong>Seed:</strong> {game.seed || 'Unknown'}
                             </p>
                             <p>
+                              <strong>Lobby Code:</strong>{' '}
+                              <span className='font-mono'>
+                                {game.lobbyCode || 'Unknown'}
+                              </span>
+                            </p>
+                            <p>
                               <strong>Ruleset:</strong>{' '}
                               {game.options?.ruleset || 'Default'}
                             </p>
@@ -2016,6 +2038,39 @@ function getPayloadNumber(
     const parsed = Number.parseInt(value, 10)
     return Number.isNaN(parsed) ? null : parsed
   }
+  return null
+}
+
+function normalizeLobbyCode(code: string | null | undefined): string | null {
+  if (!code) {
+    return null
+  }
+
+  const normalized = code
+    .trim()
+    .replace(/^['"]|['"]$/g, '')
+    .toUpperCase()
+  if (!/^[A-Z0-9]+$/.test(normalized)) {
+    return null
+  }
+
+  return normalized
+}
+
+function extractLobbyCodeFromLine(
+  line: string,
+  payload: ParsedSentPayload | null
+): string | null {
+  const sentAction = getPayloadString(payload, 'action')
+
+  if (sentAction === 'joinLobby') {
+    return normalizeLobbyCode(getPayloadString(payload, 'code'))
+  }
+
+  if (line.includes('Client got joinedLobby message')) {
+    return normalizeLobbyCode(line.match(/\(code:\s*([A-Za-z0-9]+)\)/)?.[1])
+  }
+
   return null
 }
 
