@@ -22,6 +22,7 @@ import type { RouterOutputs } from '@/trpc/react'
 type ModerationPlayer =
   RouterOutputs['moderation']['listAllMembers']['data'][number]
 type ModerationStrike = ModerationPlayer['strikes'][number]
+type ActionPanel = 'strike' | 'ban' | null
 
 const STRIKE_LABELS: Record<number, string> = {
   0: 'Warning',
@@ -65,8 +66,11 @@ export function ModerationPlayerCard({
   onGiveStrike,
   onRemoveStrike,
   onBanUser,
+  onUpdateBan,
   onLiftBan,
   embedded = false,
+  actionPanel,
+  onActionPanelChange,
 }: {
   player: ModerationPlayer
   canManageStrikes: boolean
@@ -81,12 +85,17 @@ export function ModerationPlayerCard({
     player: ModerationPlayer,
     data: { length: number; reason?: string }
   ) => void
+  onUpdateBan: (player: ModerationPlayer) => void
   onLiftBan: (player: ModerationPlayer) => void
   embedded?: boolean
+  actionPanel?: ActionPanel
+  onActionPanelChange?: (panel: ActionPanel) => void
 }) {
   const [expanded, setExpanded] = useState(embedded)
-  const [actionPanel, setActionPanel] = useState<'strike' | 'ban' | null>(null)
+  const [internalActionPanel, setInternalActionPanel] =
+    useState<ActionPanel>(null)
   const strikeCount = player.strikes.length
+  const activeActionPanel = actionPanel ?? internalActionPanel
 
   // Strike form
   const [strikeAmount, setStrikeAmount] =
@@ -104,6 +113,11 @@ export function ModerationPlayerCard({
     setStrikeReference('')
     setBanLength('7')
     setBanReason('')
+  }
+
+  const setActionPanel = (panel: ActionPanel) => {
+    setInternalActionPanel(panel)
+    onActionPanelChange?.(panel)
   }
 
   const handleSubmitStrike = () => {
@@ -128,103 +142,109 @@ export function ModerationPlayerCard({
   }
 
   return (
-    <div className={cn(!embedded && 'rounded-lg border bg-card transition-colors')}>
+    <div
+      className={cn(!embedded && 'rounded-lg border bg-card transition-colors')}
+    >
       {/* Summary row — hidden when embedded in table */}
-      {!embedded ? <div className='flex w-full items-center gap-3 p-3'>
-        <button
-          type='button'
-          onClick={() => setExpanded(!expanded)}
-          className='flex min-w-0 flex-1 items-center gap-3 text-left transition-colors hover:opacity-80'
-        >
-          <Avatar className='h-9 w-9 shrink-0'>
-            <AvatarImage
-              src={player.avatar_url ?? ''}
-              alt={player.display_name}
-            />
-            <AvatarFallback className='text-xs'>
-              {initials(player.display_name)}
-            </AvatarFallback>
-          </Avatar>
+      {!embedded ? (
+        <div className='flex w-full items-center gap-3 p-3'>
+          <button
+            type='button'
+            onClick={() => setExpanded(!expanded)}
+            className='flex min-w-0 flex-1 items-center gap-3 text-left transition-colors hover:opacity-80'
+          >
+            <Avatar className='h-9 w-9 shrink-0'>
+              <AvatarImage
+                src={player.avatar_url ?? ''}
+                alt={player.display_name}
+              />
+              <AvatarFallback className='text-xs'>
+                {initials(player.display_name)}
+              </AvatarFallback>
+            </Avatar>
 
-          <div className='min-w-0 flex-1'>
-            <div className='flex items-center gap-2'>
-              <span className='truncate font-medium text-sm'>
-                {player.display_name}
-              </span>
-              {player.active_ban ? (
-                <Badge
-                  variant='destructive'
-                  className='shrink-0 gap-0.5 px-1.5 py-0 text-[11px]'
-                >
-                  <Ban className='h-3 w-3' />
-                  banned
-                </Badge>
-              ) : null}
-              {strikeCount > 0 ? (
-                <Badge
-                  variant='secondary'
-                  className='shrink-0 px-1.5 py-0 text-[11px]'
-                >
-                  {player.total_strike_points}pts · {strikeCount}{' '}
-                  {strikeCount === 1 ? 'strike' : 'strikes'}
-                </Badge>
-              ) : null}
+            <div className='min-w-0 flex-1'>
+              <div className='flex items-center gap-2'>
+                <span className='truncate font-medium text-sm'>
+                  {player.display_name}
+                </span>
+                {player.active_ban ? (
+                  <Badge
+                    variant='destructive'
+                    className='shrink-0 gap-0.5 px-1.5 py-0 text-[11px]'
+                  >
+                    <Ban className='h-3 w-3' />
+                    banned
+                  </Badge>
+                ) : null}
+                {strikeCount > 0 ? (
+                  <Badge
+                    variant='secondary'
+                    className='shrink-0 px-1.5 py-0 text-[11px]'
+                  >
+                    {player.total_strike_points}pts · {strikeCount}{' '}
+                    {strikeCount === 1 ? 'strike' : 'strikes'}
+                  </Badge>
+                ) : null}
+              </div>
+              <p className='truncate text-muted-foreground text-xs'>
+                @{player.username}
+                {strikeCount > 0
+                  ? ` · last ${relativeTime(player.latest_strike_at)}`
+                  : ''}
+              </p>
             </div>
-            <p className='truncate text-muted-foreground text-xs'>
-              @{player.username}
-              {strikeCount > 0
-                ? ` · last ${relativeTime(player.latest_strike_at)}`
-                : ''}
-            </p>
+
+            <ChevronRight
+              className={cn(
+                'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                expanded && 'rotate-90'
+              )}
+            />
+          </button>
+
+          {/* Action buttons — outside the expand button */}
+          <div className='flex shrink-0 items-center gap-1'>
+            {canManageStrikes ? (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-7 gap-1 px-2 text-xs'
+                onClick={() => {
+                  setExpanded(true)
+                  setActionPanel(
+                    activeActionPanel === 'strike' ? null : 'strike'
+                  )
+                }}
+              >
+                <Plus className='h-3 w-3' />
+                Strike
+              </Button>
+            ) : null}
+            {canManageBans && !player.active_ban ? (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-7 gap-1 px-2 text-xs'
+                onClick={() => {
+                  setExpanded(true)
+                  setActionPanel(activeActionPanel === 'ban' ? null : 'ban')
+                }}
+              >
+                <Ban className='h-3 w-3' />
+                Ban
+              </Button>
+            ) : null}
           </div>
-
-          <ChevronRight
-            className={cn(
-              'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-              expanded && 'rotate-90'
-            )}
-          />
-        </button>
-
-        {/* Action buttons — outside the expand button */}
-        <div className='flex shrink-0 items-center gap-1'>
-          {canManageStrikes ? (
-            <Button
-              variant='ghost'
-              size='sm'
-              className='h-7 gap-1 px-2 text-xs'
-              onClick={() => {
-                setExpanded(true)
-                setActionPanel(actionPanel === 'strike' ? null : 'strike')
-              }}
-            >
-              <Plus className='h-3 w-3' />
-              Strike
-            </Button>
-          ) : null}
-          {canManageBans && !player.active_ban ? (
-            <Button
-              variant='ghost'
-              size='sm'
-              className='h-7 gap-1 px-2 text-xs'
-              onClick={() => {
-                setExpanded(true)
-                setActionPanel(actionPanel === 'ban' ? null : 'ban')
-              }}
-            >
-              <Ban className='h-3 w-3' />
-              Ban
-            </Button>
-          ) : null}
         </div>
-      </div> : null}
+      ) : null}
 
       {/* Expanded details */}
       {expanded ? (
-        <div className={cn(!embedded && 'border-t', 'px-3 py-3 space-y-3')}>
+        <div className={cn(!embedded && 'border-t', 'space-y-3 px-3 py-3')}>
           {/* Inline strike form */}
-          {actionPanel === 'strike' ? (
-            <div className='rounded-md border bg-muted/30 p-3 space-y-3'>
+          {activeActionPanel === 'strike' ? (
+            <div className='space-y-3 rounded-md border bg-muted/30 p-3'>
               <div className='flex items-center justify-between'>
                 <h3 className='font-semibold text-xs'>
                   Give Strike to {player.display_name}
@@ -270,7 +290,7 @@ export function ModerationPlayerCard({
                     placeholder='Queue ID, thread, ticket...'
                   />
                 </div>
-                <div className='sm:col-span-2 space-y-1'>
+                <div className='space-y-1 sm:col-span-2'>
                   <Label className='text-xs'>Reason</Label>
                   <Textarea
                     value={strikeReason}
@@ -304,8 +324,8 @@ export function ModerationPlayerCard({
           ) : null}
 
           {/* Inline ban form */}
-          {actionPanel === 'ban' ? (
-            <div className='rounded-md border bg-muted/30 p-3 space-y-3'>
+          {activeActionPanel === 'ban' ? (
+            <div className='space-y-3 rounded-md border bg-muted/30 p-3'>
               <div className='flex items-center justify-between'>
                 <h3 className='font-semibold text-xs'>
                   Ban {player.display_name}
@@ -382,14 +402,24 @@ export function ModerationPlayerCard({
                 </p>
               </div>
               {canManageBans ? (
-                <Button
-                  variant='destructive'
-                  size='sm'
-                  className='shrink-0 h-7 text-xs'
-                  onClick={() => onLiftBan(player)}
-                >
-                  Lift
-                </Button>
+                <div className='flex shrink-0 gap-1'>
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    className='h-7 text-xs'
+                    onClick={() => onUpdateBan(player)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant='destructive'
+                    size='sm'
+                    className='h-7 text-xs'
+                    onClick={() => onLiftBan(player)}
+                  >
+                    Lift
+                  </Button>
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -421,12 +451,11 @@ export function ModerationPlayerCard({
 
                   <div className='min-w-0 flex-1 space-y-0.5'>
                     <p className='text-xs'>{strike.reason}</p>
-                    <p className='text-muted-foreground text-[11px]'>
+                    <p className='text-[11px] text-muted-foreground'>
                       {format(new Date(strike.issued_at), 'MMM d, yyyy')}
                       {strike.reference ? ` · ${strike.reference}` : ''}
                       {' · '}
-                      {strike.issued_by?.username ??
-                        strike.issued_by_id}
+                      {strike.issued_by?.username ?? strike.issued_by_id}
                     </p>
                   </div>
 
@@ -434,7 +463,7 @@ export function ModerationPlayerCard({
                     <Button
                       variant='ghost'
                       size='sm'
-                      className='shrink-0 h-7 w-7 p-0 text-muted-foreground hover:text-destructive'
+                      className='h-7 w-7 shrink-0 p-0 text-muted-foreground hover:text-destructive'
                       onClick={() => onRemoveStrike(player, strike)}
                     >
                       <Trash2 className='h-3.5 w-3.5' />

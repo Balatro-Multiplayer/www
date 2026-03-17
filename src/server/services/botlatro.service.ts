@@ -272,6 +272,16 @@ export const botlatro_service = {
     })
   },
 
+  updateBanUser: async ({ user_id, ...input }: UpdateBanUserInput) => {
+    return botlatroAuthedRequest<BanUserResponse>(
+      `api/moderation/bans/${encodeURIComponent(user_id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      }
+    )
+  },
+
   unbanUser: async ({ user_id, ...input }: UnbanUserInput) => {
     return botlatroAuthedRequest<ModerationMutationSuccess>(
       `api/moderation/bans/${encodeURIComponent(user_id)}`,
@@ -495,6 +505,13 @@ export type BanUserInput = {
 
 export type BanUserResponse = {
   ban: ModerationBan
+}
+
+export type UpdateBanUserInput = {
+  user_id: string
+  updated_by_id: string
+  length?: number
+  reason?: string
 }
 
 export type UnbanUserInput = {

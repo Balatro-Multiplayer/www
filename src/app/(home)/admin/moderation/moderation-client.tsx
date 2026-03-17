@@ -2,12 +2,13 @@
 
 import { format, formatISO } from 'date-fns'
 import { Ban, ChevronRight, Plus, Search, Shield, X } from 'lucide-react'
-import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs'
 import {
-  startTransition,
-  useOptimistic,
-  useState,
-} from 'react'
+  parseAsInteger,
+  parseAsString,
+  parseAsStringLiteral,
+  useQueryStates,
+} from 'nuqs'
+import { startTransition, useEffect, useOptimistic, useState } from 'react'
 import { toast } from 'sonner'
 import { useDebounceCallback } from 'usehooks-ts'
 import { PaginationControls } from '@/app/_components/pagination-controls'
@@ -70,6 +71,11 @@ type OptimisticAction =
       ban: ModerationBan
     }
   | {
+      type: 'update-ban'
+      user_id: string
+      ban: ModerationBan
+    }
+  | {
       type: 'unban-user'
       user_id: string
     }
@@ -100,7 +106,7 @@ function applyOptimisticAction(
       }
     }
 
-    if (action.type === 'ban-user') {
+    if (action.type === 'ban-user' || action.type === 'update-ban') {
       return { ...player, active_ban: action.ban }
     }
 
@@ -116,6 +122,17 @@ function initials(name: string) {
     .join('')
     .slice(0, 2)
     .toUpperCase()
+}
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000
+
+function getBanLengthFromExpiry(expiresAt: string | null | undefined) {
+  if (!expiresAt) return '7'
+
+  const remainingMs = new Date(expiresAt).getTime() - Date.now()
+  if (!Number.isFinite(remainingMs) || remainingMs <= 0) return '1'
+
+  return Math.max(1, Math.ceil(remainingMs / DAY_IN_MS)).toString()
 }
 
 function playerStatus(player: ModerationPlayer) {
@@ -135,7 +152,10 @@ function StatusBadge({ status }: { status: ReturnType<typeof playerStatus> }) {
   }
   if (status === 'striked') {
     return (
-      <Badge variant='secondary' className='px-1.5 py-0 text-[11px] bg-amber-500/15 text-amber-700 dark:text-amber-400'>
+      <Badge
+        variant='secondary'
+        className='bg-amber-500/15 px-1.5 py-0 text-[11px] text-amber-700 dark:text-amber-400'
+      >
         Striked
       </Badge>
     )
@@ -161,6 +181,7 @@ function ModerationTableRow({
   onGiveStrike,
   onRemoveStrike,
   onBanUser,
+  onUpdateBan,
   onLiftBan,
 }: {
   player: ModerationPlayer
@@ -178,15 +199,37 @@ function ModerationTableRow({
     player: ModerationPlayer,
     data: { length: number; reason?: string }
   ) => void
+  onUpdateBan: (player: ModerationPlayer) => void
   onLiftBan: (player: ModerationPlayer) => void
 }) {
   const status = playerStatus(player)
+  const [embeddedActionPanel, setEmbeddedActionPanel] = useState<
+    'strike' | 'ban' | null
+  >(null)
+
+  useEffect(() => {
+    if (!expanded) {
+      setEmbeddedActionPanel(null)
+    }
+  }, [expanded])
+
+  const openEmbeddedPanel = (panel: 'strike' | 'ban') => {
+    setEmbeddedActionPanel(panel)
+    if (!expanded) {
+      onToggleExpand()
+    }
+  }
 
   return (
     <>
       <TableRow
         className={cn('cursor-pointer', expanded && 'bg-muted/30')}
-        onClick={onToggleExpand}
+        onClick={() => {
+          if (expanded) {
+            setEmbeddedActionPanel(null)
+          }
+          onToggleExpand()
+        }}
       >
         {/* Player */}
         <TableCell>
@@ -251,7 +294,7 @@ function ModerationTableRow({
 
         {/* Actions */}
         <TableCell>
-          <div className='flex items-center justify-end gap-1' onClick={(e) => e.stopPropagation()}>
+          <div className='flex items-center justify-end gap-1'>
             {canManageStrikes ? (
               <Button
                 variant='ghost'
@@ -259,7 +302,7 @@ function ModerationTableRow({
                 className='h-7 gap-1 px-2 text-xs'
                 onClick={(e) => {
                   e.stopPropagation()
-                  onGiveStrike(player, { amount: 1 })
+                  openEmbeddedPanel('strike')
                 }}
                 disabled={isMutating}
               >
@@ -274,7 +317,7 @@ function ModerationTableRow({
                 className='h-7 gap-1 px-2 text-xs'
                 onClick={(e) => {
                   e.stopPropagation()
-                  onBanUser(player, { length: 7 })
+                  openEmbeddedPanel('ban')
                 }}
                 disabled={isMutating}
               >
@@ -286,7 +329,21 @@ function ModerationTableRow({
               <Button
                 variant='ghost'
                 size='sm'
-                className='h-7 gap-1 px-2 text-xs text-destructive hover:text-destructive'
+                className='h-7 gap-1 px-2 text-xs'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onUpdateBan(player)
+                }}
+                disabled={isMutating}
+              >
+                Edit Ban
+              </Button>
+            ) : null}
+            {canManageBans && player.active_ban ? (
+              <Button
+                variant='ghost'
+                size='sm'
+                className='h-7 gap-1 px-2 text-destructive text-xs hover:text-destructive'
                 onClick={(e) => {
                   e.stopPropagation()
                   onLiftBan(player)
@@ -312,8 +369,11 @@ function ModerationTableRow({
               onGiveStrike={onGiveStrike}
               onRemoveStrike={onRemoveStrike}
               onBanUser={onBanUser}
+              onUpdateBan={onUpdateBan}
               onLiftBan={onLiftBan}
               embedded
+              actionPanel={embeddedActionPanel}
+              onActionPanelChange={setEmbeddedActionPanel}
             />
           </td>
         </tr>
@@ -379,6 +439,9 @@ export function ModerationClient({ role }: { role: Role }) {
     strike: ModerationStrike
   } | null>(null)
   const [removeStrikeReason, setRemoveStrikeReason] = useState('')
+  const [banToEdit, setBanToEdit] = useState<ModerationPlayer | null>(null)
+  const [editBanLength, setEditBanLength] = useState('7')
+  const [editBanReason, setEditBanReason] = useState('')
   const [banToLift, setBanToLift] = useState<ModerationPlayer | null>(null)
   const [liftBanReason, setLiftBanReason] = useState('')
 
@@ -386,13 +449,21 @@ export function ModerationClient({ role }: { role: Role }) {
   const giveStrike = api.moderation.giveStrike.useMutation()
   const removeStrike = api.moderation.removeStrike.useMutation()
   const banMutation = api.moderation.banUser.useMutation()
+  const updateBanMutation = api.moderation.updateBanUser.useMutation()
   const unbanMutation = api.moderation.unbanUser.useMutation()
 
   const isMutating =
     giveStrike.isPending ||
     removeStrike.isPending ||
     banMutation.isPending ||
+    updateBanMutation.isPending ||
     unbanMutation.isPending
+
+  const applyOptimisticPlayer = (action: OptimisticAction) => {
+    startTransition(() => {
+      addOptimisticPlayer(action)
+    })
+  }
 
   const invalidateModeration = () => {
     startTransition(() => {
@@ -420,7 +491,7 @@ export function ModerationClient({ role }: { role: Role }) {
         avatar_url: null,
       },
     }
-    addOptimisticPlayer({
+    applyOptimisticPlayer({
       type: 'give-strike',
       user_id: player.discord_id,
       strike: optimisticStrike,
@@ -455,7 +526,7 @@ export function ModerationClient({ role }: { role: Role }) {
       related_strike_ids: null,
       allowed_queue_ids: null,
     }
-    addOptimisticPlayer({
+    applyOptimisticPlayer({
       type: 'ban-user',
       user_id: player.discord_id,
       ban: optimisticBan,
@@ -478,7 +549,7 @@ export function ModerationClient({ role }: { role: Role }) {
   const handleRemoveStrike = async () => {
     if (!strikeToRemove) return
     const target = strikeToRemove
-    addOptimisticPlayer({
+    applyOptimisticPlayer({
       type: 'remove-strike',
       user_id: target.player.discord_id,
       strike_id: target.strike.id,
@@ -499,10 +570,55 @@ export function ModerationClient({ role }: { role: Role }) {
     }
   }
 
+  const handleUpdateBan = async () => {
+    if (!banToEdit) return
+
+    const length = Number(editBanLength)
+    if (!Number.isFinite(length) || length <= 0) {
+      toast.error('Ban length must be greater than 0.')
+      return
+    }
+
+    const target = banToEdit
+    const currentBan = target.active_ban
+    if (!currentBan) return
+    const optimisticBan: ModerationBan = {
+      id: currentBan.id,
+      user_id: currentBan.user_id,
+      reason: editBanReason.trim() || 'None provided',
+      expires_at: formatISO(new Date(Date.now() + length * DAY_IN_MS)),
+      related_strike_ids: currentBan.related_strike_ids,
+      allowed_queue_ids: currentBan.allowed_queue_ids,
+    }
+
+    applyOptimisticPlayer({
+      type: 'update-ban',
+      user_id: target.discord_id,
+      ban: optimisticBan,
+    })
+    setBanToEdit(null)
+    setEditBanLength('7')
+    setEditBanReason('')
+
+    try {
+      await updateBanMutation.mutateAsync({
+        user_id: target.discord_id,
+        length,
+        reason: editBanReason.trim(),
+      })
+      toast.success(`Updated ban for ${target.display_name}.`)
+    } catch (error) {
+      console.error(error)
+      toast.error('Failed to update ban.')
+    } finally {
+      invalidateModeration()
+    }
+  }
+
   const handleLiftBan = async () => {
     if (!banToLift) return
     const target = banToLift
-    addOptimisticPlayer({
+    applyOptimisticPlayer({
       type: 'unban-user',
       user_id: target.discord_id,
     })
@@ -527,11 +643,25 @@ export function ModerationClient({ role }: { role: Role }) {
     canManageBans,
     isMutating,
     onGiveStrike: handleGiveStrike,
-    onRemoveStrike: (selectedPlayer: ModerationPlayer, strike: ModerationStrike) => {
+    onRemoveStrike: (
+      selectedPlayer: ModerationPlayer,
+      strike: ModerationStrike
+    ) => {
       setStrikeToRemove({ player: selectedPlayer, strike })
       setRemoveStrikeReason('')
     },
     onBanUser: handleBanUser,
+    onUpdateBan: (selectedPlayer: ModerationPlayer) => {
+      setBanToEdit(selectedPlayer)
+      setEditBanLength(
+        getBanLengthFromExpiry(selectedPlayer.active_ban?.expires_at)
+      )
+      setEditBanReason(
+        selectedPlayer.active_ban?.reason === 'None provided'
+          ? ''
+          : (selectedPlayer.active_ban?.reason ?? '')
+      )
+    },
     onLiftBan: (selectedPlayer: ModerationPlayer) => {
       setBanToLift(selectedPlayer)
       setLiftBanReason('')
@@ -615,9 +745,13 @@ export function ModerationClient({ role }: { role: Role }) {
                 <TableRow>
                   <TableHead className='min-w-[200px]'>Player</TableHead>
                   <TableHead className='w-[100px]'>Status</TableHead>
-                  <TableHead className='w-[100px] text-center'>Strikes</TableHead>
+                  <TableHead className='w-[100px] text-center'>
+                    Strikes
+                  </TableHead>
                   <TableHead className='w-[120px]'>Banned until</TableHead>
-                  <TableHead className='w-[150px] text-right'>Actions</TableHead>
+                  <TableHead className='w-[150px] text-right'>
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -720,6 +854,84 @@ export function ModerationClient({ role }: { role: Role }) {
               disabled={isMutating || !strikeToRemove}
             >
               Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Ban dialog */}
+      <Dialog
+        open={Boolean(banToEdit)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBanToEdit(null)
+            setEditBanLength('7')
+            setEditBanReason('')
+          }
+        }}
+      >
+        <DialogContent className='sm:max-w-md'>
+          <DialogHeader>
+            <DialogTitle>Edit Ban</DialogTitle>
+            <DialogDescription>
+              Update ban length in days from now and reason.
+            </DialogDescription>
+          </DialogHeader>
+          {banToEdit ? (
+            <div className='rounded-lg border bg-muted/30 p-3 text-sm'>
+              <p className='font-medium'>{banToEdit.display_name}</p>
+              <p className='mt-1 text-muted-foreground'>
+                {banToEdit.active_ban?.reason ?? 'No reason provided'}
+              </p>
+              <p className='mt-1 text-muted-foreground text-xs'>
+                Current expiry:{' '}
+                {banToEdit.active_ban?.expires_at
+                  ? format(
+                      new Date(banToEdit.active_ban.expires_at),
+                      'MMM d, yyyy HH:mm'
+                    )
+                  : 'No expiry'}
+              </p>
+            </div>
+          ) : null}
+          <div className='grid gap-3 sm:grid-cols-2'>
+            <div className='space-y-1.5'>
+              <Label className='text-xs'>Length (days from now)</Label>
+              <Input
+                type='number'
+                min={1}
+                value={editBanLength}
+                onChange={(e) => setEditBanLength(e.target.value)}
+                placeholder='7'
+              />
+            </div>
+            <div className='space-y-1.5'>
+              <Label className='text-xs'>Reason</Label>
+              <Textarea
+                value={editBanReason}
+                onChange={(e) => setEditBanReason(e.target.value)}
+                rows={3}
+                placeholder='Repeated offenses, severe harassment...'
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant='outline'
+              onClick={() => {
+                setBanToEdit(null)
+                setEditBanLength('7')
+                setEditBanReason('')
+              }}
+              disabled={isMutating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateBan}
+              disabled={isMutating || !banToEdit?.active_ban}
+            >
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -100,6 +100,28 @@ export const moderationRouter = createTRPCRouter({
       })
     }),
 
+  updateBanUser: adminProcedure
+    .input(
+      z
+        .object({
+          user_id: discordIdSchema,
+          length: z.number().positive().optional(),
+          reason: z.string().trim().max(500).optional(),
+        })
+        .refine(
+          (input) => input.length !== undefined || input.reason !== undefined,
+          {
+            message: 'Provide at least one field to update.',
+          }
+        )
+    )
+    .mutation(async ({ ctx, input }) => {
+      return botlatro_service.updateBanUser({
+        ...input,
+        updated_by_id: ctx.session.user.discord_id,
+      })
+    }),
+
   unbanUser: adminProcedure
     .input(
       z.object({
