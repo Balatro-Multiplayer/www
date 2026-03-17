@@ -4,13 +4,16 @@ type ParsedGameLike = {
   logOwnerName?: unknown
   moneySpentPerShop?: unknown
   moneySpentPerShopOpponent?: unknown
+  options?: unknown
   opponentName?: unknown
+  ruleset?: unknown
   startDate?: unknown
 }
 
 export type FirstShopOverspendFlag = {
   gameIndex: number
   deck: string
+  gameMode: string
   threshold: number
   offenders: Array<{
     playerName: string
@@ -39,6 +42,11 @@ function normalizeDeck(value: unknown) {
   }
 
   return deck.replace(/deck$/i, '').trim() || deck
+}
+
+function normalizeGameMode(value: unknown) {
+  const mode = normalizeString(value)
+  return mode ?? 'Unknown'
 }
 
 function normalizeSpend(value: unknown) {
@@ -71,7 +79,12 @@ export function detectFirstShopOverspends(parsedGames: unknown) {
     }
 
     const parsedGame = game as ParsedGameLike
+    const options =
+      parsedGame.options && typeof parsedGame.options === 'object'
+        ? (parsedGame.options as { ruleset?: unknown })
+        : null
     const deck = normalizeDeck(parsedGame.deck)
+    const gameMode = normalizeGameMode(parsedGame.ruleset ?? options?.ruleset)
     const threshold = isYellowDeck(deck)
       ? YELLOW_DECK_THRESHOLD
       : DEFAULT_THRESHOLD
@@ -120,6 +133,7 @@ export function detectFirstShopOverspends(parsedGames: unknown) {
             ? parsedGame.gameIndex
             : index,
         deck,
+        gameMode,
         threshold,
         offenders,
         startDate:

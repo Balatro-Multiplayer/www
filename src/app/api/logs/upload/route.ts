@@ -205,6 +205,7 @@ export async function PUT(req: NextRequest) {
           flags: cheatFlags.map((flag) => ({
             game_index: flag.gameIndex,
             deck: flag.deck,
+            game_mode: flag.gameMode,
             threshold: flag.threshold,
             offenders: flag.offenders.map((offender) => ({
               player_name: offender.playerName,

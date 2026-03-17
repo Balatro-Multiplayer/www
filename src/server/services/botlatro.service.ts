@@ -534,6 +534,7 @@ export type FirstShopOverspendWarningInput = {
   flags: Array<{
     game_index: number
     deck: string
+    game_mode: string
     threshold: number
     offenders: Array<{
       player_name: string
