@@ -481,7 +481,7 @@ export type ModerationMembersListInput = {
 export type GiveStrikeInput = {
   user_id: string
   amount: number
-  reason?: string
+  reason: string
   reference?: string
   issued_by_id: string
 }
@@ -499,7 +499,7 @@ export type RemoveStrikeInput = {
 export type BanUserInput = {
   user_id: string
   length: number
-  reason?: string
+  reason: string
   banned_by_id: string
 }
 

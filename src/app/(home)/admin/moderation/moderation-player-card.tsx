@@ -78,12 +78,12 @@ export function ModerationPlayerCard({
   isMutating: boolean
   onGiveStrike: (
     player: ModerationPlayer,
-    data: { amount: number; reason?: string; reference?: string }
+    data: { amount: number; reason: string; reference?: string }
   ) => void
   onRemoveStrike: (player: ModerationPlayer, strike: ModerationStrike) => void
   onBanUser: (
     player: ModerationPlayer,
-    data: { length: number; reason?: string }
+    data: { length: number; reason: string }
   ) => void
   onUpdateBan: (player: ModerationPlayer) => void
   onLiftBan: (player: ModerationPlayer) => void
@@ -106,6 +106,8 @@ export function ModerationPlayerCard({
   // Ban form
   const [banLength, setBanLength] = useState('7')
   const [banReason, setBanReason] = useState('')
+  const strikeReasonValue = strikeReason.trim()
+  const banReasonValue = banReason.trim()
 
   const resetForms = () => {
     setStrikeAmount('1')
@@ -121,9 +123,11 @@ export function ModerationPlayerCard({
   }
 
   const handleSubmitStrike = () => {
+    if (!strikeReasonValue) return
+
     onGiveStrike(player, {
       amount: Number(strikeAmount),
-      reason: strikeReason.trim() || undefined,
+      reason: strikeReasonValue,
       reference: strikeReference.trim() || undefined,
     })
     setActionPanel(null)
@@ -132,10 +136,11 @@ export function ModerationPlayerCard({
 
   const handleSubmitBan = () => {
     const length = Number(banLength)
-    if (!Number.isFinite(length) || length <= 0) return
+    if (!Number.isFinite(length) || length <= 0 || !banReasonValue) return
+
     onBanUser(player, {
       length,
-      reason: banReason.trim() || undefined,
+      reason: banReasonValue,
     })
     setActionPanel(null)
     resetForms()
@@ -291,11 +296,14 @@ export function ModerationPlayerCard({
                   />
                 </div>
                 <div className='space-y-1 sm:col-span-2'>
-                  <Label className='text-xs'>Reason</Label>
+                  <Label className='text-xs'>Reason *</Label>
                   <Textarea
                     value={strikeReason}
                     onChange={(e) => setStrikeReason(e.target.value)}
                     rows={2}
+                    maxLength={500}
+                    required
+                    aria-required='true'
                     placeholder='AFK in queue, abusive DM...'
                   />
                 </div>
@@ -315,7 +323,7 @@ export function ModerationPlayerCard({
                 <Button
                   size='sm'
                   onClick={handleSubmitStrike}
-                  disabled={isMutating}
+                  disabled={isMutating || !strikeReasonValue}
                 >
                   Confirm Strike
                 </Button>
@@ -354,11 +362,14 @@ export function ModerationPlayerCard({
                   />
                 </div>
                 <div className='space-y-1'>
-                  <Label className='text-xs'>Reason</Label>
+                  <Label className='text-xs'>Reason *</Label>
                   <Textarea
                     value={banReason}
                     onChange={(e) => setBanReason(e.target.value)}
                     rows={2}
+                    maxLength={500}
+                    required
+                    aria-required='true'
                     placeholder='Repeated offenses, severe harassment...'
                   />
                 </div>
@@ -378,7 +389,7 @@ export function ModerationPlayerCard({
                 <Button
                   size='sm'
                   onClick={handleSubmitBan}
-                  disabled={isMutating}
+                  disabled={isMutating || !banReasonValue}
                 >
                   Confirm Ban
                 </Button>

@@ -30,8 +30,7 @@ export const playersRouter = createTRPCRouter({
         username: member.username,
         display_name: member.display_name,
         avatar_url:
-          member.avatar_url ??
-          'https://cdn.discordapp.com/embed/avatars/0.png',
+          member.avatar_url ?? 'https://cdn.discordapp.com/embed/avatars/0.png',
         twitch_url: userData?.twitch_url || null,
         youtube_url: userData?.youtube_url || null,
       }

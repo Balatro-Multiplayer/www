@@ -47,7 +47,7 @@ export const moderationRouter = createTRPCRouter({
       z.object({
         user_id: discordIdSchema,
         amount: z.number().int().min(0).max(6),
-        reason: z.string().trim().max(500).optional(),
+        reason: z.string().trim().min(1).max(500),
         reference: z.string().trim().max(500).optional(),
       })
     )
@@ -90,7 +90,7 @@ export const moderationRouter = createTRPCRouter({
       z.object({
         user_id: discordIdSchema,
         length: z.number().positive(),
-        reason: z.string().trim().max(500).optional(),
+        reason: z.string().trim().min(1).max(500),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -106,7 +106,7 @@ export const moderationRouter = createTRPCRouter({
         .object({
           user_id: discordIdSchema,
           length: z.number().positive().optional(),
-          reason: z.string().trim().max(500).optional(),
+          reason: z.string().trim().min(1).max(500).optional(),
         })
         .refine(
           (input) => input.length !== undefined || input.reason !== undefined,

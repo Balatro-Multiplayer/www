@@ -356,10 +356,7 @@ function UserInfoComponent() {
           <div className='flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between'>
             <div className='flex items-center gap-4'>
               <Avatar className='size-16 ring-2 ring-border sm:size-20'>
-                <AvatarImage
-                  src={discord_user.avatar_url}
-                  alt={currentName}
-                />
+                <AvatarImage src={discord_user.avatar_url} alt={currentName} />
                 <AvatarFallback className='bg-muted font-bold text-muted-foreground text-xl'>
                   {currentName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>

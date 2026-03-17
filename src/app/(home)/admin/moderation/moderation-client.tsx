@@ -192,12 +192,12 @@ function ModerationTableRow({
   onToggleExpand: () => void
   onGiveStrike: (
     player: ModerationPlayer,
-    data: { amount: number; reason?: string; reference?: string }
+    data: { amount: number; reason: string; reference?: string }
   ) => void
   onRemoveStrike: (player: ModerationPlayer, strike: ModerationStrike) => void
   onBanUser: (
     player: ModerationPlayer,
-    data: { length: number; reason?: string }
+    data: { length: number; reason: string }
   ) => void
   onUpdateBan: (player: ModerationPlayer) => void
   onLiftBan: (player: ModerationPlayer) => void
@@ -473,12 +473,12 @@ export function ModerationClient({ role }: { role: Role }) {
 
   const handleGiveStrike = async (
     player: ModerationPlayer,
-    data: { amount: number; reason?: string; reference?: string }
+    data: { amount: number; reason: string; reference?: string }
   ) => {
     const optimisticStrike: ModerationStrike = {
       id: -Date.now(),
       user_id: player.discord_id,
-      reason: data.reason || 'No reason provided',
+      reason: data.reason,
       issued_by_id: 'self',
       issued_at: formatISO(new Date()),
       expires_at: null,
@@ -514,12 +514,12 @@ export function ModerationClient({ role }: { role: Role }) {
 
   const handleBanUser = async (
     player: ModerationPlayer,
-    data: { length: number; reason?: string }
+    data: { length: number; reason: string }
   ) => {
     const optimisticBan: ModerationBan = {
       id: -Date.now(),
       user_id: player.discord_id,
-      reason: data.reason || 'None provided',
+      reason: data.reason,
       expires_at: formatISO(
         new Date(Date.now() + data.length * 24 * 60 * 60 * 1000)
       ),
@@ -574,8 +574,13 @@ export function ModerationClient({ role }: { role: Role }) {
     if (!banToEdit) return
 
     const length = Number(editBanLength)
+    const reason = editBanReason.trim()
     if (!Number.isFinite(length) || length <= 0) {
       toast.error('Ban length must be greater than 0.')
+      return
+    }
+    if (!reason) {
+      toast.error('Reason required.')
       return
     }
 
@@ -585,7 +590,7 @@ export function ModerationClient({ role }: { role: Role }) {
     const optimisticBan: ModerationBan = {
       id: currentBan.id,
       user_id: currentBan.user_id,
-      reason: editBanReason.trim() || 'None provided',
+      reason,
       expires_at: formatISO(new Date(Date.now() + length * DAY_IN_MS)),
       related_strike_ids: currentBan.related_strike_ids,
       allowed_queue_ids: currentBan.allowed_queue_ids,
@@ -604,7 +609,7 @@ export function ModerationClient({ role }: { role: Role }) {
       await updateBanMutation.mutateAsync({
         user_id: target.discord_id,
         length,
-        reason: editBanReason.trim(),
+        reason,
       })
       toast.success(`Updated ban for ${target.display_name}.`)
     } catch (error) {
@@ -657,7 +662,8 @@ export function ModerationClient({ role }: { role: Role }) {
         getBanLengthFromExpiry(selectedPlayer.active_ban?.expires_at)
       )
       setEditBanReason(
-        selectedPlayer.active_ban?.reason === 'None provided'
+        selectedPlayer.active_ban?.reason === 'None provided' ||
+          selectedPlayer.active_ban?.reason === 'No reason provided'
           ? ''
           : (selectedPlayer.active_ban?.reason ?? '')
       )
@@ -813,9 +819,7 @@ export function ModerationClient({ role }: { role: Role }) {
         <DialogContent className='sm:max-w-md'>
           <DialogHeader>
             <DialogTitle>Remove Strike</DialogTitle>
-            <DialogDescription>
-              Optional note explains why the strike was removed.
-            </DialogDescription>
+            <DialogDescription>Add a removal note if needed.</DialogDescription>
           </DialogHeader>
           {strikeToRemove ? (
             <div className='rounded-lg border bg-muted/30 p-3 text-sm'>
@@ -874,7 +878,7 @@ export function ModerationClient({ role }: { role: Role }) {
           <DialogHeader>
             <DialogTitle>Edit Ban</DialogTitle>
             <DialogDescription>
-              Update ban length in days from now and reason.
+              Update ban length in days from now. `*` means required.
             </DialogDescription>
           </DialogHeader>
           {banToEdit ? (
@@ -906,11 +910,14 @@ export function ModerationClient({ role }: { role: Role }) {
               />
             </div>
             <div className='space-y-1.5'>
-              <Label className='text-xs'>Reason</Label>
+              <Label className='text-xs'>Reason *</Label>
               <Textarea
                 value={editBanReason}
                 onChange={(e) => setEditBanReason(e.target.value)}
                 rows={3}
+                maxLength={500}
+                required
+                aria-required='true'
                 placeholder='Repeated offenses, severe harassment...'
               />
             </div>
@@ -929,7 +936,9 @@ export function ModerationClient({ role }: { role: Role }) {
             </Button>
             <Button
               onClick={handleUpdateBan}
-              disabled={isMutating || !banToEdit?.active_ban}
+              disabled={
+                isMutating || !banToEdit?.active_ban || !editBanReason.trim()
+              }
             >
               Save
             </Button>
