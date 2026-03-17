@@ -1,5 +1,6 @@
 'use client'
 
+import { format } from 'date-fns'
 import {
   Calendar,
   ChevronDown,
@@ -264,6 +265,9 @@ function UserInfoComponent() {
 
   const aliases = [...new Set(seasonFilteredGames.map((g) => g.playerName))]
   const currentName = discord_user.display_name
+  const activeBanExpiryLabel = discord_user.active_ban?.expires_at
+    ? format(new Date(discord_user.active_ban.expires_at), 'MMM d, yyyy')
+    : null
   const meaningful_games = games_played - ties
   const winRate =
     meaningful_games > 0 ? Math.ceil((wins / meaningful_games) * 100) : 0
@@ -391,7 +395,7 @@ function UserInfoComponent() {
                   @{discord_user.username}
                 </p>
 
-                <div className='mt-2 flex items-center gap-1.5'>
+                <div className='mt-2 flex flex-wrap items-center gap-1.5'>
                   {discord_user.twitch_url && (
                     <a
                       href={discord_user.twitch_url}
@@ -426,6 +430,31 @@ function UserInfoComponent() {
                       </Badge>
                     )}
                 </div>
+
+                {discord_user.active_ban && (
+                  <div className='mt-2 flex flex-wrap items-center gap-2'>
+                    <Badge
+                      variant='destructive'
+                      className='border-rose-200/70 bg-rose-50 text-rose-700 dark:border-rose-950 dark:bg-rose-950/40 dark:text-rose-300'
+                    >
+                      Banned
+                    </Badge>
+                    <p className='text-muted-foreground text-sm'>
+                      {activeBanExpiryLabel ? (
+                        <>
+                          Expires{' '}
+                          <span className='font-medium text-foreground'>
+                            {activeBanExpiryLabel}
+                          </span>
+                        </>
+                      ) : (
+                        <span className='font-medium text-foreground'>
+                          Permanent ban
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

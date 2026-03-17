@@ -16,15 +16,16 @@ export const playersRouter = createTRPCRouter({
       })
     )
     .query(async ({ input }) => {
-      const member = await botlatro_service.getUser(input.user_id)
-
-      const userData = await db.query.users.findFirst({
-        where: eq(users.discord_id, input.user_id),
-        columns: {
-          twitch_url: true,
-          youtube_url: true,
-        },
-      })
+      const [member, userData] = await Promise.all([
+        botlatro_service.getUser(input.user_id),
+        db.query.users.findFirst({
+          where: eq(users.discord_id, input.user_id),
+          columns: {
+            twitch_url: true,
+            youtube_url: true,
+          },
+        }),
+      ])
 
       return {
         username: member.username,
@@ -33,6 +34,7 @@ export const playersRouter = createTRPCRouter({
           member.avatar_url ?? 'https://cdn.discordapp.com/embed/avatars/0.png',
         twitch_url: userData?.twitch_url || null,
         youtube_url: userData?.youtube_url || null,
+        active_ban: member.active_ban,
       }
     }),
 })

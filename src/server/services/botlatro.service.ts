@@ -49,6 +49,7 @@ type GuildMemberUser = {
   username: string
   display_name: string
   avatar_url: string | null
+  active_ban: ModerationBan | null
 }
 
 export const botlatro_service = {
