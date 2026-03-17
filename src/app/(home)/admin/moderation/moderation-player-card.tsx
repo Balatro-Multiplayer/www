@@ -136,7 +136,7 @@ export function ModerationPlayerCard({
 
   const handleSubmitBan = () => {
     const length = Number(banLength)
-    if (!Number.isFinite(length) || length <= 0 || !banReasonValue) return
+    if (!Number.isFinite(length) || length < 0 || !banReasonValue) return
 
     onBanUser(player, {
       length,
@@ -352,14 +352,19 @@ export function ModerationPlayerCard({
               </div>
               <div className='grid gap-2 sm:grid-cols-2'>
                 <div className='space-y-1'>
-                  <Label className='text-xs'>Length (days)</Label>
+                  <Label className='text-xs'>
+                    Length (days, 0 = permanent)
+                  </Label>
                   <Input
                     type='number'
-                    min={1}
+                    min={0}
                     value={banLength}
                     onChange={(e) => setBanLength(e.target.value)}
                     placeholder='7'
                   />
+                  <p className='text-muted-foreground text-xs'>
+                    Set to 0 for a permanent ban.
+                  </p>
                 </div>
                 <div className='space-y-1'>
                   <Label className='text-xs'>Reason *</Label>
@@ -409,7 +414,7 @@ export function ModerationPlayerCard({
                 <p className='text-muted-foreground text-xs'>
                   {player.active_ban.expires_at
                     ? `Expires ${format(new Date(player.active_ban.expires_at), 'MMM d, yyyy HH:mm')}`
-                    : 'No expiry'}
+                    : 'Permanent'}
                 </p>
               </div>
               {canManageBans ? (

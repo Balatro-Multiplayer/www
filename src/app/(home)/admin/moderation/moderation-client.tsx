@@ -127,7 +127,7 @@ function initials(name: string) {
 const DAY_IN_MS = 24 * 60 * 60 * 1000
 
 function getBanLengthFromExpiry(expiresAt: string | null | undefined) {
-  if (!expiresAt) return '7'
+  if (!expiresAt) return '0'
 
   const remainingMs = new Date(expiresAt).getTime() - Date.now()
   if (!Number.isFinite(remainingMs) || remainingMs <= 0) return '1'
@@ -520,9 +520,10 @@ export function ModerationClient({ role }: { role: Role }) {
       id: -Date.now(),
       user_id: player.discord_id,
       reason: data.reason,
-      expires_at: formatISO(
-        new Date(Date.now() + data.length * 24 * 60 * 60 * 1000)
-      ),
+      expires_at:
+        data.length === 0
+          ? null
+          : formatISO(new Date(Date.now() + data.length * 24 * 60 * 60 * 1000)),
       related_strike_ids: null,
       allowed_queue_ids: null,
     }
@@ -575,8 +576,8 @@ export function ModerationClient({ role }: { role: Role }) {
 
     const length = Number(editBanLength)
     const reason = editBanReason.trim()
-    if (!Number.isFinite(length) || length <= 0) {
-      toast.error('Ban length must be greater than 0.')
+    if (!Number.isFinite(length) || length < 0) {
+      toast.error('Ban length must be 0 or greater.')
       return
     }
     if (!reason) {
@@ -591,7 +592,10 @@ export function ModerationClient({ role }: { role: Role }) {
       id: currentBan.id,
       user_id: currentBan.user_id,
       reason,
-      expires_at: formatISO(new Date(Date.now() + length * DAY_IN_MS)),
+      expires_at:
+        length === 0
+          ? null
+          : formatISO(new Date(Date.now() + length * DAY_IN_MS)),
       related_strike_ids: currentBan.related_strike_ids,
       allowed_queue_ids: currentBan.allowed_queue_ids,
     }
@@ -878,7 +882,8 @@ export function ModerationClient({ role }: { role: Role }) {
           <DialogHeader>
             <DialogTitle>Edit Ban</DialogTitle>
             <DialogDescription>
-              Update ban length in days from now. `*` means required.
+              Update ban length in days from now. Set length to 0 for a
+              permanent ban. * means required.
             </DialogDescription>
           </DialogHeader>
           {banToEdit ? (
@@ -894,16 +899,18 @@ export function ModerationClient({ role }: { role: Role }) {
                       new Date(banToEdit.active_ban.expires_at),
                       'MMM d, yyyy HH:mm'
                     )
-                  : 'No expiry'}
+                  : 'Permanent'}
               </p>
             </div>
           ) : null}
           <div className='grid gap-3 sm:grid-cols-2'>
             <div className='space-y-1.5'>
-              <Label className='text-xs'>Length (days from now)</Label>
+              <Label className='text-xs'>
+                Length (days from now, 0 = permanent)
+              </Label>
               <Input
                 type='number'
-                min={1}
+                min={0}
                 value={editBanLength}
                 onChange={(e) => setEditBanLength(e.target.value)}
                 placeholder='7'

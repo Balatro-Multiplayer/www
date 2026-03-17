@@ -89,7 +89,7 @@ export const moderationRouter = createTRPCRouter({
     .input(
       z.object({
         user_id: discordIdSchema,
-        length: z.number().positive(),
+        length: z.number().min(0),
         reason: z.string().trim().min(1).max(500),
       })
     )
@@ -105,7 +105,7 @@ export const moderationRouter = createTRPCRouter({
       z
         .object({
           user_id: discordIdSchema,
-          length: z.number().positive().optional(),
+          length: z.number().min(0).optional(),
           reason: z.string().trim().min(1).max(500).optional(),
         })
         .refine(
