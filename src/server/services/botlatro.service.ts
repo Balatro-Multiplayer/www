@@ -518,7 +518,7 @@ export type UpdateBanUserInput = {
 export type UnbanUserInput = {
   user_id: string
   unbanned_by_id: string
-  reason?: string
+  reason: string
 }
 
 export type ModerationMutationSuccess = {

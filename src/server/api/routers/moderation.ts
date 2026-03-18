@@ -126,7 +126,7 @@ export const moderationRouter = createTRPCRouter({
     .input(
       z.object({
         user_id: discordIdSchema,
-        reason: z.string().trim().max(500).optional(),
+        reason: z.string().trim().min(1).max(500),
       })
     )
     .mutation(async ({ ctx, input }) => {

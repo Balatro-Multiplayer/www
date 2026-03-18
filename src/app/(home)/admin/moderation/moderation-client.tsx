@@ -626,6 +626,11 @@ export function ModerationClient({ role }: { role: Role }) {
 
   const handleLiftBan = async () => {
     if (!banToLift) return
+    const reason = liftBanReason.trim()
+    if (!reason) {
+      toast.error('Reason required.')
+      return
+    }
     const target = banToLift
     applyOptimisticPlayer({
       type: 'unban-user',
@@ -636,7 +641,7 @@ export function ModerationClient({ role }: { role: Role }) {
     try {
       await unbanMutation.mutateAsync({
         user_id: target.discord_id,
-        reason: liftBanReason.trim() || undefined,
+        reason,
       })
       toast.success(`Lifted ban for ${target.display_name}.`)
     } catch (error) {
@@ -967,7 +972,7 @@ export function ModerationClient({ role }: { role: Role }) {
           <DialogHeader>
             <DialogTitle>Lift Ban</DialogTitle>
             <DialogDescription>
-              Optional note is included with the unban action.
+              Removal reason is required and sent with the unban action.
             </DialogDescription>
           </DialogHeader>
           {banToLift ? (
@@ -1001,7 +1006,7 @@ export function ModerationClient({ role }: { role: Role }) {
             <Button
               variant='destructive'
               onClick={handleLiftBan}
-              disabled={isMutating || !banToLift}
+              disabled={isMutating || !banToLift || !liftBanReason.trim()}
             >
               Lift Ban
             </Button>
