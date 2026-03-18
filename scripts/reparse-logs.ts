@@ -1,5 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
+import { setTimeout as delay } from 'node:timers/promises'
 import { and, desc, eq, lte, sql } from 'drizzle-orm'
 import { env } from '@/env'
 import {
@@ -23,6 +24,10 @@ import { minioClient } from '@/server/minio'
 
 const DEFAULT_BATCH_SIZE = 25
 const DEFAULT_STATE_FILE = '.reparse-logs/state.json'
+const LOG_FETCH_TIMEOUT_MS = 30_000
+const LOG_STREAM_TIMEOUT_MS = 30_000
+const PROCESS_RETRY_ATTEMPTS = 3
+const PROCESS_RETRY_DELAY_MS = 1_000
 
 type Args = {
   batchSize: number
@@ -35,12 +40,22 @@ type Cursor = {
   id: number
 }
 
+type ReparseFailure = {
+  attempts: number
+  error: string
+  failedAt: string
+  fileName: string
+  id: number
+}
+
 type ReparseState = {
-  version: 1
+  version: 2
   snapshotMaxId: number
   cursor: Cursor | null
   processed: number
   succeeded: number
+  failed: number
+  failures: ReparseFailure[]
   startedAt: string
   completedAt: string | null
 }
@@ -97,7 +112,18 @@ function parseArgs(argv: string[]): Args {
 async function readState(path: string): Promise<ReparseState | null> {
   try {
     const raw = await readFile(path, 'utf8')
-    return JSON.parse(raw) as ReparseState
+    const parsed = JSON.parse(raw) as Partial<ReparseState>
+    return {
+      version: 2,
+      snapshotMaxId: parsed.snapshotMaxId ?? 0,
+      cursor: parsed.cursor ?? null,
+      processed: parsed.processed ?? 0,
+      succeeded: parsed.succeeded ?? 0,
+      failed: parsed.failed ?? 0,
+      failures: parsed.failures ?? [],
+      startedAt: parsed.startedAt ?? new Date().toISOString(),
+      completedAt: parsed.completedAt ?? null,
+    }
   } catch {
     return null
   }
@@ -106,6 +132,37 @@ async function readState(path: string): Promise<ReparseState | null> {
 async function writeState(path: string, state: ReparseState) {
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return String(error)
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string
+) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs}ms`))
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
+  }
 }
 
 function isMinioLogUrl(fileUrl: string) {
@@ -131,8 +188,16 @@ async function fetchLogSource(fileUrl: string) {
 
     if (bucketName && objectName) {
       try {
-        const stream = await minioClient.getObject(bucketName, objectName)
-        return streamToText(stream)
+        const stream = await withTimeout(
+          minioClient.getObject(bucketName, objectName),
+          LOG_FETCH_TIMEOUT_MS,
+          `MinIO fetch ${bucketName}/${objectName}`
+        )
+        return withTimeout(
+          streamToText(stream),
+          LOG_STREAM_TIMEOUT_MS,
+          `MinIO stream ${bucketName}/${objectName}`
+        )
       } catch (error) {
         console.warn(
           `MinIO fetch failed for ${bucketName}/${objectName}, falling back to HTTP:`,
@@ -142,14 +207,20 @@ async function fetchLogSource(fileUrl: string) {
     }
   }
 
-  const response = await fetch(fileUrl)
+  const response = await fetch(fileUrl, {
+    signal: AbortSignal.timeout(LOG_FETCH_TIMEOUT_MS),
+  })
   if (!response.ok) {
     throw new Error(
       `Failed to fetch source: ${response.status} ${response.statusText}`
     )
   }
 
-  return response.text()
+  return withTimeout(
+    response.text(),
+    LOG_STREAM_TIMEOUT_MS,
+    `HTTP stream ${fileUrl}`
+  )
 }
 
 function buildCursorWhere(state: ReparseState) {
@@ -176,11 +247,13 @@ async function getOrCreateState(path: string) {
     .from(logFiles)
 
   return {
-    version: 1,
+    version: 2,
     snapshotMaxId: latest?.maxId ?? 0,
     cursor: null,
     processed: 0,
     succeeded: 0,
+    failed: 0,
+    failures: [],
     startedAt: new Date().toISOString(),
     completedAt: null,
   } satisfies ReparseState
@@ -301,6 +374,52 @@ async function processLog(row: LogRow) {
   }
 }
 
+async function processLogWithRetry(row: LogRow) {
+  let lastError: unknown
+
+  for (let attempt = 1; attempt <= PROCESS_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      return {
+        ...(await processLog(row)),
+        attempts: attempt,
+      }
+    } catch (error) {
+      lastError = error
+
+      if (attempt >= PROCESS_RETRY_ATTEMPTS) {
+        break
+      }
+
+      console.warn(
+        `Retrying #${row.id} ${row.fileName} (${attempt}/${PROCESS_RETRY_ATTEMPTS}) after: ${errorMessage(error)}`
+      )
+      await delay(PROCESS_RETRY_DELAY_MS * attempt)
+    }
+  }
+
+  throw lastError
+}
+
+function recordFailure(
+  state: ReparseState,
+  row: LogRow,
+  attempts: number,
+  error: unknown
+) {
+  const failure: ReparseFailure = {
+    attempts,
+    error: errorMessage(error),
+    failedAt: new Date().toISOString(),
+    fileName: row.fileName,
+    id: row.id,
+  }
+
+  state.failures = [
+    ...state.failures.filter((entry) => entry.id !== row.id),
+    failure,
+  ]
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2))
 
@@ -313,7 +432,7 @@ async function main() {
 
   const total = await getTotalForSnapshot(state.snapshotMaxId)
   console.log(
-    `Reparsing logs newest->oldest. snapshot<=${state.snapshotMaxId}, processed=${state.processed}/${total}`
+    `Reparsing logs newest->oldest. snapshot<=${state.snapshotMaxId}, processed=${state.processed}/${total}, succeeded=${state.succeeded}, failed=${state.failed}`
   )
 
   let processedThisRun = 0
@@ -333,13 +452,19 @@ async function main() {
     if (rows.length === 0) {
       state.completedAt = new Date().toISOString()
       await writeState(args.stateFile, state)
+      if (state.failed > 0) {
+        console.error(
+          `Complete with failures. failed=${state.failed}. state kept at ${args.stateFile}`
+        )
+        process.exit(1)
+      }
       console.log(`Complete. state kept at ${args.stateFile}`)
       process.exit(0)
     }
 
     for (const row of rows) {
       try {
-        const result = await processLog(row)
+        const result = await processLogWithRetry(row)
         state.cursor = {
           id: row.id,
         }
@@ -348,12 +473,21 @@ async function main() {
         processedThisRun += 1
         await writeState(args.stateFile, state)
         console.log(
-          `[${state.processed}/${total}] #${row.id} ${row.fileName} reparsed=${result.reparsedGames} merged=${result.mergedGames}`
+          `[${state.processed}/${total}] #${row.id} ${row.fileName} reparsed=${result.reparsedGames} merged=${result.mergedGames} attempts=${result.attempts}`
         )
       } catch (error) {
-        console.error(`Failed on #${row.id} ${row.fileName}:`, error)
-        console.error(`Resume with: bun run db:reparse-logs`)
-        process.exit(1)
+        state.cursor = {
+          id: row.id,
+        }
+        state.processed += 1
+        state.failed += 1
+        processedThisRun += 1
+        recordFailure(state, row, PROCESS_RETRY_ATTEMPTS, error)
+        await writeState(args.stateFile, state)
+        console.error(
+          `[${state.processed}/${total}] failed #${row.id} ${row.fileName} after ${PROCESS_RETRY_ATTEMPTS} attempts: ${errorMessage(error)}`
+        )
+        console.error(`Continuing. failed rows saved in ${args.stateFile}`)
       }
 
       if (args.limit !== null && processedThisRun >= args.limit) {

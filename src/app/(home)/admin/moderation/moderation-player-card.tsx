@@ -49,6 +49,10 @@ function relativeTime(value: string | null) {
   return formatDistanceToNowStrict(new Date(value), { addSuffix: true })
 }
 
+function formatDateTime(value: string) {
+  return format(new Date(value), 'MMM d, yyyy HH:mm')
+}
+
 function initials(name: string) {
   return name
     .split(/\s+/)
@@ -468,7 +472,11 @@ export function ModerationPlayerCard({
                   <div className='min-w-0 flex-1 space-y-0.5'>
                     <p className='text-xs'>{strike.reason}</p>
                     <p className='text-[11px] text-muted-foreground'>
-                      {format(new Date(strike.issued_at), 'MMM d, yyyy')}
+                      Issued {formatDateTime(strike.issued_at)}
+                      {' · '}
+                      {strike.expires_at
+                        ? `Expires ${formatDateTime(strike.expires_at)}`
+                        : 'No expiry'}
                       {strike.reference ? ` · ${strike.reference}` : ''}
                       {' · '}
                       {strike.issued_by?.username ?? strike.issued_by_id}
