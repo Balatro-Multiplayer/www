@@ -231,11 +231,6 @@ export function RolesClient() {
           />
         )}
       </TableShell>
-
-      <p className='text-muted-foreground text-xs'>
-        Mobile-first layout: key info is visible, email collapses on small
-        screens.
-      </p>
     </div>
   )
 }
