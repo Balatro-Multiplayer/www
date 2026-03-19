@@ -155,6 +155,10 @@ function isBlackDeck(deck: string) {
   return deck.trim().toLowerCase() === 'black'
 }
 
+function isGreenDeck(deck: string) {
+  return deck.trim().toLowerCase() === 'green'
+}
+
 function getStartingMoney(deck: string) {
   return isYellowDeck(deck)
     ? YELLOW_DECK_STARTING_MONEY
@@ -174,7 +178,15 @@ function getStartingHands(deck: string) {
 }
 
 function getInterestForFirstBlind(deck: string) {
+  if (isGreenDeck(deck)) {
+    return 0
+  }
+
   return isYellowDeck(deck) ? 2 : 0
+}
+
+function getMoneyPerRemainingHand(deck: string) {
+  return isGreenDeck(deck) ? 2 : 1
 }
 
 function getBlindReward(blindName: string | null, stake: string) {
@@ -259,7 +271,8 @@ function detectFirstRoundOverearnFlag(
     return null
   }
 
-  const handsLeftReward = Math.max(0, getStartingHands(deck) - 1)
+  const handsLeftReward =
+    Math.max(0, getStartingHands(deck) - 1) * getMoneyPerRemainingHand(deck)
   const expectedEarned =
     blindReward + getInterestForFirstBlind(deck) + handsLeftReward
   const actualEarned = getEarnedBeforeFirstShop(events)

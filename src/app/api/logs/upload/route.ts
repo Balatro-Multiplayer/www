@@ -33,27 +33,156 @@ function formatCurrency(value: number) {
   return Number.isInteger(value) ? value.toString() : value.toFixed(2)
 }
 
-function formatCheatWarningLine(
-  flag: ReturnType<typeof detectCheatFlags>[number],
-  logUrl: string
-) {
-  const start = flag.startDate
-    ? ` at ${new Date(flag.startDate).toISOString()}`
-    : ''
-  const gameUrl = new URL(logUrl)
-  gameUrl.searchParams.set('game', flag.gameIndex.toString())
+const DECK_NAMES: Record<string, string> = {
+  abandoned: 'Abandoned Deck',
+  anaglyph: 'Anaglyph Deck',
+  black: 'Black Deck',
+  blue: 'Blue Deck',
+  checkered: 'Checkered Deck',
+  cocktail: 'Cocktail Deck',
+  echo: 'Echo Deck',
+  echodeck: 'Echo Deck',
+  erratic: 'Erratic Deck',
+  ghost: 'Ghost Deck',
+  gradient: 'Gradient Deck',
+  green: 'Green Deck',
+  heidelberg: 'Heidelberg Deck',
+  indigo: 'Indigo Deck',
+  magic: 'Magic Deck',
+  nebula: 'Nebula Deck',
+  orange: 'Orange Deck',
+  oracle: 'Oracle Deck',
+  painted: 'Painted Deck',
+  plasma: 'Plasma Deck',
+  red: 'Red Deck',
+  violet: 'Violet Deck',
+  white: 'White Deck',
+  yellow: 'Yellow Deck',
+  zodiac: 'Zodiac Deck',
+}
 
-  if (flag.type === 'first_round_overearn') {
-    return `Game ${flag.gameIndex + 1} | ${flag.gameMode} | ${flag.deck} deck | ${flag.stake} | ${flag.blindName} | ${flag.playerName} earned $${formatCurrency(flag.actualEarned)} before shop (max $${formatCurrency(flag.expectedEarned)}), total $${formatCurrency(flag.actualMoney)} (max $${formatCurrency(flag.expectedMoney)})${start} | ${gameUrl.toString()}`
+const RULESET_NAMES: Record<string, string> = {
+  badlatro: 'Badlatro',
+  blitz: 'Standard',
+  legacyranked: 'Legacy Ranked',
+  legacy_ranked: 'Legacy Ranked',
+  majorleague: 'Major League',
+  minorleague: 'Minor League',
+  sandbox: 'Sandbox: Extra Credit',
+  smallworld: 'Small World',
+  speedlatro: 'Speedlatro',
+  standardranked: 'Standard Ranked',
+  standard_ranked: 'Standard Ranked',
+  traditional: 'Traditional',
+  vanilla: 'Vanilla',
+  weekly: 'Weekly',
+}
+
+function normalizeLookupKey(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^ruleset_mp_/, '')
+    .replace(/^b_mp_/, '')
+    .replace(/^b_/, '')
+    .replace(/ deck$/i, '')
+    .replace(/[^a-z0-9_]+/g, '')
+}
+
+function formatDeckName(deck: string) {
+  const normalizedKey = normalizeLookupKey(deck)
+  if (DECK_NAMES[normalizedKey]) {
+    return DECK_NAMES[normalizedKey]
   }
 
-  const offenders = flag.offenders
-    .map(
-      (offender) => `${offender.playerName} $${formatCurrency(offender.amount)}`
-    )
-    .join(', ')
+  if (/deck$/i.test(deck)) {
+    return deck
+  }
 
-  return `Game ${flag.gameIndex + 1} | ${flag.gameMode} | ${flag.deck} deck | ${flag.stake} | threshold $${formatCurrency(flag.threshold)} | ${offenders}${start} | ${gameUrl.toString()}`
+  return `${deck} Deck`
+}
+
+function formatRulesetName(gameMode: string) {
+  const normalizedKey = normalizeLookupKey(gameMode)
+  return RULESET_NAMES[normalizedKey] ?? gameMode
+}
+
+function formatCheatFlagDetails(
+  flag: ReturnType<typeof detectCheatFlags>[number],
+  issueNumber: number
+) {
+  if (flag.type === 'first_round_overearn') {
+    return [
+      `- Issue ${issueNumber}: first-round over-earn`,
+      `  Blind: ${flag.blindName}`,
+      `  Player: ${flag.playerName} earned $${formatCurrency(flag.actualEarned)} before first shop (max $${formatCurrency(flag.expectedEarned)})`,
+      `  Total money: $${formatCurrency(flag.actualMoney)} (max $${formatCurrency(flag.expectedMoney)})`,
+    ]
+  }
+
+  return [
+    `- Issue ${issueNumber}: first-shop overspend`,
+    `  Threshold: $${formatCurrency(flag.threshold)}`,
+    ...flag.offenders.map(
+      (offender) =>
+        `  ${offender.playerName}: spent $${formatCurrency(offender.amount)}`
+    ),
+  ]
+}
+
+function formatGroupedCheatWarningLines(
+  flags: ReturnType<typeof detectCheatFlags>,
+  logUrl: string
+) {
+  const groupedFlags = new Map<number, ReturnType<typeof detectCheatFlags>>()
+
+  for (const flag of flags) {
+    const existing = groupedFlags.get(flag.gameIndex)
+    if (existing) {
+      existing.push(flag)
+      continue
+    }
+
+    groupedFlags.set(flag.gameIndex, [flag])
+  }
+
+  const lines: string[] = []
+
+  for (const [index, gameFlags] of [...groupedFlags.entries()].sort(
+    ([left], [right]) => left - right
+  )) {
+    const firstFlag = gameFlags[0]
+    if (!firstFlag) {
+      continue
+    }
+
+    if (lines.length > 0) {
+      lines.push('---')
+    }
+
+    const gameUrl = new URL(logUrl)
+    gameUrl.searchParams.set('game', index.toString())
+
+    lines.push(`**Game ${index + 1}**`)
+    lines.push(`- Deck: ${formatDeckName(firstFlag.deck)}`)
+    lines.push(`- Ruleset: ${formatRulesetName(firstFlag.gameMode)}`)
+    lines.push(`- Stake: ${firstFlag.stake}`)
+
+    if (firstFlag.startDate) {
+      lines.push(`- Start: ${new Date(firstFlag.startDate).toISOString()}`)
+    }
+
+    for (const [issueIndex, flag] of gameFlags.entries()) {
+      if (issueIndex > 0) {
+        lines.push('  -----')
+      }
+      lines.push(...formatCheatFlagDetails(flag, issueIndex + 1))
+    }
+
+    lines.push(`- View: ${gameUrl.toString()}`)
+  }
+
+  return lines
 }
 
 export async function POST(req: NextRequest) {
@@ -228,10 +357,7 @@ export async function PUT(req: NextRequest) {
       botlatro_service
         .sendWarning({
           title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
-          lines: [
-            `Log: ${logUrl}`,
-            ...cheatFlags.map((flag) => formatCheatWarningLine(flag, logUrl)),
-          ],
+          lines: [`Log: ${logUrl}`, ...formatGroupedCheatWarningLines(cheatFlags, logUrl)],
         })
         .catch((error) => {
           console.error(

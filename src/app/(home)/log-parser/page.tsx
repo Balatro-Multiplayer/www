@@ -79,6 +79,266 @@ const STAKE_IMG = {
   7: '/stakes/orange_stake.png',
   8: '/stakes/gold_stake.png',
 }
+
+type NamedInfo = {
+  description: string
+  name: string
+}
+
+const DECK_INFO: Record<string, NamedInfo> = {
+  abandoned: {
+    name: 'Abandoned Deck',
+    description: 'Start run with no face cards in your deck.',
+  },
+  anaglyph: {
+    name: 'Anaglyph Deck',
+    description: 'After each Boss Blind, gain a Double Tag.',
+  },
+  black: {
+    name: 'Black Deck',
+    description: '+1 Joker slot and -1 hand every round.',
+  },
+  blue: {
+    name: 'Blue Deck',
+    description: '+1 hand every round.',
+  },
+  checkered: {
+    name: 'Checkered Deck',
+    description: 'Start run with 26 Spades and 26 Hearts in deck.',
+  },
+  cocktail: {
+    name: 'Cocktail Deck',
+    description: 'Copies all effects of 3 other decks at random.',
+  },
+  echo: {
+    name: 'Echo Deck',
+    description:
+      'Retrigger all playing cards. Blind size starts at X1.2 and increases by X0.2 each Ante.',
+  },
+  echodeck: {
+    name: 'Echo Deck',
+    description:
+      'Retrigger all playing cards. Blind size starts at X1.2 and increases by X0.2 each Ante.',
+  },
+  erratic: {
+    name: 'Erratic Deck',
+    description: 'All ranks and suits in deck are randomized.',
+  },
+  ghost: {
+    name: 'Ghost Deck',
+    description:
+      'Spectral cards may appear in the shop. Start with a Hex card.',
+  },
+  gradient: {
+    name: 'Gradient Deck',
+    description:
+      'Cards are also considered one rank higher or lower for all Joker effects.',
+  },
+  green: {
+    name: 'Green Deck',
+    description:
+      'At end of each round, earn $2 per remaining hand and $1 per remaining discard. Earn no interest.',
+  },
+  heidelberg: {
+    name: 'Heidelberg Deck',
+    description:
+      'At the end of the shop, creates a Negative copy of 1 random consumable you own.',
+  },
+  indigo: {
+    name: 'Indigo Deck',
+    description:
+      'Choose 1 extra card from all Booster Packs. Booster Packs are unskippable.',
+  },
+  magic: {
+    name: 'Magic Deck',
+    description: 'Start run with Crystal Ball and 2 copies of The Fool.',
+  },
+  nebula: {
+    name: 'Nebula Deck',
+    description: 'Start run with Telescope and -1 consumable slot.',
+  },
+  orange: {
+    name: 'Orange Deck',
+    description:
+      'Start run with a Giga Standard Pack and 2 copies of The Hanged Man.',
+  },
+  oracle: {
+    name: 'Oracle Deck',
+    description:
+      'Start run with Medium and Clearance Sale. Balance is capped at $50 plus current interest cap.',
+  },
+  painted: {
+    name: 'Painted Deck',
+    description: '+2 hand size and -1 Joker slot.',
+  },
+  plasma: {
+    name: 'Plasma Deck',
+    description:
+      'Balances Chips and Mult when scoring played hands. Base Blind size is increased.',
+  },
+  red: {
+    name: 'Red Deck',
+    description: '+1 discard every round.',
+  },
+  violet: {
+    name: 'Violet Deck',
+    description:
+      '+1 Voucher in shop. Vouchers are 50% off in Ante 1 and 30% off in Ante 2.',
+  },
+  white: {
+    name: 'White Deck',
+    description:
+      "Lets you view the Nemesis' current deck and Joker setup. Updates at each PvP blind.",
+  },
+  yellow: {
+    name: 'Yellow Deck',
+    description: 'Start run with an extra $10.',
+  },
+  zodiac: {
+    name: 'Zodiac Deck',
+    description:
+      'Start run with Tarot Merchant, Planet Merchant, and Overstock.',
+  },
+}
+
+const RULESET_INFO: Record<string, NamedInfo> = {
+  badlatro: {
+    name: 'Badlatro',
+    description:
+      'Special permanent weekly-style ruleset with broad bans across jokers, consumables, tags, and more.',
+  },
+  blitz: {
+    name: 'Standard',
+    description:
+      'Balanced Multiplayer ruleset with Multiplayer jokers and balance changes plus full lobby control.',
+  },
+  legacyranked: {
+    name: 'Legacy Ranked',
+    description:
+      'Minimal competitive ruleset using mostly vanilla content, forced Attrition, and locked settings.',
+  },
+  legacy_ranked: {
+    name: 'Legacy Ranked',
+    description:
+      'Minimal competitive ruleset using mostly vanilla content, forced Attrition, and locked settings.',
+  },
+  majorleague: {
+    name: 'Major League',
+    description:
+      'Official Major League ruleset with vanilla cards, 180 second timer, The Order banned, and Attrition.',
+  },
+  minorleague: {
+    name: 'Minor League',
+    description:
+      'Official Minor League ruleset with vanilla cards, 210 second timer, The Order required, and Attrition.',
+  },
+  sandbox: {
+    name: 'Sandbox: Extra Credit',
+    description:
+      'Expanded competitive ruleset with Extra Credit jokers, Spectral changes, comeback reworks, and no score preview.',
+  },
+  smallworld: {
+    name: 'Small World',
+    description:
+      '75% of jokers, consumables, vouchers, and tags are randomly banned each game. Replacements can duplicate.',
+  },
+  speedlatro: {
+    name: 'Speedlatro',
+    description:
+      'Fast variant with an extremely short timer between PvP blinds and forced Attrition pacing.',
+  },
+  standardranked: {
+    name: 'Standard Ranked',
+    description:
+      'Official competitive ruleset: Standard ruleset, forced Attrition, The Order enabled, and locked settings.',
+  },
+  standard_ranked: {
+    name: 'Standard Ranked',
+    description:
+      'Official competitive ruleset: Standard ruleset, forced Attrition, The Order enabled, and locked settings.',
+  },
+  traditional: {
+    name: 'Traditional',
+    description:
+      'Multiplayer content without time pressure. Timer disabled and time-based jokers banned.',
+  },
+  vanilla: {
+    name: 'Vanilla',
+    description:
+      'Original Balatro ruleset with no Multiplayer jokers or balance changes.',
+  },
+  weekly: {
+    name: 'Weekly',
+    description: 'Special rotating ruleset that changes weekly or bi-weekly.',
+  },
+}
+
+function normalizeLookupKey(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^ruleset_mp_/, '')
+    .replace(/^gamemode_mp_/, '')
+    .replace(/^b_mp_/, '')
+    .replace(/^b_/, '')
+    .replace(/ deck$/i, '')
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function getDeckInfo(value: string | null | undefined) {
+  const raw = value?.trim()
+  if (!raw) {
+    return {
+      name: 'Unknown',
+      description: 'No deck information was present in this log.',
+    }
+  }
+
+  return (
+    DECK_INFO[normalizeLookupKey(raw)] ?? {
+      name: raw,
+      description: 'No description available for this deck.',
+    }
+  )
+}
+
+function getRulesetInfo(value: string | null | undefined) {
+  const raw = value?.trim()
+  if (!raw) {
+    return {
+      name: 'Default',
+      description: 'No explicit ruleset was present in this log.',
+    }
+  }
+
+  return (
+    RULESET_INFO[normalizeLookupKey(raw)] ?? {
+      name: raw,
+      description: 'No description available for this ruleset.',
+    }
+  )
+}
+
+function InfoTooltipLabel({
+  description,
+  label,
+}: {
+  description: string
+  label: string
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className='cursor-help border-gray-500 border-b border-dashed'>
+          {label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className='max-w-xs whitespace-pre-line'>
+        <p>{description}</p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
 // PVP blind types (PvpBlind and HandScore) are now imported from the PvpBlindsCard component
 
 // Define the structure for game options parsed from lobbyOptions
@@ -1557,7 +1817,15 @@ export default function LogParser() {
                                 : ''}
                             </p>
                             <p>
-                              <strong>Deck:</strong> {game.deck || 'Unknown'}
+                              <strong>Deck:</strong> {(() => {
+                                const deckInfo = getDeckInfo(game.deck)
+                                return (
+                                  <InfoTooltipLabel
+                                    label={deckInfo.name}
+                                    description={deckInfo.description}
+                                  />
+                                )
+                              })()}
                             </p>
                             <p>
                               <strong>Seed:</strong> {game.seed || 'Unknown'}
@@ -1569,8 +1837,18 @@ export default function LogParser() {
                               </span>
                             </p>
                             <p>
-                              <strong>Ruleset:</strong>{' '}
-                              {game.options?.ruleset || 'Default'}
+                              <strong>Ruleset:</strong> {(() => {
+                                const rulesetInfo = getRulesetInfo(
+                                  game.options?.ruleset
+                                )
+
+                                return (
+                                  <InfoTooltipLabel
+                                    label={rulesetInfo.name}
+                                    description={rulesetInfo.description}
+                                  />
+                                )
+                              })()}
                             </p>
                             <div className={'flex gap-1.5'}>
                               <strong>Stake:</strong>{' '}
