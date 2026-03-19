@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { api, HydrateClient } from '@/trpc/server'
 import { createMetadata } from '../../../../../lib/metadata'
@@ -14,10 +15,9 @@ export const metadata = createMetadata({
 
 export default async function ModerationPage() {
   const session = await auth()
-  const role = session?.user?.role ?? 'user'
-  const isHelper = ['helper', 'admin', 'owner'].includes(role)
+  const permissions = session?.user?.permissions ?? []
 
-  if (!isHelper) {
+  if (!hasPermission(session?.user, 'moderation.view')) {
     redirect('/')
   }
 
@@ -29,7 +29,7 @@ export default async function ModerationPage() {
   return (
     <Suspense>
       <HydrateClient>
-        <ModerationClient role={role as 'helper' | 'admin' | 'owner'} />
+        <ModerationClient permissions={permissions} />
       </HydrateClient>
     </Suspense>
   )

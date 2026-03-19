@@ -30,6 +30,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import {
+  ADMIN_NAV_PERMISSIONS,
+  hasAnyPermission,
+  hasPermission,
+} from '@/lib/permissions'
 
 function renderThemeSwitch(
   themeSwitch: HomeLayoutProps['themeSwitch'],
@@ -71,11 +76,8 @@ export function MobileMenu({
 }) {
   const { data: session, status } = useSession()
   const isAuthenticated = status === 'authenticated'
-  const isHelper =
-    isAuthenticated &&
-    ['helper', 'admin', 'owner'].includes(session?.user?.role ?? '')
-  const isAdmin = isAuthenticated && session?.user?.role === 'admin'
-  const isOwner = isAuthenticated && session?.user?.role === 'owner'
+  const canSeeAdminMenu =
+    isAuthenticated && hasAnyPermission(session?.user, ADMIN_NAV_PERMISSIONS)
   const [open, setOpen] = useState(false)
   const close = () => setOpen(false)
 
@@ -227,7 +229,7 @@ export function MobileMenu({
           )}
 
           {/* Admin */}
-          {isHelper && (
+          {canSeeAdminMenu && (
             <>
               <Separator />
               <div className='px-3 py-3'>
@@ -235,23 +237,25 @@ export function MobileMenu({
                   <Shield className='mr-1 inline size-3' />
                   Admin
                 </p>
-                <MobileMenuLink
-                  href='/admin/moderation'
-                  icon={<Flag className='size-4' />}
-                  onClick={close}
-                >
-                  Moderation
-                </MobileMenuLink>
-                {isOwner && (
+                {hasPermission(session?.user, 'moderation.view') ? (
                   <MobileMenuLink
-                    href='/admin/roles'
+                    href='/admin/moderation'
+                    icon={<Flag className='size-4' />}
+                    onClick={close}
+                  >
+                    Moderation
+                  </MobileMenuLink>
+                ) : null}
+                {hasPermission(session?.user, 'permissions.manage') ? (
+                  <MobileMenuLink
+                    href='/admin/permissions'
                     icon={<Shield className='size-4' />}
                     onClick={close}
                   >
-                    Role Manager
+                    Permissions
                   </MobileMenuLink>
-                )}
-                {isOwner && (
+                ) : null}
+                {hasPermission(session?.user, 'seasons.manage') ? (
                   <MobileMenuLink
                     href='/admin/seasons'
                     icon={<Settings className='size-4' />}
@@ -259,46 +263,52 @@ export function MobileMenu({
                   >
                     Seasons
                   </MobileMenuLink>
-                )}
-                {(isAdmin || isOwner) && (
-                  <>
-                    <MobileMenuLink
-                      href='/admin/blog'
-                      icon={<FileText className='size-4' />}
-                      onClick={close}
-                    >
-                      Blog
-                    </MobileMenuLink>
-                    <MobileMenuLink
-                      href='/admin/logs'
-                      icon={<FileText className='size-4' />}
-                      onClick={close}
-                    >
-                      Logs
-                    </MobileMenuLink>
-                    <MobileMenuLink
-                      href='/admin/games'
-                      icon={<Trophy className='size-4' />}
-                      onClick={close}
-                    >
-                      Games
-                    </MobileMenuLink>
-                    <MobileMenuLink
-                      href='/admin/releases'
-                      icon={<FileText className='size-4' />}
-                      onClick={close}
-                    >
-                      Releases
-                    </MobileMenuLink>
-                    <MobileMenuLink
-                      href='/admin/stream/obs-control-panel'
-                      icon={<Tv className='size-4' />}
-                      onClick={close}
-                    >
-                      OBS Control Panel
-                    </MobileMenuLink>
-                  </>
-                )}
+                ) : null}
+                {hasPermission(session?.user, 'blog.manage') ? (
+                  <MobileMenuLink
+                    href='/admin/blog'
+                    icon={<FileText className='size-4' />}
+                    onClick={close}
+                  >
+                    Blog
+                  </MobileMenuLink>
+                ) : null}
+                {hasPermission(session?.user, 'logs.manage') ? (
+                  <MobileMenuLink
+                    href='/admin/logs'
+                    icon={<FileText className='size-4' />}
+                    onClick={close}
+                  >
+                    Logs
+                  </MobileMenuLink>
+                ) : null}
+                {hasPermission(session?.user, 'games.view') ? (
+                  <MobileMenuLink
+                    href='/admin/games'
+                    icon={<Trophy className='size-4' />}
+                    onClick={close}
+                  >
+                    Games
+                  </MobileMenuLink>
+                ) : null}
+                {hasPermission(session?.user, 'releases.manage') ? (
+                  <MobileMenuLink
+                    href='/admin/releases'
+                    icon={<FileText className='size-4' />}
+                    onClick={close}
+                  >
+                    Releases
+                  </MobileMenuLink>
+                ) : null}
+                {hasPermission(session?.user, 'obs_control.manage') ? (
+                  <MobileMenuLink
+                    href='/admin/stream/obs-control-panel'
+                    icon={<Tv className='size-4' />}
+                    onClick={close}
+                  >
+                    OBS Control Panel
+                  </MobileMenuLink>
+                ) : null}
               </div>
             </>
           )}

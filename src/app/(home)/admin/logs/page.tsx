@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { LogsClient } from '@/app/(home)/admin/logs/logs-client'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { createMetadata } from '../../../../../lib/metadata'
 
@@ -12,9 +13,9 @@ export const metadata = createMetadata({
 
 export default async function LogsPage() {
   const session = await auth()
-  const isAdmin = ['owner', 'admin'].includes(session?.user.role ?? '')
+  const canManageLogs = hasPermission(session?.user, 'logs.manage')
 
-  if (!isAdmin) {
+  if (!canManageLogs) {
     return (
       <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col py-8'>
         <div className={'prose'}>

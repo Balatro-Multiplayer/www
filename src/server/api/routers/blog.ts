@@ -2,8 +2,8 @@ import { TRPCError } from '@trpc/server'
 import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import {
-  adminProcedure,
   createTRPCRouter,
+  permissionProcedure,
   publicProcedure,
 } from '@/server/api/trpc'
 import { db } from '@/server/db'
@@ -21,7 +21,7 @@ function generateSlug(title: string): string {
 
 export const blogRouter = createTRPCRouter({
   // Get all users that can be authors (admin only)
-  getAllUsers: adminProcedure.query(async () => {
+  getAllUsers: permissionProcedure('blog.manage').query(async () => {
     const allUsers = await db.query.users.findMany({
       columns: {
         id: true,
@@ -79,7 +79,7 @@ export const blogRouter = createTRPCRouter({
     }),
 
   // Get all blog posts (admin only)
-  getAll: adminProcedure.query(async () => {
+  getAll: permissionProcedure('blog.manage').query(async () => {
     const posts = await db.query.blogPosts.findMany({
       orderBy: (blogPosts, { desc }) => [desc(blogPosts.createdAt)],
       with: {
@@ -95,7 +95,7 @@ export const blogRouter = createTRPCRouter({
     return posts
   }),
 
-  adminList: adminProcedure
+  adminList: permissionProcedure('blog.manage')
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -203,7 +203,7 @@ export const blogRouter = createTRPCRouter({
     }),
 
   // Create a new blog post (admin only)
-  create: adminProcedure
+  create: permissionProcedure('blog.manage')
     .input(
       z.object({
         title: z.string().min(1),
@@ -244,7 +244,7 @@ export const blogRouter = createTRPCRouter({
     }),
 
   // Update a blog post (admin only)
-  update: adminProcedure
+  update: permissionProcedure('blog.manage')
     .input(
       z.object({
         id: z.number(),
@@ -302,7 +302,7 @@ export const blogRouter = createTRPCRouter({
     }),
 
   // Delete a blog post (admin only)
-  delete: adminProcedure
+  delete: permissionProcedure('blog.manage')
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const post = await db.query.blogPosts.findFirst({

@@ -4,6 +4,7 @@ import {
   extractLogOwnerConnectionIds,
   extractLogOwnerNames,
 } from '@/lib/log-file-players'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 import {
@@ -381,7 +382,7 @@ export async function GET(req: NextRequest) {
       // Allow access if user is admin or the owner of the log file
       if (
         !session ||
-        (!['admin', 'owner'].includes(session.user.role) &&
+        (!hasPermission(session.user, 'logs.manage') &&
           selectedLogFile.userId !== session.user.id)
       ) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -396,7 +397,7 @@ export async function GET(req: NextRequest) {
       })
     }
     // Fetching all log files (admin only)
-    if (!session || !['admin', 'owner'].includes(session.user.role)) {
+    if (!hasPermission(session?.user, 'logs.manage')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -524,9 +525,8 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    // Check if user is authenticated and is an admin
     const session = await auth()
-    if (!session || !['admin', 'owner'].includes(session.user.role)) {
+    if (!hasPermission(session?.user, 'logs.manage')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

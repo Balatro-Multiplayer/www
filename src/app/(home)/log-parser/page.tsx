@@ -41,6 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { hasPermission } from '@/lib/permissions'
 import { jokers } from '@/shared/jokers'
 import { vouchers } from '@/shared/vouchers'
 import { DeckViewsCard } from './_components/deck-view'
@@ -444,8 +445,9 @@ export default function LogParser() {
   const [isDownloadingOriginalLog, setIsDownloadingOriginalLog] =
     useState(false)
   const [activeTab, setActiveTab] = useState('')
-  const canDownloadOriginalLog = ['admin', 'owner'].includes(
-    session?.user?.role ?? ''
+  const canDownloadOriginalLog = hasPermission(
+    session?.user,
+    'logs.download_original'
   )
 
   const parseLogFile = async (file: File) => {

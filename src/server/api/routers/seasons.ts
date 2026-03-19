@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { env } from '@/env'
 import {
   createTRPCRouter,
-  ownerProcedure,
+  permissionProcedure,
   publicProcedure,
 } from '@/server/api/trpc'
 import { seasonSnapshots, seasons } from '@/server/db/schema'
@@ -208,7 +208,7 @@ export const seasonsRouter = createTRPCRouter({
     return ctx.db.select().from(seasons).orderBy(asc(seasons.id))
   }),
 
-  create: ownerProcedure
+  create: permissionProcedure('seasons.manage')
     .input(seasonInputSchema)
     .mutation(async ({ ctx, input }) => {
       const createdSeason = await ctx.db.transaction(async (tx) => {
@@ -278,7 +278,7 @@ export const seasonsRouter = createTRPCRouter({
       return createdSeason
     }),
 
-  update: ownerProcedure
+  update: permissionProcedure('seasons.manage')
     .input(
       seasonInputSchema.extend({
         id: z.number().int().positive(),
@@ -341,7 +341,7 @@ export const seasonsRouter = createTRPCRouter({
       return refreshSeasonSnapshotsCache(ctx.db, input.seasonId)
     }),
 
-  upsert_queue: ownerProcedure
+  upsert_queue: permissionProcedure('seasons.manage')
     .input(
       z.object({
         seasonId: z.number().int().positive(),
@@ -381,7 +381,7 @@ export const seasonsRouter = createTRPCRouter({
       return snapshot
     }),
 
-  upload_snapshot: ownerProcedure
+  upload_snapshot: permissionProcedure('seasons.manage')
     .input(
       z.object({
         seasonId: z.number().int().positive(),
@@ -467,7 +467,7 @@ export const seasonsRouter = createTRPCRouter({
       }
     }),
 
-  delete_queue: ownerProcedure
+  delete_queue: permissionProcedure('seasons.manage')
     .input(
       z.object({
         seasonId: z.number().int().positive(),
@@ -492,7 +492,7 @@ export const seasonsRouter = createTRPCRouter({
       return { success: true }
     }),
 
-  delete_snapshot: ownerProcedure
+  delete_snapshot: permissionProcedure('seasons.manage')
     .input(
       z.object({
         seasonId: z.number().int().positive(),
@@ -521,7 +521,7 @@ export const seasonsRouter = createTRPCRouter({
       return { success: true }
     }),
 
-  reorder_snapshots: ownerProcedure
+  reorder_snapshots: permissionProcedure('seasons.manage')
     .input(
       z.object({
         seasonId: z.number().int().positive(),
@@ -576,7 +576,7 @@ export const seasonsRouter = createTRPCRouter({
       return refreshSeasonSnapshotsCache(ctx.db, input.seasonId)
     }),
 
-  invalidate_cache: ownerProcedure
+  invalidate_cache: permissionProcedure('seasons.manage')
     .input(
       z.object({
         seasonId: z.number().int().positive(),

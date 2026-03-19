@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { uploadFile } from '@/server/minio'
 
 export async function POST(req: NextRequest) {
   try {
-    // Check if user is authenticated and is an admin
     const session = await auth()
-    if (!session || !['admin', 'owner'].includes(session.user.role)) {
+    if (!hasPermission(session?.user, 'releases.manage')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

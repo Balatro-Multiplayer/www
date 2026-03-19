@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { ReleasesClient } from '@/app/(home)/admin/releases/releases-client'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { api, HydrateClient } from '@/trpc/server'
 import { createMetadata } from '../../../../../lib/metadata'
@@ -13,9 +14,7 @@ export const metadata = createMetadata({
 
 export default async function ReleasesPage() {
   const session = await auth()
-  const isAdmin = ['owner', 'admin'].includes(session?.user.role ?? '')
-  console.log(session)
-  if (!isAdmin) {
+  if (!hasPermission(session?.user, 'releases.manage')) {
     return (
       <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col py-8'>
         <div className={'prose'}>

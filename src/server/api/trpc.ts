@@ -12,6 +12,11 @@ import superjson from 'superjson'
 import { ZodError } from 'zod'
 
 import { env } from '@/env'
+import {
+  hasAnyPermission,
+  hasPermission,
+  type PermissionKey,
+} from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 
@@ -146,10 +151,9 @@ export const protectedProcedure = t.procedure
     })
   })
 
-export const transcriptProcedure = t.procedure
-  .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (!ctx.session?.user || ctx.session.user.role === 'user') {
+export const permissionProcedure = (permission: PermissionKey) =>
+  protectedProcedure.use(({ ctx, next }) => {
+    if (!hasPermission(ctx.session.user, permission)) {
       throw new TRPCError({ code: 'FORBIDDEN' })
     }
     return next({
@@ -159,43 +163,9 @@ export const transcriptProcedure = t.procedure
     })
   })
 
-export const helperProcedure = t.procedure
-  .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (
-      !ctx.session?.user ||
-      !['helper', 'admin', 'owner'].includes(ctx.session.user.role)
-    ) {
-      throw new TRPCError({ code: 'FORBIDDEN' })
-    }
-    return next({
-      ctx: {
-        session: { ...ctx.session, user: ctx.session.user },
-      },
-    })
-  })
-
-export const adminProcedure = t.procedure
-  .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (
-      !ctx.session?.user ||
-      !['owner', 'admin'].includes(ctx.session.user.role)
-    ) {
-      throw new TRPCError({ code: 'FORBIDDEN' })
-    }
-    return next({
-      ctx: {
-        // infers the `session` as non-nullable
-        session: { ...ctx.session, user: ctx.session.user },
-      },
-    })
-  })
-
-export const ownerProcedure = t.procedure
-  .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (!ctx.session?.user || ctx.session.user.role !== 'owner') {
+export const anyPermissionProcedure = (permissions: readonly PermissionKey[]) =>
+  protectedProcedure.use(({ ctx, next }) => {
+    if (!hasAnyPermission(ctx.session.user, permissions)) {
       throw new TRPCError({ code: 'FORBIDDEN' })
     }
     return next({

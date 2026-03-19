@@ -1,8 +1,8 @@
 import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import {
-  adminProcedure,
   createTRPCRouter,
+  permissionProcedure,
   publicProcedure,
 } from '@/server/api/trpc'
 import { db } from '@/server/db'
@@ -120,7 +120,7 @@ export const releasesRouter = createTRPCRouter({
         sortOrder: input.sortOrder,
       }
     }),
-  addRelease: adminProcedure
+  addRelease: permissionProcedure('releases.manage')
     .input(
       z.object({
         version: z.string(),
@@ -148,7 +148,7 @@ export const releasesRouter = createTRPCRouter({
 
       return res[0]
     }),
-  updateRelease: adminProcedure
+  updateRelease: permissionProcedure('releases.manage')
     .input(
       z.object({
         id: z.number(),
@@ -178,7 +178,7 @@ export const releasesRouter = createTRPCRouter({
 
       return res[0]
     }),
-  deleteRelease: adminProcedure
+  deleteRelease: permissionProcedure('releases.manage')
     .input(
       z.object({
         id: z.number(),

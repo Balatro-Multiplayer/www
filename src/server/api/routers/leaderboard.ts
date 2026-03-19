@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import {
-  adminProcedure,
   createTRPCRouter,
+  permissionProcedure,
   publicProcedure,
 } from '@/server/api/trpc'
 import { getActiveSeasonNumber, getSeasonNumber } from '@/server/seasons'
@@ -125,7 +125,7 @@ export const leaderboard_router = createTRPCRouter({
       )
       return getStaticLeaderboardResponse(seasonData, input)
     }),
-  get_leaderboard_snapshots: adminProcedure
+  get_leaderboard_snapshots: permissionProcedure('leaderboard.snapshots.view')
     .input(
       z.object({
         channel_id: z.string(),

@@ -2,6 +2,7 @@ import { DrizzleAdapter } from '@auth/drizzle-adapter'
 import type { DefaultSession, NextAuthConfig } from 'next-auth'
 import DiscordProvider from 'next-auth/providers/discord'
 
+import { normalizePermissions, type PermissionKey } from '@/lib/permissions'
 import { db } from '@/server/db'
 import {
   accounts,
@@ -10,10 +11,9 @@ import {
   verificationTokens,
 } from '@/server/db/schema'
 
-type UserRole = 'user' | 'helper' | 'admin' | 'owner'
 type SessionUserFields = {
   discord_id?: string
-  role?: UserRole
+  permissions?: PermissionKey[]
 }
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -26,8 +26,7 @@ declare module 'next-auth' {
     user: {
       id: string
       discord_id: string
-      // ...other properties
-      role: UserRole
+      permissions: PermissionKey[]
     } & DefaultSession['user']
   }
 }
@@ -89,7 +88,9 @@ export const authConfig = {
           id: user.id,
           discord_id:
             typedUser.discord_id ?? typedSessionUser.discord_id ?? user.id,
-          role: typedUser.role ?? typedSessionUser.role ?? 'user',
+          permissions: normalizePermissions(
+            typedUser.permissions ?? typedSessionUser.permissions
+          ),
         },
       }
     },

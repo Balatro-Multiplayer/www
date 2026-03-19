@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import {
-  adminProcedure,
   createTRPCRouter,
+  permissionProcedure,
   publicProcedure,
 } from '@/server/api/trpc'
 import { db } from '@/server/db'
@@ -13,7 +13,7 @@ export const branchesRouter = createTRPCRouter({
     const res = await db.select().from(branches)
     return res
   }),
-  addBranch: adminProcedure
+  addBranch: permissionProcedure('releases.manage')
     .input(
       z.object({
         name: z.string(),
@@ -40,7 +40,7 @@ export const branchesRouter = createTRPCRouter({
         throw error
       }
     }),
-  deleteBranch: adminProcedure
+  deleteBranch: permissionProcedure('releases.manage')
     .input(
       z.object({
         id: z.number(),

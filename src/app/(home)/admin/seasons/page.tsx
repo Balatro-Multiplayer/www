@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { api } from '@/trpc/server'
 import { createMetadata } from '../../../../../lib/metadata'
@@ -37,7 +38,7 @@ async function loadSeasonRows(): Promise<SeasonListRow[]> {
 export default async function AdminSeasonsPage() {
   const session = await auth()
 
-  if (session?.user.role !== 'owner') {
+  if (!hasPermission(session?.user, 'seasons.manage')) {
     redirect('/')
   }
 

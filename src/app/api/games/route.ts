@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { db } from '@/server/db'
 import { games } from '@/server/db/schema'
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest) {
   try {
     const session = await auth()
 
-    if (!session || !['admin', 'owner'].includes(session.user.role)) {
+    if (!hasPermission(session?.user, 'games.view')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

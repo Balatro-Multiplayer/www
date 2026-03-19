@@ -44,6 +44,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { hasPermission } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import type { SelectGames } from '@/server/db/types'
 import type { Season } from '@/shared/seasons'
@@ -171,8 +172,10 @@ const useColumns = (openTranscriptFn?: (gameNumber: number) => void) => {
   const format = useFormatter()
   const timeZone = useTimeZone()
   const session = useSession()
-  const canViewTranscript =
-    session.data?.user.role && session.data.user.role !== 'user'
+  const canViewTranscript = hasPermission(
+    session.data?.user,
+    'transcripts.view'
+  )
   return useMemo(
     () => [
       columnHelper.accessor('opponentName', {

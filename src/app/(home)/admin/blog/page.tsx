@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { createMetadata } from '../../../../../lib/metadata'
 
@@ -16,7 +17,7 @@ export const metadata = createMetadata({
 export default async function AdminBlogPage() {
   const session = await auth()
 
-  if (!session?.user || !['admin', 'owner'].includes(session.user.role)) {
+  if (!hasPermission(session?.user, 'blog.manage')) {
     redirect('/')
   }
 

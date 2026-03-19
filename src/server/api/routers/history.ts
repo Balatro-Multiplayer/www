@@ -2,8 +2,8 @@ import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   createTRPCRouter,
+  permissionProcedure,
   publicProcedure,
-  transcriptProcedure,
 } from '@/server/api/trpc'
 import { player_games } from '@/server/db/schema'
 import type { SelectGames } from '@/server/db/types'
@@ -42,7 +42,7 @@ function formatTimeKey(date: Date, groupBy: string): string {
 }
 
 export const history_router = createTRPCRouter({
-  getTranscript: transcriptProcedure
+  getTranscript: permissionProcedure('transcripts.view')
     .input(
       z.object({
         gameNumber: z.number(),

@@ -13,6 +13,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core'
 import type { AdapterAccount } from 'next-auth/adapters'
+import type { PermissionKey } from '@/lib/permissions'
 
 export const raw_history = pgTable(
   'raw_history',
@@ -73,6 +74,11 @@ export const users = pgTable('user', (d) => ({
   twitch_url: d.varchar({ length: 255 }),
   youtube_url: d.varchar({ length: 255 }),
   role: d.varchar({ length: 255 }).notNull().default('user'),
+  permissions: text('permissions')
+    .array()
+    .$type<PermissionKey[]>()
+    .notNull()
+    .default(sql`ARRAY[]::text[]`),
 }))
 
 export const usersRelations = relations(users, ({ many }) => ({

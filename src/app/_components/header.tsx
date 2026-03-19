@@ -16,6 +16,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
+  ADMIN_NAV_PERMISSIONS,
+  hasAnyPermission,
+  hasPermission,
+} from '@/lib/permissions'
+import {
   Navbar,
   NavbarLink,
   NavbarMenu,
@@ -54,11 +59,8 @@ export function Header({
 }) {
   const { data: session, status } = useSession()
   const isAuthenticated = status === 'authenticated'
-  const isHelper =
-    isAuthenticated &&
-    ['helper', 'admin', 'owner'].includes(session?.user?.role ?? '')
-  const isAdmin = isAuthenticated && session?.user?.role === 'admin'
-  const isOwner = isAuthenticated && session?.user?.role === 'owner'
+  const canSeeAdminMenu =
+    isAuthenticated && hasAnyPermission(session?.user, ADMIN_NAV_PERMISSIONS)
   const navItems = finalLinks.filter((item) =>
     ['nav', 'all'].includes(item.on ?? 'all')
   )
@@ -80,7 +82,7 @@ export function Header({
               className='text-sm'
             />
           ))}
-        {isHelper && (
+        {canSeeAdminMenu && (
           <NavbarMenu>
             <NavbarMenuTrigger className='text-sm'>
               <div className='flex items-center gap-1'>
@@ -89,64 +91,70 @@ export function Header({
               </div>
             </NavbarMenuTrigger>
             <NavbarMenuContent>
-              <NavbarMenuLink href='/admin/moderation'>
-                <p className='-mb-1 font-medium text-sm'>Moderation</p>
-                <p className='text-[13px] text-fd-muted-foreground'>
-                  Review strikes and bans
-                </p>
-              </NavbarMenuLink>
-              {isOwner && (
-                <NavbarMenuLink href='/admin/roles'>
-                  <p className='-mb-1 font-medium text-sm'>Role Manager</p>
+              {hasPermission(session?.user, 'moderation.view') ? (
+                <NavbarMenuLink href='/admin/moderation'>
+                  <p className='-mb-1 font-medium text-sm'>Moderation</p>
                   <p className='text-[13px] text-fd-muted-foreground'>
-                    Assign roles to users
+                    Review strikes and bans
                   </p>
                 </NavbarMenuLink>
-              )}
-              {isOwner && (
+              ) : null}
+              {hasPermission(session?.user, 'permissions.manage') ? (
+                <NavbarMenuLink href='/admin/permissions'>
+                  <p className='-mb-1 font-medium text-sm'>Permissions</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Edit per-user access
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
+              {hasPermission(session?.user, 'seasons.manage') ? (
                 <NavbarMenuLink href='/admin/seasons'>
                   <p className='-mb-1 font-medium text-sm'>Seasons</p>
                   <p className='text-[13px] text-fd-muted-foreground'>
                     Manage seasons and snapshots
                   </p>
                 </NavbarMenuLink>
-              )}
-              {(isAdmin || isOwner) && (
-                <>
-                  <NavbarMenuLink href='/admin/blog'>
-                    <p className='-mb-1 font-medium text-sm'>Blog</p>
-                    <p className='text-[13px] text-fd-muted-foreground'>
-                      Manage blog posts
-                    </p>
-                  </NavbarMenuLink>
-                  <NavbarMenuLink href='/admin/logs'>
-                    <p className='-mb-1 font-medium text-sm'>Logs</p>
-                    <p className='text-[13px] text-fd-muted-foreground'>
-                      View and manage logs
-                    </p>
-                  </NavbarMenuLink>
-                  <NavbarMenuLink href='/admin/games'>
-                    <p className='-mb-1 font-medium text-sm'>Games</p>
-                    <p className='text-[13px] text-fd-muted-foreground'>
-                      Browse extracted game rows
-                    </p>
-                  </NavbarMenuLink>
-                  <NavbarMenuLink href='/admin/releases'>
-                    <p className='-mb-1 font-medium text-sm'>Releases</p>
-                    <p className='text-[13px] text-fd-muted-foreground'>
-                      Manage releases
-                    </p>
-                  </NavbarMenuLink>
-                  <NavbarMenuLink href='/admin/stream/obs-control-panel'>
-                    <p className='-mb-1 font-medium text-sm'>
-                      OBS Control Panel
-                    </p>
-                    <p className='text-[13px] text-fd-muted-foreground'>
-                      Stream widget controls
-                    </p>
-                  </NavbarMenuLink>
-                </>
-              )}
+              ) : null}
+              {hasPermission(session?.user, 'blog.manage') ? (
+                <NavbarMenuLink href='/admin/blog'>
+                  <p className='-mb-1 font-medium text-sm'>Blog</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Manage blog posts
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
+              {hasPermission(session?.user, 'logs.manage') ? (
+                <NavbarMenuLink href='/admin/logs'>
+                  <p className='-mb-1 font-medium text-sm'>Logs</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    View and manage logs
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
+              {hasPermission(session?.user, 'games.view') ? (
+                <NavbarMenuLink href='/admin/games'>
+                  <p className='-mb-1 font-medium text-sm'>Games</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Browse extracted game rows
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
+              {hasPermission(session?.user, 'releases.manage') ? (
+                <NavbarMenuLink href='/admin/releases'>
+                  <p className='-mb-1 font-medium text-sm'>Releases</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Manage releases
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
+              {hasPermission(session?.user, 'obs_control.manage') ? (
+                <NavbarMenuLink href='/admin/stream/obs-control-panel'>
+                  <p className='-mb-1 font-medium text-sm'>OBS Control Panel</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Stream widget controls
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
             </NavbarMenuContent>
           </NavbarMenu>
         )}

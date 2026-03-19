@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { GamesClient } from '@/app/(home)/admin/games/games-client'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { createMetadata } from '../../../../../lib/metadata'
 
@@ -12,9 +13,9 @@ export const metadata = createMetadata({
 
 export default async function GamesPage() {
   const session = await auth()
-  const isAdmin = ['owner', 'admin'].includes(session?.user.role ?? '')
+  const canViewGames = hasPermission(session?.user, 'games.view')
 
-  if (!isAdmin) {
+  if (!canViewGames) {
     return (
       <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col py-8'>
         <div className='prose'>

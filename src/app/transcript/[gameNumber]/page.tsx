@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { createMetadata } from '../../../../lib/metadata'
 
@@ -22,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TranscriptPage({ params }: Props) {
   const session = await auth()
 
-  if (!session?.user || session.user.role === 'user') {
+  if (!hasPermission(session?.user, 'transcripts.view')) {
     redirect('/api/auth/signin')
   }
 

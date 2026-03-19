@@ -1,9 +1,5 @@
 import { z } from 'zod'
-import {
-  adminProcedure,
-  createTRPCRouter,
-  helperProcedure,
-} from '@/server/api/trpc'
+import { createTRPCRouter, permissionProcedure } from '@/server/api/trpc'
 import { botlatro_service } from '@/server/services/botlatro.service'
 import { DISCORD_SNOWFLAKE_REGEX } from '@/shared/discord'
 
@@ -12,7 +8,7 @@ const discordIdSchema = z
   .regex(DISCORD_SNOWFLAKE_REGEX, 'Invalid Discord user ID')
 
 export const moderationRouter = createTRPCRouter({
-  listPlayersWithStrikes: helperProcedure
+  listPlayersWithStrikes: permissionProcedure('moderation.view')
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -32,7 +28,7 @@ export const moderationRouter = createTRPCRouter({
       })
     }),
 
-  getUserStrikes: helperProcedure
+  getUserStrikes: permissionProcedure('moderation.view')
     .input(
       z.object({
         user_id: discordIdSchema,
@@ -42,7 +38,7 @@ export const moderationRouter = createTRPCRouter({
       return botlatro_service.getUserStrikes(input.user_id)
     }),
 
-  giveStrike: helperProcedure
+  giveStrike: permissionProcedure('moderation.strikes.manage')
     .input(
       z.object({
         user_id: discordIdSchema,
@@ -58,7 +54,7 @@ export const moderationRouter = createTRPCRouter({
       })
     }),
 
-  removeStrike: helperProcedure
+  removeStrike: permissionProcedure('moderation.strikes.manage')
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -73,7 +69,7 @@ export const moderationRouter = createTRPCRouter({
       })
     }),
 
-  listActiveBans: helperProcedure
+  listActiveBans: permissionProcedure('moderation.view')
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -85,7 +81,7 @@ export const moderationRouter = createTRPCRouter({
       return botlatro_service.listActiveBans(input)
     }),
 
-  banUser: adminProcedure
+  banUser: permissionProcedure('moderation.bans.manage')
     .input(
       z.object({
         user_id: discordIdSchema,
@@ -100,7 +96,7 @@ export const moderationRouter = createTRPCRouter({
       })
     }),
 
-  updateBanUser: adminProcedure
+  updateBanUser: permissionProcedure('moderation.bans.manage')
     .input(
       z
         .object({
@@ -122,7 +118,7 @@ export const moderationRouter = createTRPCRouter({
       })
     }),
 
-  unbanUser: adminProcedure
+  unbanUser: permissionProcedure('moderation.bans.manage')
     .input(
       z.object({
         user_id: discordIdSchema,
@@ -136,7 +132,7 @@ export const moderationRouter = createTRPCRouter({
       })
     }),
 
-  listAllMembers: helperProcedure
+  listAllMembers: permissionProcedure('moderation.view')
     .input(
       z.object({
         page: z.number().int().min(1).default(1),
@@ -149,7 +145,7 @@ export const moderationRouter = createTRPCRouter({
       return botlatro_service.listAllMembers(input)
     }),
 
-  searchGuildMembers: helperProcedure
+  searchGuildMembers: permissionProcedure('moderation.view')
     .input(
       z.object({
         q: z.string().trim().min(1),

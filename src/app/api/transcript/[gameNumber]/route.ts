@@ -1,3 +1,4 @@
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { botlatro_service } from '@/server/services/botlatro.service'
 
@@ -7,7 +8,7 @@ export async function GET(
 ) {
   const session = await auth()
 
-  if (!session?.user || session.user.role === 'user') {
+  if (!hasPermission(session?.user, 'transcripts.view')) {
     return new Response('Forbidden', { status: 403 })
   }
 

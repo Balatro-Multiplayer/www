@@ -35,6 +35,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { hasPermission, type PermissionKey } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { api, type RouterOutputs } from '@/trpc/react'
 import { ModerationPlayerCard } from './moderation-player-card'
@@ -48,7 +49,6 @@ const FILTER_LABELS: Record<MemberFilter, string> = {
   striked: 'Striked',
 }
 
-type Role = 'helper' | 'admin' | 'owner'
 type ModerationList = RouterOutputs['moderation']['listAllMembers']
 type ModerationPlayer = ModerationList['data'][number]
 type ModerationStrike = ModerationPlayer['strikes'][number]
@@ -386,9 +386,17 @@ function ModerationTableRow({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function ModerationClient({ role }: { role: Role }) {
+export function ModerationClient({
+  permissions,
+}: {
+  permissions: PermissionKey[]
+}) {
   const utils = api.useUtils()
-  const canManageBans = role === 'admin' || role === 'owner'
+  const canManageStrikes = hasPermission(
+    permissions,
+    'moderation.strikes.manage'
+  )
+  const canManageBans = hasPermission(permissions, 'moderation.bans.manage')
 
   // URL state
   const [queryParams, setQueryParams] = useQueryStates(
@@ -653,7 +661,7 @@ export function ModerationClient({ role }: { role: Role }) {
   }
 
   const sharedCardProps = {
-    canManageStrikes: true,
+    canManageStrikes,
     canManageBans,
     isMutating,
     onGiveStrike: handleGiveStrike,

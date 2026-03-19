@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { api } from '@/trpc/server'
 import { createMetadata } from '../../../../../../lib/metadata'
@@ -70,7 +71,7 @@ export default async function AdminSeasonDetailPage({
 }) {
   const session = await auth()
 
-  if (session?.user.role !== 'owner') {
+  if (!hasPermission(session?.user, 'seasons.manage')) {
     redirect('/')
   }
 

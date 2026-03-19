@@ -1,44 +1,13 @@
 import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
-import { auth } from '@/server/auth'
-import { api, HydrateClient } from '@/trpc/server'
 import { createMetadata } from '../../../../../lib/metadata'
-import { RolesClient } from './roles-client'
 
 export const metadata = createMetadata({
-  title: 'Manage Roles',
-  description: 'Owner-only role management for Balatro Multiplayer users.',
+  title: 'Roles Redirect',
+  description: 'Legacy redirect to the permissions manager.',
   path: '/admin/roles',
   noIndex: true,
 })
 
-export default async function RolesManagerPage() {
-  const session = await auth()
-  const isOwner = session?.user?.role === 'owner'
-
-  if (!isOwner) {
-    redirect('/')
-  }
-
-  await api.users.listUsers.prefetch({
-    page: 1,
-    pageSize: 50,
-    sortBy: 'name',
-    sortOrder: 'asc',
-  })
-
-  return (
-    <Suspense>
-      <HydrateClient>
-        <div
-          className={
-            'mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-4 pt-8'
-          }
-        >
-          <h1 className='font-bold text-3xl'>Manage Roles</h1>
-          <RolesClient />
-        </div>
-      </HydrateClient>
-    </Suspense>
-  )
+export default function RolesRedirectPage() {
+  redirect('/admin/permissions')
 }
