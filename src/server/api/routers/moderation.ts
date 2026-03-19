@@ -139,6 +139,7 @@ export const moderationRouter = createTRPCRouter({
         limit: z.number().int().min(1).max(100).default(20),
         search: z.string().trim().optional(),
         filter: z.enum(['all', 'banned', 'striked']).default('all'),
+        sort: z.enum(['recent', 'alphabetical']).default('alphabetical'),
       })
     )
     .query(async ({ input }) => {

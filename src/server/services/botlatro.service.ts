@@ -298,11 +298,13 @@ export const botlatro_service = {
     limit = 20,
     search,
     filter = 'all',
+    sort = 'alphabetical',
   }: ModerationMembersListInput = {}) => {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
       filter,
+      sort,
     })
 
     if (search?.trim()) {
@@ -472,6 +474,7 @@ export type ModerationMembersListInput = {
   limit?: number
   search?: string
   filter?: 'all' | 'banned' | 'striked'
+  sort?: 'recent' | 'alphabetical'
 }
 
 export type GiveStrikeInput = {

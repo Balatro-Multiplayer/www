@@ -428,6 +428,7 @@ export function ModerationClient({
       limit: PAGE_SIZE,
       search: search || undefined,
       filter,
+      sort: filter === 'striked' ? 'recent' : 'alphabetical',
     },
     { refetchOnWindowFocus: false }
   )
@@ -437,6 +438,23 @@ export function ModerationClient({
     currentPlayers,
     (state, action: OptimisticAction) => applyOptimisticAction(state, action)
   )
+  const visiblePlayers =
+    filter === 'striked'
+      ? [...optimisticPlayers].sort((left, right) => {
+          const leftTime = left.latest_strike_at
+            ? Date.parse(left.latest_strike_at)
+            : 0
+          const rightTime = right.latest_strike_at
+            ? Date.parse(right.latest_strike_at)
+            : 0
+
+          if (leftTime !== rightTime) {
+            return rightTime - leftTime
+          }
+
+          return left.display_name.localeCompare(right.display_name)
+        })
+      : optimisticPlayers
 
   // Expanded row tracking (desktop table)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -754,7 +772,7 @@ export function ModerationClient({
             </div>
           ))}
         </div>
-      ) : optimisticPlayers.length === 0 ? (
+      ) : visiblePlayers.length === 0 ? (
         <div className='flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center'>
           <Shield className='h-6 w-6 text-muted-foreground' />
           <p className='text-muted-foreground text-sm'>No members found</p>
@@ -778,7 +796,7 @@ export function ModerationClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {optimisticPlayers.map((player) => (
+                {visiblePlayers.map((player) => (
                   <ModerationTableRow
                     key={player.discord_id}
                     player={player}
@@ -799,7 +817,7 @@ export function ModerationClient({
 
           {/* Mobile cards */}
           <div className='space-y-2 md:hidden'>
-            {optimisticPlayers.map((player) => (
+            {visiblePlayers.map((player) => (
               <ModerationPlayerCard
                 key={player.discord_id}
                 player={player}
