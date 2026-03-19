@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { env } from '@/env'
-import { detectFirstShopOverspends } from '@/lib/log-cheat-flags'
+import { detectCheatFlags } from '@/lib/log-cheat-flags'
 import {
   extractGameRows,
   extractLogConnectionIds,
@@ -27,6 +27,33 @@ function getSiteBaseUrl() {
   if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`
 
   return `http://localhost:${env.PORT ?? 3000}`
+}
+
+function formatCurrency(value: number) {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2)
+}
+
+function formatCheatWarningLine(
+  flag: ReturnType<typeof detectCheatFlags>[number],
+  logUrl: string
+) {
+  const start = flag.startDate
+    ? ` at ${new Date(flag.startDate).toISOString()}`
+    : ''
+  const gameUrl = new URL(logUrl)
+  gameUrl.searchParams.set('game', flag.gameIndex.toString())
+
+  if (flag.type === 'first_round_overearn') {
+    return `Game ${flag.gameIndex + 1} | ${flag.gameMode} | ${flag.deck} deck | ${flag.stake} | ${flag.blindName} | ${flag.playerName} earned $${formatCurrency(flag.actualEarned)} before shop (max $${formatCurrency(flag.expectedEarned)}), total $${formatCurrency(flag.actualMoney)} (max $${formatCurrency(flag.expectedMoney)})${start} | ${gameUrl.toString()}`
+  }
+
+  const offenders = flag.offenders
+    .map(
+      (offender) => `${offender.playerName} $${formatCurrency(offender.amount)}`
+    )
+    .join(', ')
+
+  return `Game ${flag.gameIndex + 1} | ${flag.gameMode} | ${flag.deck} deck | ${flag.stake} | threshold $${formatCurrency(flag.threshold)} | ${offenders}${start} | ${gameUrl.toString()}`
 }
 
 export async function POST(req: NextRequest) {
@@ -114,7 +141,7 @@ export async function PUT(req: NextRequest) {
     const connectionIds = extractLogOwnerConnectionIds(parsedGames)
     const lobbyCodes = extractLogLobbyCodes(parsedGames)
     const gameRows = extractGameRows(parsedGames, logFileId)
-    const cheatFlags = detectFirstShopOverspends(parsedGames)
+    const cheatFlags = detectCheatFlags(parsedGames)
     const existingLogFile = await db.query.logFiles.findFirst({
       columns: {
         parsedJson: true,
@@ -199,21 +226,12 @@ export async function PUT(req: NextRequest) {
       const logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
 
       botlatro_service
-        .sendFirstShopOverspendWarning({
-          log_file_id: logFileId,
-          log_url: logUrl,
-          flags: cheatFlags.map((flag) => ({
-            game_index: flag.gameIndex,
-            deck: flag.deck,
-            game_mode: flag.gameMode,
-            threshold: flag.threshold,
-            offenders: flag.offenders.map((offender) => ({
-              player_name: offender.playerName,
-              amount: offender.amount,
-              role: offender.role,
-            })),
-            start_date: flag.startDate,
-          })),
+        .sendWarning({
+          title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
+          lines: [
+            `Log: ${logUrl}`,
+            ...cheatFlags.map((flag) => formatCheatWarningLine(flag, logUrl)),
+          ],
         })
         .catch((error) => {
           console.error(
