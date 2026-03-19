@@ -78,7 +78,7 @@ describe('detectCheatFlags', () => {
         events: [
           { text: 'Started Small Blind (Blind #1)', type: 'event' },
           { text: 'Gained $3', type: 'event' },
-          { text: 'Gained $7', type: 'event' },
+          { text: 'Gained $10', type: 'event' },
           { text: 'Moved to Shop', type: 'status' },
         ],
       },
@@ -92,10 +92,44 @@ describe('detectCheatFlags', () => {
         stake: 'White Stake',
         blindName: 'Small Blind',
         gameMode: 'ranked',
-        expectedEarned: 9,
-        actualEarned: 10,
-        expectedMoney: 13,
-        actualMoney: 14,
+        expectedEarned: 12,
+        actualEarned: 13,
+        expectedMoney: 16,
+        actualMoney: 17,
+        playerName: 'Alice',
+        startDate: null,
+      },
+    ])
+  })
+
+  test('uses 2 discards for green deck on blue stake and above', () => {
+    const flags = detectCheatFlags([
+      {
+        deck: 'Green Deck',
+        gameIndex: 0,
+        logOwnerName: 'Alice',
+        options: { stake: 5, ruleset: 'ranked' },
+        events: [
+          { text: 'Started Small Blind (Blind #1)', type: 'event' },
+          { text: 'Gained $3', type: 'event' },
+          { text: 'Gained $6', type: 'event' },
+          { text: 'Moved to Shop', type: 'status' },
+        ],
+      },
+    ])
+
+    expect(flags).toEqual([
+      {
+        type: 'first_round_overearn',
+        gameIndex: 0,
+        deck: 'Green',
+        stake: 'Blue Stake',
+        blindName: 'Small Blind',
+        gameMode: 'ranked',
+        expectedEarned: 8,
+        actualEarned: 9,
+        expectedMoney: 12,
+        actualMoney: 13,
         playerName: 'Alice',
         startDate: null,
       },

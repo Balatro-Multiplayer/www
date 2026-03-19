@@ -189,6 +189,18 @@ function getMoneyPerRemainingHand(deck: string) {
   return isGreenDeck(deck) ? 2 : 1
 }
 
+function getStartingDiscards(stake: string) {
+  return ['Blue Stake', 'Purple Stake', 'Orange Stake', 'Gold Stake'].includes(
+    stake
+  )
+    ? 2
+    : 3
+}
+
+function getMoneyPerRemainingDiscard(deck: string) {
+  return isGreenDeck(deck) ? 1 : 0
+}
+
 function getBlindReward(blindName: string | null, stake: string) {
   if (blindName === 'Small Blind') {
     return stake === 'White Stake' ? 3 : 0
@@ -273,8 +285,13 @@ function detectFirstRoundOverearnFlag(
 
   const handsLeftReward =
     Math.max(0, getStartingHands(deck) - 1) * getMoneyPerRemainingHand(deck)
+  const discardsLeftReward =
+    getStartingDiscards(stake) * getMoneyPerRemainingDiscard(deck)
   const expectedEarned =
-    blindReward + getInterestForFirstBlind(deck) + handsLeftReward
+    blindReward +
+    getInterestForFirstBlind(deck) +
+    handsLeftReward +
+    discardsLeftReward
   const actualEarned = getEarnedBeforeFirstShop(events)
 
   if (actualEarned <= expectedEarned) {
