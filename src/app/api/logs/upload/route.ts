@@ -33,6 +33,15 @@ function formatCurrency(value: number) {
   return Number.isInteger(value) ? value.toString() : value.toFixed(2)
 }
 
+function formatWarningDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return `<t:${Math.floor(date.getTime() / 1000)}:F>`
+}
+
 const DECK_NAMES: Record<string, string> = {
   abandoned: 'Abandoned Deck',
   anaglyph: 'Anaglyph Deck',
@@ -169,7 +178,7 @@ function formatGroupedCheatWarningLines(
     lines.push(`- Stake: ${firstFlag.stake}`)
 
     if (firstFlag.startDate) {
-      lines.push(`- Start: ${new Date(firstFlag.startDate).toISOString()}`)
+      lines.push(`- Start: ${formatWarningDate(firstFlag.startDate)}`)
     }
 
     for (const [issueIndex, flag] of gameFlags.entries()) {
