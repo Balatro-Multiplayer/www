@@ -366,7 +366,7 @@ export function PermissionsClient() {
                         {checkedCount}/{groupKeys.length}
                       </span>
                     </label>
-                    <div className='space-y-0.5 pl-1'>
+                    <div className='mt-2 space-y-0.5 pl-1'>
                       {group.permissions.map((permission) => {
                         const checked = draftPermissions.includes(permission.key)
                         const checkboxId = `perm-${permission.key}`
