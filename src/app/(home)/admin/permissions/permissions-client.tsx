@@ -29,6 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { PERMISSION_GROUPS, type PermissionKey } from '@/lib/permissions'
+import { cn } from '@/lib/utils'
 import { api } from '@/trpc/react'
 
 type UserRow = {
@@ -129,6 +130,34 @@ export function PermissionsClient() {
       return current.filter((value) => value !== permission)
     })
   }
+
+  const toggleGroup = (group: (typeof PERMISSION_GROUPS)[number]) => {
+    const groupKeys = group.permissions.map((p) => p.key)
+    const allChecked = groupKeys.every((k) => draftPermissions.includes(k))
+    setDraftPermissions((current) => {
+      if (allChecked) {
+        return current.filter((k) => !groupKeys.includes(k))
+      }
+      return [...new Set([...current, ...groupKeys])]
+    })
+  }
+
+  const draftChanged = useMemo(() => {
+    if (!selectedUser) return false
+    const original = selectedUser.permissions
+    if (original.length !== draftPermissions.length) return true
+    return !original.every((k) => draftPermissions.includes(k))
+  }, [selectedUser, draftPermissions])
+
+  const changeCount = useMemo(() => {
+    if (!selectedUser) return 0
+    const original = new Set(selectedUser.permissions)
+    const draft = new Set(draftPermissions)
+    let count = 0
+    for (const k of draft) if (!original.has(k)) count++
+    for (const k of original) if (!draft.has(k)) count++
+    return count
+  }, [selectedUser, draftPermissions])
 
   const summarizedPermissions = (permissions: PermissionKey[]) => {
     if (permissions.length === 0) {
@@ -305,49 +334,85 @@ export function PermissionsClient() {
           </div>
 
           <ScrollArea className='max-h-[55vh] pr-4'>
-            <div className='space-y-4'>
-              {PERMISSION_GROUPS.map((group) => (
-                <section
-                  key={group.title}
-                  className='space-y-2 rounded-lg border p-3'
-                >
-                  <div>
-                    <h3 className='font-medium text-sm'>{group.title}</h3>
-                  </div>
-                  <div className='space-y-3'>
-                    {group.permissions.map((permission) => {
-                      const checked = draftPermissions.includes(permission.key)
+            <div className='space-y-4' role='form' aria-label='Permissions'>
+              {PERMISSION_GROUPS.map((group) => {
+                const groupKeys = group.permissions.map((p) => p.key)
+                const checkedCount = groupKeys.filter((k) =>
+                  draftPermissions.includes(k)
+                ).length
+                const allChecked = checkedCount === groupKeys.length
+                const someChecked = checkedCount > 0 && !allChecked
+                const groupId = `group-${group.title.toLowerCase().replace(/\s+/g, '-')}`
 
-                      return (
-                        <div
-                          key={permission.key}
-                          className='flex items-start gap-3 rounded-md border border-transparent p-2 hover:border-border hover:bg-muted/30'
-                        >
-                          <Checkbox
-                            aria-label={permission.label}
-                            checked={checked}
-                            onCheckedChange={(value) =>
-                              togglePermission(permission.key, value === true)
-                            }
-                            className='mt-0.5'
-                          />
-                          <div className='space-y-0.5'>
-                            <p className='font-medium text-sm'>
-                              {permission.label}
-                            </p>
-                            <p className='text-muted-foreground text-xs'>
-                              {permission.description}
-                            </p>
-                            <p className='text-[11px] text-muted-foreground'>
-                              {permission.key}
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </section>
-              ))}
+                return (
+                  <fieldset
+                    key={group.title}
+                    className='space-y-1 rounded-lg border p-3'
+                  >
+                    <legend className='sr-only'>{group.title}</legend>
+                    <label
+                      className='flex cursor-pointer items-center gap-2 rounded-md p-1 -m-1 hover:bg-muted/30'
+                      htmlFor={groupId}
+                    >
+                      <Checkbox
+                        id={groupId}
+                        checked={allChecked ? true : someChecked ? 'indeterminate' : false}
+                        onCheckedChange={() => toggleGroup(group)}
+                      />
+                      <span className='font-medium text-sm select-none'>
+                        {group.title}
+                      </span>
+                      <span className='text-muted-foreground text-xs select-none'>
+                        {checkedCount}/{groupKeys.length}
+                      </span>
+                    </label>
+                    <div className='space-y-0.5 pl-1'>
+                      {group.permissions.map((permission) => {
+                        const checked = draftPermissions.includes(permission.key)
+                        const checkboxId = `perm-${permission.key}`
+                        const descId = `desc-${permission.key}`
+
+                        return (
+                          <label
+                            key={permission.key}
+                            htmlFor={checkboxId}
+                            className={cn(
+                              'flex cursor-pointer items-start gap-3 rounded-md border p-2 transition-colors select-none',
+                              checked
+                                ? 'border-primary/30 bg-primary/5'
+                                : 'border-transparent hover:border-border hover:bg-muted/30'
+                            )}
+                          >
+                            <Checkbox
+                              id={checkboxId}
+                              aria-describedby={descId}
+                              checked={checked}
+                              onCheckedChange={(value) =>
+                                togglePermission(permission.key, value === true)
+                              }
+                              className='mt-0.5'
+                            />
+                            <div className='space-y-0.5'>
+                              <p className='font-medium text-sm'>
+                                {permission.label}
+                              </p>
+                              <p
+                                id={descId}
+                                className='text-muted-foreground text-xs'
+                              >
+                                {permission.description}
+                              </p>
+                              <p className='text-[11px] text-muted-foreground/70'>
+                                {permission.key}
+                              </p>
+                            </div>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </fieldset>
+                )
+              })}
             </div>
           </ScrollArea>
 
@@ -370,9 +435,11 @@ export function PermissionsClient() {
                   permissions: draftPermissions,
                 })
               }}
-              disabled={!selectedUser || updatePermissions.isPending}
+              disabled={
+                !selectedUser || updatePermissions.isPending || !draftChanged
+              }
             >
-              Save
+              {draftChanged ? `Save (${changeCount})` : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
