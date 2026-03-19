@@ -107,6 +107,14 @@ export function Header({
                   </p>
                 </NavbarMenuLink>
               ) : null}
+              {hasPermission(session?.user, 'banned_users.manage') ? (
+                <NavbarMenuLink href='/admin/banned-users'>
+                  <p className='-mb-1 font-medium text-sm'>Banned Users</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Manage parser aliases and ids
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
               {hasPermission(session?.user, 'seasons.manage') ? (
                 <NavbarMenuLink href='/admin/seasons'>
                   <p className='-mb-1 font-medium text-sm'>Seasons</p>

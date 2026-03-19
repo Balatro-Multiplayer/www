@@ -1,6 +1,7 @@
 export const PERMISSION_KEYS = [
   'permissions.manage',
   'seasons.manage',
+  'banned_users.manage',
   'moderation.view',
   'moderation.strikes.manage',
   'moderation.bans.manage',
@@ -21,6 +22,7 @@ const PERMISSION_KEY_SET = new Set<string>(PERMISSION_KEYS)
 export const ADMIN_NAV_PERMISSIONS = [
   'permissions.manage',
   'seasons.manage',
+  'banned_users.manage',
   'moderation.view',
   'blog.manage',
   'logs.manage',
@@ -33,6 +35,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
   user: [],
   helper: ['moderation.view', 'moderation.strikes.manage', 'transcripts.view'],
   admin: [
+    'banned_users.manage',
     'moderation.view',
     'moderation.strikes.manage',
     'moderation.bans.manage',
@@ -48,6 +51,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
   owner: [
     'permissions.manage',
     'seasons.manage',
+    'banned_users.manage',
     'moderation.view',
     'moderation.strikes.manage',
     'moderation.bans.manage',
@@ -92,6 +96,11 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: 'seasons.manage',
         label: 'Manage seasons',
         description: 'Create seasons, upload snapshots, and invalidate cache.',
+      },
+      {
+        key: 'banned_users.manage',
+        label: 'Manage banned users',
+        description: 'Open the banned users page and edit aliases and ids.',
       },
     ],
   },

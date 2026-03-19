@@ -85,6 +85,54 @@ export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
 }))
 
+export const bannedUsers = pgTable('banned_users', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  label: text('label').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+})
+
+export const bannedUserAliases = pgTable(
+  'banned_user_aliases',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    bannedUserId: integer('banned_user_id')
+      .references(() => bannedUsers.id, { onDelete: 'cascade' })
+      .notNull(),
+    alias: text('alias').notNull(),
+    aliasLower: text('alias_lower').notNull(),
+  },
+  (t) => [
+    index('banned_user_aliases_alias_lower_idx').on(t.aliasLower),
+    uniqueIndex('banned_user_aliases_user_alias_unique').on(
+      t.bannedUserId,
+      t.aliasLower
+    ),
+  ]
+)
+
+export const bannedUserIds = pgTable(
+  'banned_user_ids',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    bannedUserId: integer('banned_user_id')
+      .references(() => bannedUsers.id, { onDelete: 'cascade' })
+      .notNull(),
+    value: text('value').notNull(),
+    valueLower: text('value_lower').notNull(),
+  },
+  (t) => [
+    index('banned_user_ids_value_lower_idx').on(t.valueLower),
+    uniqueIndex('banned_user_ids_user_value_unique').on(
+      t.bannedUserId,
+      t.valueLower
+    ),
+  ]
+)
+
 export const accounts = pgTable(
   'account',
   (d) => ({
@@ -111,6 +159,28 @@ export const accounts = pgTable(
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
   user: one(users, { fields: [accounts.userId], references: [users.id] }),
+}))
+
+export const bannedUsersRelations = relations(bannedUsers, ({ many }) => ({
+  aliases: many(bannedUserAliases),
+  ids: many(bannedUserIds),
+}))
+
+export const bannedUserAliasesRelations = relations(
+  bannedUserAliases,
+  ({ one }) => ({
+    bannedUser: one(bannedUsers, {
+      fields: [bannedUserAliases.bannedUserId],
+      references: [bannedUsers.id],
+    }),
+  })
+)
+
+export const bannedUserIdsRelations = relations(bannedUserIds, ({ one }) => ({
+  bannedUser: one(bannedUsers, {
+    fields: [bannedUserIds.bannedUserId],
+    references: [bannedUsers.id],
+  }),
 }))
 
 export const sessions = pgTable(

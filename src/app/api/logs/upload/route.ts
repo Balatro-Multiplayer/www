@@ -10,6 +10,10 @@ import {
   extractLogOwnerConnectionIds,
 } from '@/lib/log-file-players'
 import { auth } from '@/server/auth'
+import {
+  type BannedUserMatch,
+  listBannedUserRegistryEntries,
+} from '@/server/banned-users'
 import { db } from '@/server/db'
 import {
   games,
@@ -194,6 +198,31 @@ function formatGroupedCheatWarningLines(
   return lines
 }
 
+function formatBannedUserWarningLines(
+  matches: BannedUserMatch[],
+  logUrl: string
+) {
+  const lines = [`Log: ${logUrl}`]
+
+  for (const match of matches) {
+    if (lines.length > 1) {
+      lines.push('---')
+    }
+
+    lines.push(`- Label: ${match.label}`)
+
+    if (match.matchedAliases.length > 0) {
+      lines.push(`- Aliases: ${match.matchedAliases.join(', ')}`)
+    }
+
+    if (match.matchedIds.length > 0) {
+      lines.push(`- Ids: ${match.matchedIds.join(', ')}`)
+    }
+  }
+
+  return lines
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Check if user is authenticated (optional)
@@ -280,6 +309,29 @@ export async function PUT(req: NextRequest) {
     const lobbyCodes = extractLogLobbyCodes(parsedGames)
     const gameRows = extractGameRows(parsedGames, logFileId)
     const cheatFlags = detectCheatFlags(parsedGames)
+    const extractedIdSet = new Set(
+      allConnectionIds.map((connectionId) => connectionId.toLowerCase())
+    )
+    const bannedMatches = (await listBannedUserRegistryEntries()).flatMap(
+      (entry) => {
+        const matchedIds = entry.ids.filter((value) =>
+          extractedIdSet.has(value.toLowerCase())
+        )
+
+        if (matchedIds.length === 0) {
+          return []
+        }
+
+        return [
+          {
+            entryId: entry.id,
+            label: entry.label,
+            matchedAliases: entry.aliases,
+            matchedIds,
+          },
+        ]
+      }
+    )
     const existingLogFile = await db.query.logFiles.findFirst({
       columns: {
         parsedJson: true,
@@ -288,6 +340,8 @@ export async function PUT(req: NextRequest) {
     })
     const shouldSendCheatWarning =
       cheatFlags.length > 0 && !Array.isArray(existingLogFile?.parsedJson)
+    const shouldSendBannedUserWarning =
+      bannedMatches.length > 0 && !Array.isArray(existingLogFile?.parsedJson)
 
     await db.transaction(async (tx) => {
       await tx
@@ -366,11 +420,30 @@ export async function PUT(req: NextRequest) {
       botlatro_service
         .sendWarning({
           title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
-          lines: [`Log: ${logUrl}`, ...formatGroupedCheatWarningLines(cheatFlags, logUrl)],
+          lines: [
+            `Log: ${logUrl}`,
+            ...formatGroupedCheatWarningLines(cheatFlags, logUrl),
+          ],
         })
         .catch((error) => {
           console.error(
             `Failed to send cheat warning for log ${logFileId}:`,
+            error
+          )
+        })
+    }
+
+    if (shouldSendBannedUserWarning) {
+      const logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
+
+      botlatro_service
+        .sendWarning({
+          title: `Warning: banned user match detected in uploaded log #${logFileId}`,
+          lines: formatBannedUserWarningLines(bannedMatches, logUrl),
+        })
+        .catch((error) => {
+          console.error(
+            `Failed to send banned user warning for log ${logFileId}:`,
             error
           )
         })

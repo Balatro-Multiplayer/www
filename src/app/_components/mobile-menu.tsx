@@ -255,6 +255,15 @@ export function MobileMenu({
                     Permissions
                   </MobileMenuLink>
                 ) : null}
+                {hasPermission(session?.user, 'banned_users.manage') ? (
+                  <MobileMenuLink
+                    href='/admin/banned-users'
+                    icon={<Shield className='size-4' />}
+                    onClick={close}
+                  >
+                    Banned Users
+                  </MobileMenuLink>
+                ) : null}
                 {hasPermission(session?.user, 'seasons.manage') ? (
                   <MobileMenuLink
                     href='/admin/seasons'

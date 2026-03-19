@@ -1,3 +1,4 @@
+import { bannedUsersRouter } from '@/server/api/routers/banned-users'
 import { blogRouter } from '@/server/api/routers/blog'
 import { branchesRouter } from '@/server/api/routers/branches'
 import { history_router } from '@/server/api/routers/history'
@@ -18,6 +19,7 @@ import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc'
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
+  bannedUsers: bannedUsersRouter,
   blog: blogRouter,
   branches: branchesRouter,
   history: history_router,
