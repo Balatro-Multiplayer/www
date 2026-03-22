@@ -78,6 +78,13 @@
       "when": 1774180238721,
       "tag": "0010_harsh_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1774185000000,
+      "tag": "0011_brisk_ravenous_ursa",
+      "breakpoints": true
     }
   ]
 }

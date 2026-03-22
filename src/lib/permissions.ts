@@ -12,6 +12,7 @@ export const PERMISSION_KEYS = [
   'releases.manage',
   'obs_control.manage',
   'transcripts.view',
+  'transcripts.search',
   'leaderboard.snapshots.view',
 ] as const
 
@@ -29,11 +30,17 @@ export const ADMIN_NAV_PERMISSIONS = [
   'games.view',
   'releases.manage',
   'obs_control.manage',
+  'transcripts.search',
 ] as const satisfies readonly PermissionKey[]
 
 export const LEGACY_ROLE_PERMISSIONS = {
   user: [],
-  helper: ['moderation.view', 'moderation.strikes.manage', 'transcripts.view'],
+  helper: [
+    'moderation.view',
+    'moderation.strikes.manage',
+    'transcripts.view',
+    'transcripts.search',
+  ],
   admin: [
     'banned_users.manage',
     'moderation.view',
@@ -46,6 +53,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
     'releases.manage',
     'obs_control.manage',
     'transcripts.view',
+    'transcripts.search',
     'leaderboard.snapshots.view',
   ],
   owner: [
@@ -62,6 +70,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
     'releases.manage',
     'obs_control.manage',
     'transcripts.view',
+    'transcripts.search',
     'leaderboard.snapshots.view',
   ],
 } as const satisfies Record<string, readonly PermissionKey[]>
@@ -166,6 +175,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: 'transcripts.view',
         label: 'View transcripts',
         description: 'Open internal transcript pages and transcript API.',
+      },
+      {
+        key: 'transcripts.search',
+        label: 'Search transcript lobby codes',
+        description:
+          'Search lobby codes extracted from internal match transcripts.',
       },
     ],
   },

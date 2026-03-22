@@ -147,6 +147,14 @@ export function Header({
                   </p>
                 </NavbarMenuLink>
               ) : null}
+              {hasPermission(session?.user, 'transcripts.search') ? (
+                <NavbarMenuLink href='/admin/transcript-codes'>
+                  <p className='-mb-1 font-medium text-sm'>Transcript Codes</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Search lobby codes from transcripts
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
               {hasPermission(session?.user, 'releases.manage') ? (
                 <NavbarMenuLink href='/admin/releases'>
                   <p className='-mb-1 font-medium text-sm'>Releases</p>

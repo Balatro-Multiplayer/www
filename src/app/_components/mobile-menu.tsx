@@ -300,6 +300,15 @@ export function MobileMenu({
                     Games
                   </MobileMenuLink>
                 ) : null}
+                {hasPermission(session?.user, 'transcripts.search') ? (
+                  <MobileMenuLink
+                    href='/admin/transcript-codes'
+                    icon={<FileText className='size-4' />}
+                    onClick={close}
+                  >
+                    Transcript Codes
+                  </MobileMenuLink>
+                ) : null}
                 {hasPermission(session?.user, 'releases.manage') ? (
                   <MobileMenuLink
                     href='/admin/releases'

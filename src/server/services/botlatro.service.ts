@@ -52,6 +52,21 @@ type GuildMemberUser = {
   active_ban: ModerationBan | null
 }
 
+export type TranscriptLobbyCodeSearchResult = {
+  match_id: number
+  created_at: string
+  queue_name: string | null
+  matched_codes: string[]
+  lobby_codes: string[]
+}
+
+type TranscriptLobbyCodeSearchResponse = {
+  success: true
+  normalized_query: string
+  mode: 'exact' | 'prefix'
+  results: TranscriptLobbyCodeSearchResult[]
+}
+
 export const botlatro_service = {
   getUser: async (user_id: string): Promise<GuildMemberUser> => {
     return botlatroAuthedRequest<GuildMemberUser>(
@@ -196,6 +211,23 @@ export const botlatro_service = {
       console.error(`Error fetching transcript #${gameNumber}:`, error)
       throw error
     }
+  },
+
+  search_transcript_lobby_codes: async ({
+    query,
+    limit = 50,
+  }: {
+    query: string
+    limit?: number
+  }) => {
+    const params = new URLSearchParams({
+      query,
+      limit: limit.toString(),
+    })
+
+    return botlatroAuthedRequest<TranscriptLobbyCodeSearchResponse>(
+      `api/transcripts/lobby-codes/search?${params.toString()}`
+    )
   },
 
   listPlayersWithStrikes: async ({

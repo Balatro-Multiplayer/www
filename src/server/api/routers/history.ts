@@ -51,6 +51,16 @@ export const history_router = createTRPCRouter({
     .query(async ({ input }) => {
       return await botlatro_service.get_transcript(input.gameNumber)
     }),
+  searchTranscriptLobbyCodes: permissionProcedure('transcripts.search')
+    .input(
+      z.object({
+        query: z.string().trim().min(1),
+        limit: z.number().int().min(1).max(100).default(50),
+      })
+    )
+    .query(async ({ input }) => {
+      return await botlatro_service.search_transcript_lobby_codes(input)
+    }),
   games_per_hour: publicProcedure
     .input(
       z
