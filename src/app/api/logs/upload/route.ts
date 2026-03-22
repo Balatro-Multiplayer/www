@@ -32,6 +32,11 @@ import {
   uploadFile,
 } from '@/server/minio'
 import { botlatro_service } from '@/server/services/botlatro.service'
+import {
+  fetchWarningGameContext,
+  formatWarningGameContextLines,
+  type WarningGameContext,
+} from '@/server/services/warning-context'
 
 function getSiteBaseUrl() {
   if (env.NODE_ENV === 'production') return 'https://balatromp.com'
@@ -133,26 +138,28 @@ function formatCheatFlagDetails(
 ) {
   if (flag.type === 'first_round_overearn') {
     return [
-      `- Issue ${issueNumber}: first-round over-earn`,
-      `  Blind: ${flag.blindName}`,
-      `  Player: ${flag.playerName} earned $${formatCurrency(flag.actualEarned)} before first shop (max $${formatCurrency(flag.expectedEarned)})`,
-      `  Total money: $${formatCurrency(flag.actualMoney)} (max $${formatCurrency(flag.expectedMoney)})`,
+      `Issue ${issueNumber} · first-round over-earn`,
+      `- Blind: ${flag.blindName}`,
+      `- Player: ${flag.playerName}`,
+      `- Earned before shop: $${formatCurrency(flag.actualEarned)} (max $${formatCurrency(flag.expectedEarned)})`,
+      `- Total money: $${formatCurrency(flag.actualMoney)} (max $${formatCurrency(flag.expectedMoney)})`,
     ]
   }
 
   return [
-    `- Issue ${issueNumber}: first-shop overspend`,
-    `  Threshold: $${formatCurrency(flag.threshold)}`,
+    `Issue ${issueNumber} · first-shop overspend`,
+    `- Threshold: $${formatCurrency(flag.threshold)}`,
     ...flag.offenders.map(
-      (offender) =>
-        `  ${offender.playerName}: spent $${formatCurrency(offender.amount)}`
+      (offender, index) =>
+        `  ${index + 1}. ${offender.playerName} spent $${formatCurrency(offender.amount)}`
     ),
   ]
 }
 
 function formatGroupedCheatWarningLines(
   flags: ReturnType<typeof detectCheatFlags>,
-  logUrl: string
+  logUrl: string,
+  contextByGameIndex = new Map<number, WarningGameContext>()
 ) {
   const groupedFlags = new Map<number, ReturnType<typeof detectCheatFlags>>()
 
@@ -183,26 +190,120 @@ function formatGroupedCheatWarningLines(
     const gameUrl = new URL(logUrl)
     gameUrl.searchParams.set('game', index.toString())
 
-    lines.push(`**Game ${index + 1}**`)
-    lines.push(`- Deck: ${formatDeckName(firstFlag.deck)}`)
-    lines.push(`- Ruleset: ${formatRulesetName(firstFlag.gameMode)}`)
-    lines.push(`- Stake: ${firstFlag.stake}`)
+    lines.push(
+      `Game ${index + 1} · ${formatDeckName(firstFlag.deck)} · ${formatRulesetName(firstFlag.gameMode)} · ${firstFlag.stake}`
+    )
 
     if (firstFlag.startDate) {
-      lines.push(`- Start: ${formatWarningDate(firstFlag.startDate)}`)
+      lines.push(`Started: ${formatWarningDate(firstFlag.startDate)}`)
+    }
+
+    const contextLines = formatWarningGameContextLines(
+      contextByGameIndex.get(index) ?? {
+        firstAnte: null,
+        shopQueuePreview: [],
+      }
+    )
+
+    if (contextLines.length > 0) {
+      lines.push(...contextLines)
     }
 
     for (const [issueIndex, flag] of gameFlags.entries()) {
-      if (issueIndex > 0) {
-        lines.push('  -----')
-      }
       lines.push(...formatCheatFlagDetails(flag, issueIndex + 1))
     }
 
-    lines.push(`- View: ${gameUrl.toString()}`)
+    lines.push(`View: ${gameUrl.toString()}`)
   }
 
   return lines
+}
+
+function sanitizeWarningLines(lines: string[]) {
+  return lines.flatMap((line) => {
+    const normalized = line.trimEnd()
+    return normalized.length > 0 ? [normalized] : []
+  })
+}
+
+function getWarningContextInput(game: unknown) {
+  if (!game || typeof game !== 'object' || Array.isArray(game)) {
+    return null
+  }
+
+  const parsedGame = game as {
+    deck?: unknown
+    options?: unknown
+    seed?: unknown
+  }
+  const options =
+    parsedGame.options &&
+    typeof parsedGame.options === 'object' &&
+    !Array.isArray(parsedGame.options)
+      ? (parsedGame.options as {
+          back?: unknown
+          custom_seed?: unknown
+        })
+      : null
+
+  const deckValue =
+    typeof parsedGame.deck === 'string' && parsedGame.deck.trim()
+      ? parsedGame.deck
+      : typeof options?.back === 'string' && options.back.trim()
+        ? options.back
+        : null
+  const seedValue =
+    typeof parsedGame.seed === 'string' && parsedGame.seed.trim()
+      ? parsedGame.seed
+      : typeof options?.custom_seed === 'string' && options.custom_seed.trim()
+        ? options.custom_seed
+        : null
+
+  if (!deckValue || !seedValue) {
+    return null
+  }
+
+  return {
+    deck: formatDeckName(deckValue),
+    seed: seedValue,
+  }
+}
+
+async function buildWarningContextByGameIndex(
+  parsedGames: unknown,
+  gameIndexes: number[]
+) {
+  if (!Array.isArray(parsedGames) || gameIndexes.length === 0) {
+    return new Map<number, WarningGameContext>()
+  }
+
+  const uniqueGameIndexes = [...new Set(gameIndexes)].sort((a, b) => a - b)
+  const requestCache = new Map<string, Promise<WarningGameContext | null>>()
+  const entries = await Promise.all(
+    uniqueGameIndexes.map(async (gameIndex) => {
+      const input = getWarningContextInput(parsedGames[gameIndex])
+      if (!input) {
+        return [gameIndex, null] as const
+      }
+
+      const cacheKey = `${input.seed}:${input.deck}`
+      let request = requestCache.get(cacheKey)
+
+      if (!request) {
+        request = fetchWarningGameContext(input)
+        requestCache.set(cacheKey, request)
+      }
+
+      return [gameIndex, await request] as const
+    })
+  )
+
+  return new Map(
+    entries.filter(
+      (entry): entry is readonly [number, WarningGameContext] =>
+        entry[1] !== null
+    )
+  )
 }
 
 function formatBannedUserWarningLines(
@@ -247,17 +348,21 @@ export async function POST(req: NextRequest) {
     // Convert the file to a buffer and text
     const buffer = Buffer.from(await file.arrayBuffer())
     const _fileContent = await file.text()
+    const shouldBypassDedupe =
+      env.NODE_ENV !== 'production' && env.LOG_DEDUPE_BYPASS === 'true'
     const fileHash = createHash('sha256').update(buffer).digest('hex')
 
-    const existingLogFile = await db.query.logFiles.findFirst({
-      columns: {
-        id: true,
-        fileName: true,
-        fileUrl: true,
-        createdAt: true,
-      },
-      where: eq(logFiles.fileHash, fileHash),
-    })
+    const existingLogFile = shouldBypassDedupe
+      ? null
+      : await db.query.logFiles.findFirst({
+          columns: {
+            id: true,
+            fileName: true,
+            fileUrl: true,
+            createdAt: true,
+          },
+          where: eq(logFiles.fileHash, fileHash),
+        })
 
     if (existingLogFile) {
       const existingObjectName = getObjectNameFromUrl(existingLogFile.fileUrl)
@@ -275,12 +380,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const objectName = getHashedObjectName(fileHash)
-    const fileUrl = (await objectExists(objectName))
-      ? getObjectUrl(objectName)
-      : await uploadFile(buffer, file.name, file.type, env.MINIO_BUCKET_NAME, {
-          objectName,
-        })
+    const fileUrl = shouldBypassDedupe
+      ? await uploadFile(buffer, file.name, file.type)
+      : (await objectExists(getHashedObjectName(fileHash)))
+        ? getObjectUrl(getHashedObjectName(fileHash))
+        : await uploadFile(
+            buffer,
+            file.name,
+            file.type,
+            env.MINIO_BUCKET_NAME,
+            {
+              objectName: getHashedObjectName(fileHash),
+            }
+          )
 
     if (existingLogFile) {
       const [restoredLogFile] = await db
@@ -317,7 +429,7 @@ export async function POST(req: NextRequest) {
       .values({
         userId,
         fileName: file.name,
-        fileHash,
+        fileHash: shouldBypassDedupe ? null : fileHash,
         fileUrl,
         parsedJson: {},
       })
@@ -498,14 +610,23 @@ export async function PUT(req: NextRequest) {
     if (shouldSendCheatWarning) {
       const logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
 
-      botlatro_service
-        .sendWarning({
-          title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
-          lines: [
-            `Log: ${logUrl}`,
-            ...formatGroupedCheatWarningLines(cheatFlags, logUrl),
-          ],
-        })
+      void buildWarningContextByGameIndex(
+        parsedGames,
+        cheatFlags.map((flag) => flag.gameIndex)
+      )
+        .then((contextByGameIndex) =>
+          botlatro_service.sendWarning({
+            title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
+            lines: sanitizeWarningLines([
+              `Log: ${logUrl}`,
+              ...formatGroupedCheatWarningLines(
+                cheatFlags,
+                logUrl,
+                contextByGameIndex
+              ),
+            ]),
+          })
+        )
         .catch((error) => {
           console.error(
             `Failed to send cheat warning for log ${logFileId}:`,
