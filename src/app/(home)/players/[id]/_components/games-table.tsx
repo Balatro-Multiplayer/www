@@ -306,6 +306,15 @@ const useColumns = (openTranscriptFn?: (gameNumber: number) => void) => {
         ),
         id: 'time',
       }),
+      columnHelper.accessor('gameId', {
+        header: 'Match ID',
+        meta: { className: 'justify-end' },
+        cell: (info) => (
+          <span className='flex w-full justify-end font-medium font-mono'>
+            {info.getValue()}
+          </span>
+        ),
+      }),
       ...(canViewTranscript
         ? [
             columnHelper.accessor('gameNum', {
@@ -333,6 +342,7 @@ const useColumns = (openTranscriptFn?: (gameNumber: number) => void) => {
 }
 
 type SortBy =
+  | 'gameId'
   | 'gameTime'
   | 'opponentName'
   | 'gameType'
@@ -380,6 +390,7 @@ export function GamesTable({
   const { page } = queryParams
   const sortBy = (
     [
+      'gameId',
       'gameTime',
       'opponentName',
       'gameType',

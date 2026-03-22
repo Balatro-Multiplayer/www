@@ -195,6 +195,7 @@ export const history_router = createTRPCRouter({
         pageSize: z.number().int().min(1).max(100).default(50),
         sortBy: z
           .enum([
+            'gameId',
             'gameTime',
             'opponentName',
             'gameType',
@@ -216,7 +217,9 @@ export const history_router = createTRPCRouter({
       if (input.season !== 'season6' && input.season !== 'season5') {
         const dir = input.sortOrder === 'asc' ? asc : desc
         const sortCol =
-          input.sortBy === 'opponentName'
+          input.sortBy === 'gameId'
+            ? player_games.gameId
+            : input.sortBy === 'opponentName'
             ? player_games.opponentName
             : input.sortBy === 'gameType'
               ? player_games.gameType
@@ -292,6 +295,7 @@ export const history_router = createTRPCRouter({
 
       const dir = input.sortOrder === 'asc' ? 1 : -1
       rows.sort((a, b) => {
+        if (input.sortBy === 'gameId') return dir * (a.gameId - b.gameId)
         if (input.sortBy === 'gameTime') {
           return dir * (a.gameTime.getTime() - b.gameTime.getTime())
         }
