@@ -52,12 +52,19 @@ type GuildMemberUser = {
   active_ban: ModerationBan | null
 }
 
+export type TranscriptLobbyCodeSearchPlayer = {
+  user_id: string
+  display_name: string | null
+  team: number | null
+}
+
 export type TranscriptLobbyCodeSearchResult = {
   match_id: number
   created_at: string
   queue_name: string | null
   matched_codes: string[]
   lobby_codes: string[]
+  players: TranscriptLobbyCodeSearchPlayer[]
 }
 
 type TranscriptLobbyCodeSearchResponse = {

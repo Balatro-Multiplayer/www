@@ -93,6 +93,7 @@ export function TranscriptCodesClient({
           <TableHeader>
             <TableRow>
               <TableHead>Match</TableHead>
+              <TableHead>Players</TableHead>
               <TableHead>Queue</TableHead>
               <TableHead>Matched</TableHead>
               <TableHead>All Codes</TableHead>
@@ -103,7 +104,7 @@ export function TranscriptCodesClient({
           <TableBody>
             {search.isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className='text-fd-muted-foreground'>
+                <TableCell colSpan={7} className='text-fd-muted-foreground'>
                   Loading...
                 </TableCell>
               </TableRow>
@@ -112,6 +113,19 @@ export function TranscriptCodesClient({
                 <TableRow key={result.match_id}>
                   <TableCell className='font-medium'>
                     {result.match_id}
+                  </TableCell>
+                  <TableCell>
+                    <div className='flex min-w-52 flex-col gap-1'>
+                      {result.players.map((player) => (
+                        <Link
+                          key={player.user_id}
+                          href={`/players/${player.user_id}`}
+                          className='text-primary underline-offset-4 hover:underline'
+                        >
+                          {player.display_name ?? player.user_id}
+                        </Link>
+                      ))}
+                    </div>
                   </TableCell>
                   <TableCell>{result.queue_name ?? '-'}</TableCell>
                   <TableCell>{result.matched_codes.join(', ')}</TableCell>
@@ -141,13 +155,13 @@ export function TranscriptCodesClient({
               ))
             ) : submittedQuery.length > 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className='text-fd-muted-foreground'>
+                <TableCell colSpan={7} className='text-fd-muted-foreground'>
                   No matches found.
                 </TableCell>
               </TableRow>
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className='text-fd-muted-foreground'>
+                <TableCell colSpan={7} className='text-fd-muted-foreground'>
                   Enter a code to search.
                 </TableCell>
               </TableRow>
