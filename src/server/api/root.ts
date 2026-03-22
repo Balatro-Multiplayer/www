@@ -3,6 +3,7 @@ import { blogRouter } from '@/server/api/routers/blog'
 import { branchesRouter } from '@/server/api/routers/branches'
 import { history_router } from '@/server/api/routers/history'
 import { leaderboard_router } from '@/server/api/routers/leaderboard'
+import { logsRouter } from '@/server/api/routers/logs'
 import { moderationRouter } from '@/server/api/routers/moderation'
 import { playerStateRouter } from '@/server/api/routers/player-state'
 import { playersRouter } from '@/server/api/routers/players'
@@ -25,6 +26,7 @@ export const appRouter = createTRPCRouter({
   history: history_router,
   players: playersRouter,
   leaderboard: leaderboard_router,
+  logs: logsRouter,
   moderation: moderationRouter,
   playerState: playerStateRouter,
   profile: profileRouter,

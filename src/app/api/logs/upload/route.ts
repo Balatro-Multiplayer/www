@@ -132,6 +132,38 @@ function formatRulesetName(gameMode: string) {
   return RULESET_NAMES[normalizedKey] ?? gameMode
 }
 
+function getResolvedCocktailDecks(game: unknown) {
+  if (!game || typeof game !== 'object' || Array.isArray(game)) {
+    return []
+  }
+
+  const candidate = game as {
+    cocktailDecks?: unknown
+  }
+
+  if (!Array.isArray(candidate.cocktailDecks)) {
+    return []
+  }
+
+  return candidate.cocktailDecks.filter(
+    (deck): deck is string => typeof deck === 'string' && deck.trim().length > 0
+  )
+}
+
+function formatWarningDeckLabel(game: unknown, fallbackDeck: string) {
+  const deckName = formatDeckName(fallbackDeck)
+  if (normalizeLookupKey(fallbackDeck) !== 'cocktail') {
+    return deckName
+  }
+
+  const resolvedDecks = getResolvedCocktailDecks(game)
+  if (resolvedDecks.length === 0) {
+    return deckName
+  }
+
+  return `${deckName} (${resolvedDecks.join(', ')})`
+}
+
 function formatCheatFlagDetails(
   flag: ReturnType<typeof detectCheatFlags>[number],
   issueNumber: number
@@ -159,6 +191,7 @@ function formatCheatFlagDetails(
 function formatGroupedCheatWarningLines(
   flags: ReturnType<typeof detectCheatFlags>,
   logUrl: string,
+  parsedGames: unknown,
   contextByGameIndex = new Map<number, WarningGameContext>()
 ) {
   const groupedFlags = new Map<number, ReturnType<typeof detectCheatFlags>>()
@@ -189,9 +222,11 @@ function formatGroupedCheatWarningLines(
 
     const gameUrl = new URL(logUrl)
     gameUrl.searchParams.set('game', index.toString())
+    const parsedGame =
+      Array.isArray(parsedGames) && index >= 0 ? parsedGames[index] : null
 
     lines.push(
-      `Game ${index + 1} · ${formatDeckName(firstFlag.deck)} · ${formatRulesetName(firstFlag.gameMode)} · ${firstFlag.stake}`
+      `Game ${index + 1} · ${formatWarningDeckLabel(parsedGame, firstFlag.deck)} · ${formatRulesetName(firstFlag.gameMode)} · ${firstFlag.stake}`
     )
 
     if (firstFlag.startDate) {
@@ -622,6 +657,7 @@ export async function PUT(req: NextRequest) {
               ...formatGroupedCheatWarningLines(
                 cheatFlags,
                 logUrl,
+                parsedGames,
                 contextByGameIndex
               ),
             ]),

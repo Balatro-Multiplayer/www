@@ -44,6 +44,7 @@ import {
 import { hasPermission } from '@/lib/permissions'
 import { jokers } from '@/shared/jokers'
 import { vouchers } from '@/shared/vouchers'
+import { api } from '@/trpc/react'
 import { DeckViewsCard } from './_components/deck-view'
 import { type PvpBlind, PvpBlindsCard } from './_components/pvp-blinds'
 import {
@@ -285,7 +286,10 @@ function normalizeLookupKey(value: string) {
     .replace(/[^a-z0-9]+/g, '')
 }
 
-function getDeckInfo(value: string | null | undefined) {
+function getDeckInfo(
+  value: string | null | undefined,
+  cocktailDecks?: string[] | null
+) {
   const raw = value?.trim()
   if (!raw) {
     return {
@@ -294,12 +298,24 @@ function getDeckInfo(value: string | null | undefined) {
     }
   }
 
-  return (
-    DECK_INFO[normalizeLookupKey(raw)] ?? {
-      name: raw,
-      description: 'No description available for this deck.',
+  const baseInfo = DECK_INFO[normalizeLookupKey(raw)] ?? {
+    name: raw,
+    description: 'No description available for this deck.',
+  }
+
+  if (
+    normalizeLookupKey(raw) === 'cocktail' &&
+    cocktailDecks &&
+    cocktailDecks.length > 0
+  ) {
+    const resolvedDecks = cocktailDecks.map(formatDeckShortName).join(', ')
+    return {
+      name: `${baseInfo.name} (${resolvedDecks})`,
+      description: `${baseInfo.description}\n\nResolved decks: ${cocktailDecks.join(', ')}`,
     }
-  )
+  }
+
+  return baseInfo
 }
 
 function getRulesetInfo(value: string | null | undefined) {
@@ -344,6 +360,7 @@ function InfoTooltipLabel({
 // Define the structure for game options parsed from lobbyOptions
 type GameOptions = {
   back?: string | null // Deck
+  cocktail?: string | null
   custom_seed?: string | null
   ruleset?: string | null
   different_decks?: boolean | null
@@ -366,6 +383,7 @@ type Game = {
   guestMods: string[]
   isHost: boolean | null // Log owner's role in lobby creation
   deck: string | null
+  cocktailDecks: string[] | null
   seed: string | null
   options: GameOptions | null
   moneyGained: number // Log owner's gains
@@ -440,6 +458,7 @@ const initGame = (id: number, startDate: Date): Game => ({
   guestMods: [],
   isHost: null,
   deck: null,
+  cocktailDecks: null,
   seed: null,
   options: null,
   moneyGained: 0,
@@ -471,9 +490,70 @@ const initGame = (id: number, startDate: Date): Game => ({
 function normalizeParsedGames(games: Game[]) {
   return games.map((game) => ({
     ...game,
+    cocktailDecks: Array.isArray(game.cocktailDecks)
+      ? game.cocktailDecks.filter((deck): deck is string => !!deck)
+      : null,
     logOwnerDeck: normalizeDeckCards(game.logOwnerDeck),
     opponentDeck: normalizeDeckCards(game.opponentDeck),
   }))
+}
+
+function formatDeckShortName(value: string) {
+  return value.replace(/ deck$/i, '').trim()
+}
+
+async function resolveCocktailDecksForGames(
+  games: Game[],
+  resolveCocktailDecks: (input: {
+    items: Array<{
+      gameId: number
+      seed: string
+      config: string
+    }>
+  }) => Promise<{
+    results: Array<{
+      gameId: number
+      decks: string[]
+    }>
+  }>
+) {
+  const items = games.flatMap((game) => {
+    if (
+      normalizeLookupKey(game.deck ?? '') !== 'cocktail' ||
+      !game.seed ||
+      !game.options?.cocktail
+    ) {
+      return []
+    }
+
+    return [
+      {
+        gameId: game.id,
+        seed: game.seed,
+        config: game.options.cocktail,
+      },
+    ]
+  })
+
+  if (items.length === 0) {
+    return games
+  }
+
+  try {
+    const payload = await resolveCocktailDecks({ items })
+
+    const decksByGameId = new Map<number, string[]>()
+    for (const result of payload.results) {
+      decksByGameId.set(result.gameId, result.decks)
+    }
+
+    return games.map((game) => ({
+      ...game,
+      cocktailDecks: decksByGameId.get(game.id) ?? game.cocktailDecks,
+    }))
+  } catch {
+    return games
+  }
 }
 
 function canReparseForMissingDeckData(parsedJson: unknown) {
@@ -695,6 +775,7 @@ function FinalJokerList({
 // Main component
 export default function LogParser() {
   const formatter = useFormatter()
+  const resolveCocktailDecksMutation = api.logs.resolveCocktailDecks.useMutation()
   const searchParams = useSearchParams()
   const { data: session } = useSession()
   const [parsedGames, setParsedGames] = useState<Game[]>([])
@@ -1383,6 +1464,13 @@ export default function LogParser() {
         setError('No games found in the log file.')
       }
 
+      const enrichedGames = normalizeParsedGames(
+        await resolveCocktailDecksForGames(
+          games,
+          resolveCocktailDecksMutation.mutateAsync
+        )
+      )
+
       // Send the parsed games to the server
       if (logFileId !== null) {
         console.log('Sending parsed games to server...')
@@ -1393,7 +1481,7 @@ export default function LogParser() {
           },
           body: JSON.stringify({
             logFileId,
-            parsedGames: games,
+            parsedGames: enrichedGames,
           }),
         })
 
@@ -1402,9 +1490,9 @@ export default function LogParser() {
         }
       }
 
-      setParsedGames(games)
+      setParsedGames(enrichedGames)
     },
-    []
+    [resolveCocktailDecksMutation.mutateAsync]
   )
 
   const reparseOriginalLogFile = useCallback(async () => {
@@ -1818,7 +1906,10 @@ export default function LogParser() {
                             </p>
                             <p>
                               <strong>Deck:</strong> {(() => {
-                                const deckInfo = getDeckInfo(game.deck)
+                                const deckInfo = getDeckInfo(
+                                  game.deck,
+                                  game.cocktailDecks
+                                )
                                 return (
                                   <InfoTooltipLabel
                                     label={deckInfo.name}
@@ -2446,6 +2537,9 @@ function applyLobbyOption(
   switch (trimmedKey) {
     case 'back':
       options.back = normalizedString
+      break
+    case 'cocktail':
+      options.cocktail = normalizedString
       break
     case 'custom_seed':
       options.custom_seed = normalizedString

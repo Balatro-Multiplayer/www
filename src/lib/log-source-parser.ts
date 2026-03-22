@@ -18,6 +18,7 @@ type LogEvent = {
 
 type GameOptions = {
   back?: string | null
+  cocktail?: string | null
   custom_seed?: string | null
   ruleset?: string | null
   different_decks?: boolean | null
@@ -541,6 +542,9 @@ function applyLobbyOption(
   switch (trimmedKey) {
     case 'back':
       options.back = normalizedString
+      break
+    case 'cocktail':
+      options.cocktail = normalizedString
       break
     case 'custom_seed':
       options.custom_seed = normalizedString
@@ -1667,6 +1671,7 @@ function mergeOptions(
     ...existingOptions,
     ...nextOptions,
     back: pickDefined(nextOptions?.back, existingOptions?.back),
+    cocktail: pickDefined(nextOptions?.cocktail, existingOptions?.cocktail),
     custom_seed: pickDefined(
       nextOptions?.custom_seed,
       existingOptions?.custom_seed
