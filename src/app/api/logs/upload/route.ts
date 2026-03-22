@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { env } from '@/env'
@@ -23,7 +24,13 @@ import {
   logFilePlayers,
   logFiles,
 } from '@/server/db/schema'
-import { uploadFile } from '@/server/minio'
+import {
+  getHashedObjectName,
+  getObjectNameFromUrl,
+  getObjectUrl,
+  objectExists,
+  uploadFile,
+} from '@/server/minio'
 import { botlatro_service } from '@/server/services/botlatro.service'
 
 function getSiteBaseUrl() {
@@ -240,21 +247,95 @@ export async function POST(req: NextRequest) {
     // Convert the file to a buffer and text
     const buffer = Buffer.from(await file.arrayBuffer())
     const _fileContent = await file.text()
+    const fileHash = createHash('sha256').update(buffer).digest('hex')
 
-    // Upload the file to MinIO
-    const fileUrl = await uploadFile(buffer, file.name, file.type)
+    const existingLogFile = await db.query.logFiles.findFirst({
+      columns: {
+        id: true,
+        fileName: true,
+        fileUrl: true,
+        createdAt: true,
+      },
+      where: eq(logFiles.fileHash, fileHash),
+    })
+
+    if (existingLogFile) {
+      const existingObjectName = getObjectNameFromUrl(existingLogFile.fileUrl)
+
+      if (existingObjectName && (await objectExists(existingObjectName))) {
+        return NextResponse.json({
+          id: existingLogFile.id,
+          fileName: existingLogFile.fileName,
+          fileUrl: existingLogFile.fileUrl,
+          createdAt: existingLogFile.createdAt,
+          userId,
+          userName: session?.user?.name ?? null,
+          userEmail: session?.user?.email ?? null,
+        })
+      }
+    }
+
+    const objectName = getHashedObjectName(fileHash)
+    const fileUrl = (await objectExists(objectName))
+      ? getObjectUrl(objectName)
+      : await uploadFile(buffer, file.name, file.type, env.MINIO_BUCKET_NAME, {
+          objectName,
+        })
+
+    if (existingLogFile) {
+      const [restoredLogFile] = await db
+        .update(logFiles)
+        .set({
+          fileHash,
+          fileUrl,
+        })
+        .where(eq(logFiles.id, existingLogFile.id))
+        .returning()
+
+      if (!restoredLogFile) {
+        return NextResponse.json(
+          { error: 'This should never happen, hopefully' },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json({
+        id: restoredLogFile.id,
+        fileName: restoredLogFile.fileName,
+        fileUrl: restoredLogFile.fileUrl,
+        createdAt: restoredLogFile.createdAt,
+        userId,
+        userName: session?.user?.name ?? null,
+        userEmail: session?.user?.email ?? null,
+      })
+    }
 
     // Store the information in the database with an empty JSON object for now
     // The actual parsed games will be updated via PUT request
-    const [logFile] = await db
+    const [insertedLogFile] = await db
       .insert(logFiles)
       .values({
         userId,
         fileName: file.name,
+        fileHash,
         fileUrl,
         parsedJson: {},
       })
+      .onConflictDoNothing({
+        target: logFiles.fileHash,
+      })
       .returning()
+    const logFile =
+      insertedLogFile ??
+      (await db.query.logFiles.findFirst({
+        columns: {
+          id: true,
+          fileName: true,
+          fileUrl: true,
+          createdAt: true,
+        },
+        where: eq(logFiles.fileHash, fileHash),
+      }))
     if (!logFile) {
       return NextResponse.json(
         { error: 'This should never happen, hopefully' },

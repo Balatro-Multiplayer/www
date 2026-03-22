@@ -11,6 +11,7 @@
     "check:write": "biome check --write .",
     "db:generate": "drizzle-kit generate",
     "db:backfill-games": "bun run scripts/backfill-games.ts",
+    "db:backfill-log-file-hashes": "bun run scripts/backfill-log-file-hashes.ts",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:reparse-logs": "bun run scripts/reparse-logs.ts",

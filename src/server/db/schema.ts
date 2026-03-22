@@ -247,14 +247,19 @@ export const releasesRelations = relations(releases, ({ one }) => ({
   }),
 }))
 
-export const logFiles = pgTable('log_files', {
-  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
-  userId: text('user_id').references(() => users.id),
-  fileName: text('file_name').notNull(),
-  fileUrl: text('file_url').notNull(),
-  parsedJson: json('parsed_json').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+export const logFiles = pgTable(
+  'log_files',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    userId: text('user_id').references(() => users.id),
+    fileName: text('file_name').notNull(),
+    fileHash: text('file_hash'),
+    fileUrl: text('file_url').notNull(),
+    parsedJson: json('parsed_json').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('log_files_file_hash_unique').on(t.fileHash)]
+)
 
 export const games = pgTable(
   'games',

@@ -17,24 +17,72 @@ export async function ensureBucketExists(bucketName = env.MINIO_BUCKET_NAME) {
   }
 }
 
+export function getObjectUrl(
+  objectName: string,
+  bucketName = env.MINIO_BUCKET_NAME
+) {
+  const protocol = env.MINIO_USE_SSL === 'true' ? 'https' : 'http'
+  return `${protocol}://${env.MINIO_ENDPOINT}/${bucketName}/${objectName}`
+}
+
+export function getHashedObjectName(fileHash: string) {
+  return fileHash
+}
+
+export function getObjectNameFromUrl(
+  fileUrl: string,
+  bucketName = env.MINIO_BUCKET_NAME
+) {
+  try {
+    const url = new URL(fileUrl)
+    const prefix = `/${bucketName}/`
+
+    if (!url.pathname.startsWith(prefix)) {
+      return null
+    }
+
+    return decodeURIComponent(url.pathname.slice(prefix.length))
+  } catch {
+    return null
+  }
+}
+
+export async function objectExists(
+  objectName: string,
+  bucketName = env.MINIO_BUCKET_NAME
+) {
+  const bucketExists = await minioClient.bucketExists(bucketName)
+  if (!bucketExists) {
+    return false
+  }
+
+  try {
+    await minioClient.statObject(bucketName, objectName)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // Function to upload a file to MinIO and return the URL
 export async function uploadFile(
   file: Buffer,
   fileName: string,
   contentType: string,
-  bucketName = env.MINIO_BUCKET_NAME
+  bucketName = env.MINIO_BUCKET_NAME,
+  options?: {
+    objectName?: string
+  }
 ) {
   await ensureBucketExists(bucketName)
 
   // Generate a unique object name to avoid collisions
-  const objectName = `${Date.now()}-${fileName}`
+  const objectName = options?.objectName ?? `${Date.now()}-${fileName}`
 
   // Upload the file to MinIO
   await minioClient.putObject(bucketName, objectName, file, file.length, {
     'Content-Type': contentType,
   })
 
-  // Construct and return the URL to the uploaded file
-  const protocol = env.MINIO_USE_SSL === 'true' ? 'https' : 'http'
-  return `${protocol}://${env.MINIO_ENDPOINT}/${bucketName}/${objectName}`
+  return getObjectUrl(objectName, bucketName)
 }

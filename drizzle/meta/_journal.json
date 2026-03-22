@@ -71,6 +71,13 @@
       "when": 1773931115367,
       "tag": "0009_futuristic_captain_stacy",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774180238721,
+      "tag": "0010_harsh_menace",
+      "breakpoints": true
     }
   ]
 }
