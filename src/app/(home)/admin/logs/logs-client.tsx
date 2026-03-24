@@ -365,12 +365,17 @@ export function LogsClient() {
                             <Badge
                               key={`${log.id}-${lobbyCode}`}
                               variant='outline'
+                              asChild
                             >
-                              {renderHighlightedText(
-                                lobbyCode,
-                                search,
-                                highlightMatches
-                              )}
+                              <Link
+                                href={`/admin/transcript-codes?search=${encodeURIComponent(lobbyCode)}`}
+                              >
+                                {renderHighlightedText(
+                                  lobbyCode,
+                                  search,
+                                  highlightMatches
+                                )}
+                              </Link>
                             </Badge>
                           ))}
                         </div>

@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { useFormatter, useTimeZone } from 'next-intl'
-import { type FormEvent, useMemo, useState } from 'react'
+import { parseAsString, useQueryStates } from 'nuqs'
+import { type FormEvent, Suspense, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -27,30 +28,24 @@ export function TranscriptCodesClient({
 }: {
   canViewTranscripts: boolean
 }) {
-  const formatter = useFormatter()
-  const timeZone = useTimeZone()
-  const [draftQuery, setDraftQuery] = useState('')
-  const [submittedQuery, setSubmittedQuery] = useState('')
+  const [queryParams, setQueryParams] = useQueryStates(
+    {
+      search: parseAsString,
+    },
+    { history: 'push' }
+  )
+
+  const searchQuery = queryParams.search ?? ''
+  const [draftQuery, setDraftQuery] = useState(searchQuery)
 
   const normalizedDraftQuery = useMemo(
     () => normalizeLobbyCodeLikeMod(draftQuery),
     [draftQuery]
   )
 
-  const search = api.history.searchTranscriptLobbyCodes.useQuery(
-    {
-      query: submittedQuery,
-      limit: 50,
-    },
-    {
-      enabled: submittedQuery.length > 0,
-      retry: false,
-    }
-  )
-
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    setSubmittedQuery(normalizedDraftQuery)
+    void setQueryParams({ search: normalizedDraftQuery || null })
   }
 
   return (
@@ -72,22 +67,6 @@ export function TranscriptCodesClient({
         first 5. Shorter input runs a prefix search.
       </p>
 
-      {submittedQuery.length > 0 ? (
-        <p className='text-fd-muted-foreground text-sm'>
-          Searching for{' '}
-          <span className='font-medium text-fd-foreground'>
-            {search.data?.normalized_query ?? submittedQuery}
-          </span>
-          {search.data?.mode === 'prefix' ? ' (prefix)' : ' (exact)'}
-        </p>
-      ) : null}
-
-      {search.error ? (
-        <div className='rounded-md border border-destructive/30 bg-destructive/5 p-3 text-destructive text-sm'>
-          {search.error.message}
-        </div>
-      ) : null}
-
       <div className='overflow-x-auto rounded-lg border'>
         <Table>
           <TableHeader>
@@ -102,63 +81,24 @@ export function TranscriptCodesClient({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {search.isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} className='text-fd-muted-foreground'>
-                  Loading...
-                </TableCell>
-              </TableRow>
-            ) : search.data?.results.length ? (
-              search.data.results.map((result) => (
-                <TableRow key={result.match_id}>
-                  <TableCell className='font-medium'>
-                    {result.match_id}
-                  </TableCell>
-                  <TableCell>
-                    <div className='flex min-w-52 flex-col gap-1'>
-                      {result.players.map((player) => (
-                        <Link
-                          key={player.user_id}
-                          href={`/players/${player.user_id}`}
-                          className='text-primary underline-offset-4 hover:underline'
-                        >
-                          {player.display_name ?? player.user_id}
-                        </Link>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>{result.queue_name ?? '-'}</TableCell>
-                  <TableCell>{result.matched_codes.join(', ')}</TableCell>
-                  <TableCell>{result.lobby_codes.join(', ')}</TableCell>
-                  <TableCell>
-                    {formatter.dateTime(new Date(result.created_at), {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                      timeZone,
-                    })}
-                  </TableCell>
-                  <TableCell>
-                    {canViewTranscripts ? (
-                      <Link
-                        href={`/transcript/${result.match_id}`}
-                        className='text-primary underline-offset-4 hover:underline'
-                        target='_blank'
-                        rel='noreferrer'
-                      >
-                        Open
-                      </Link>
-                    ) : (
-                      '-'
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : submittedQuery.length > 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className='text-fd-muted-foreground'>
-                  No matches found.
-                </TableCell>
-              </TableRow>
+            {searchQuery.length > 0 ? (
+              <Suspense
+                fallback={
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className='text-fd-muted-foreground'
+                    >
+                      Loading...
+                    </TableCell>
+                  </TableRow>
+                }
+              >
+                <TranscriptCodesResults
+                  query={searchQuery}
+                  canViewTranscripts={canViewTranscripts}
+                />
+              </Suspense>
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className='text-fd-muted-foreground'>
@@ -170,5 +110,76 @@ export function TranscriptCodesClient({
         </Table>
       </div>
     </div>
+  )
+}
+
+function TranscriptCodesResults({
+  query,
+  canViewTranscripts,
+}: {
+  query: string
+  canViewTranscripts: boolean
+}) {
+  const formatter = useFormatter()
+  const timeZone = useTimeZone()
+
+  const [search] = api.history.searchTranscriptLobbyCodes.useSuspenseQuery({
+    query,
+    limit: 50,
+  })
+
+  return (
+    <>
+      {search.results.length > 0 ? (
+        search.results.map((result) => (
+          <TableRow key={result.match_id}>
+            <TableCell className='font-medium'>{result.match_id}</TableCell>
+            <TableCell>
+              <div className='flex min-w-52 flex-col gap-1'>
+                {result.players.map((player) => (
+                  <Link
+                    key={player.user_id}
+                    href={`/players/${player.user_id}`}
+                    className='text-primary underline-offset-4 hover:underline'
+                  >
+                    {player.display_name ?? player.user_id}
+                  </Link>
+                ))}
+              </div>
+            </TableCell>
+            <TableCell>{result.queue_name ?? '-'}</TableCell>
+            <TableCell>{result.matched_codes.join(', ')}</TableCell>
+            <TableCell>{result.lobby_codes.join(', ')}</TableCell>
+            <TableCell>
+              {formatter.dateTime(new Date(result.created_at), {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+                timeZone,
+              })}
+            </TableCell>
+            <TableCell>
+              {canViewTranscripts ? (
+                <Link
+                  href={`/transcript/${result.match_id}`}
+                  className='text-primary underline-offset-4 hover:underline'
+                  target='_blank'
+                  rel='noreferrer'
+                >
+                  Open
+                </Link>
+              ) : (
+                '-'
+              )}
+            </TableCell>
+          </TableRow>
+        ))
+      ) : (
+        <TableRow>
+          <TableCell colSpan={7} className='text-fd-muted-foreground'>
+            No matches found.
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   )
 }
