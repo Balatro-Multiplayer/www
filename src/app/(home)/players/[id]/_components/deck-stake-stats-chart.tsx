@@ -44,6 +44,7 @@ export const DECK_IMAGES: Record<string, string> = {
   oracle: '/decks/oracle.png',
   indigo: '/decks/indigo.png',
   cocktail: '/decks/cocktail.png',
+  'specialty cocktails': '/decks/cocktail.png',
   unknown: '/decks/unknown.png',
 }
 

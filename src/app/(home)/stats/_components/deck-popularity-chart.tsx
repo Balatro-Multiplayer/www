@@ -4,6 +4,8 @@ import { format } from 'date-fns'
 import { BarChart3, CalendarIcon, PieChartIcon } from 'lucide-react'
 import { parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   Bar,
   BarChart,
@@ -184,7 +186,10 @@ export function DeckPopularityChart({
     }
   }, [queryParams.deckEndDate, queryParams.deckStartDate])
 
-  const [data] = api.stats.deck_popularity.useSuspenseQuery({
+  const [combineSpecialtyCocktails, setCombineSpecialtyCocktails] =
+    useState(false)
+
+  const [rawData] = api.stats.deck_popularity.useSuspenseQuery({
     mode: filterMode,
     season: filterMode === 'season' ? season : undefined,
     startDate:
@@ -193,6 +198,39 @@ export function DeckPopularityChart({
       filterMode === 'dateRange' ? dateRange?.to?.toISOString() : undefined,
     queueId: queueId === 'all' ? undefined : queueId,
   })
+
+  const data = useMemo(() => {
+    if (!combineSpecialtyCocktails) return rawData
+
+    let specialtyGames = 0
+    const filtered: typeof rawData = []
+
+    for (const entry of rawData) {
+      const isSpecialty =
+        entry.deck.includes('cocktail') && entry.deck !== 'cocktail'
+      if (isSpecialty) {
+        specialtyGames += entry.games
+      } else {
+        filtered.push(entry)
+      }
+    }
+
+    if (specialtyGames > 0) {
+      const totalGames = rawData.reduce((sum, d) => sum + d.games, 0)
+      filtered.push({
+        deck: 'specialty cocktails',
+        games: specialtyGames,
+        pickRate:
+          totalGames > 0
+            ? Math.round((specialtyGames / totalGames) * 1000) / 10
+            : 0,
+      })
+      // Re-sort by games descending
+      filtered.sort((a, b) => b.games - a.games)
+    }
+
+    return filtered
+  }, [rawData, combineSpecialtyCocktails])
 
   const totalGames = data.reduce((sum, d) => sum + d.games, 0)
   const onPieEnter = useCallback(
@@ -225,6 +263,19 @@ export function DeckPopularityChart({
               <PieChartIcon className='h-4 w-4' />
             </ToggleGroupItem>
           </ToggleGroup>
+          <div className='flex items-center gap-2'>
+            <Switch
+              id='combine-specialty-cocktails'
+              checked={combineSpecialtyCocktails}
+              onCheckedChange={setCombineSpecialtyCocktails}
+            />
+            <Label
+              htmlFor='combine-specialty-cocktails'
+              className='cursor-pointer text-sm whitespace-nowrap'
+            >
+              Combine specialty cocktails
+            </Label>
+          </div>
           <Select
             value={filterMode}
             onValueChange={(v) => {
