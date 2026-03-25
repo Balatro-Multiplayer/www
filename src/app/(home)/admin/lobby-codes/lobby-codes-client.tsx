@@ -23,7 +23,7 @@ function normalizeLobbyCodeLikeMod(value: string) {
     .slice(0, 5)
 }
 
-export function TranscriptCodesClient({
+export function LobbyCodesClient({
   canViewTranscripts,
 }: {
   canViewTranscripts: boolean
@@ -94,7 +94,7 @@ export function TranscriptCodesClient({
                   </TableRow>
                 }
               >
-                <TranscriptCodesResults
+                <LobbyCodesResults
                   query={searchQuery}
                   canViewTranscripts={canViewTranscripts}
                 />
@@ -113,7 +113,7 @@ export function TranscriptCodesClient({
   )
 }
 
-function TranscriptCodesResults({
+function LobbyCodesResults({
   query,
   canViewTranscripts,
 }: {

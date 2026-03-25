@@ -343,9 +343,16 @@ async function buildWarningContextByGameIndex(
 
 function formatBannedUserWarningLines(
   matches: BannedUserMatch[],
-  logUrl: string
+  logUrl: string,
+  lobbyCodes: string[]
 ) {
   const lines = [`Log: ${logUrl}`]
+
+  for (const lobbyCode of lobbyCodes) {
+    lines.push(
+      `- Lobby code: ${lobbyCode} → ${getSiteBaseUrl()}/admin/lobby-codes?search=${encodeURIComponent(lobbyCode)}`
+    )
+  }
 
   for (const match of matches) {
     if (lines.length > 1) {
@@ -677,7 +684,7 @@ export async function PUT(req: NextRequest) {
       botlatro_service
         .sendWarning({
           title: `Warning: banned user match detected in uploaded log #${logFileId}`,
-          lines: formatBannedUserWarningLines(bannedMatches, logUrl),
+          lines: formatBannedUserWarningLines(bannedMatches, logUrl, lobbyCodes),
         })
         .catch((error) => {
           console.error(

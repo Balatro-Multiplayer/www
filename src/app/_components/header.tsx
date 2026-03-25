@@ -148,8 +148,8 @@ export function Header({
                 </NavbarMenuLink>
               ) : null}
               {hasPermission(session?.user, 'transcripts.search') ? (
-                <NavbarMenuLink href='/admin/transcript-codes'>
-                  <p className='-mb-1 font-medium text-sm'>Transcript Codes</p>
+                <NavbarMenuLink href='/admin/lobby-codes'>
+                  <p className='-mb-1 font-medium text-sm'>Lobby Codes</p>
                   <p className='text-[13px] text-fd-muted-foreground'>
                     Search lobby codes from transcripts
                   </p>

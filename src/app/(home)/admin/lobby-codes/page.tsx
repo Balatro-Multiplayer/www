@@ -1,29 +1,29 @@
 import { Suspense } from 'react'
-import { TranscriptCodesClient } from '@/app/(home)/admin/transcript-codes/transcript-codes-client'
+import { LobbyCodesClient } from '@/app/(home)/admin/lobby-codes/lobby-codes-client'
 import { hasPermission } from '@/lib/permissions'
 import { auth } from '@/server/auth'
 import { api, HydrateClient } from '@/trpc/server'
 import { createMetadata } from '../../../../../lib/metadata'
 
 export const metadata = createMetadata({
-  title: 'Transcript Codes',
+  title: 'Lobby Codes',
   description: 'Search lobby codes extracted from internal match transcripts.',
-  path: '/admin/transcript-codes',
+  path: '/admin/lobby-codes',
   noIndex: true,
 })
 
-export default async function TranscriptCodesPage({
+export default async function LobbyCodesPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const session = await auth()
-  const canSearchTranscriptCodes = hasPermission(
+  const canSearchLobbyCodes = hasPermission(
     session?.user,
     'transcripts.search'
   )
 
-  if (!canSearchTranscriptCodes) {
+  if (!canSearchLobbyCodes) {
     return (
       <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col py-8'>
         <div className='prose'>
@@ -49,12 +49,12 @@ export default async function TranscriptCodesPage({
       <HydrateClient>
         <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-4 py-8'>
           <div className='space-y-1'>
-            <h1 className='font-bold text-3xl'>Transcript Codes</h1>
+            <h1 className='font-bold text-3xl'>Lobby Codes</h1>
             <p className='text-fd-muted-foreground text-sm'>
               Search lobby codes extracted from match transcripts.
             </p>
           </div>
-          <TranscriptCodesClient
+          <LobbyCodesClient
             canViewTranscripts={hasPermission(
               session?.user,
               'transcripts.view'

@@ -368,7 +368,7 @@ export function LogsClient() {
                               asChild
                             >
                               <Link
-                                href={`/admin/transcript-codes?search=${encodeURIComponent(lobbyCode)}`}
+                                href={`/admin/lobby-codes?search=${encodeURIComponent(lobbyCode)}`}
                               >
                                 {renderHighlightedText(
                                   lobbyCode,

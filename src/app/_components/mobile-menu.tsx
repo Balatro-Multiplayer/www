@@ -302,11 +302,11 @@ export function MobileMenu({
                 ) : null}
                 {hasPermission(session?.user, 'transcripts.search') ? (
                   <MobileMenuLink
-                    href='/admin/transcript-codes'
+                    href='/admin/lobby-codes'
                     icon={<FileText className='size-4' />}
                     onClick={close}
                   >
-                    Transcript Codes
+                    Lobby Codes
                   </MobileMenuLink>
                 ) : null}
                 {hasPermission(session?.user, 'releases.manage') ? (
