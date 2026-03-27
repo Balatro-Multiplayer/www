@@ -52,11 +52,25 @@ const PREDEFINED_STRIKE_REASONS = [
   'AFK during a game',
   'Harassment',
   'Offensive language',
+  'R-slur',
+  'Self r-slur',
+] as const
+
+const CUSTOM_BAN_REASON = '__custom__' as const
+
+const PREDEFINED_BAN_REASONS = [
+  'Repeated offenses',
+  'Severe harassment',
+  'Cheating in ranked across multiple games',
 ] as const
 
 type StrikeReasonPreset =
   | (typeof PREDEFINED_STRIKE_REASONS)[number]
   | typeof CUSTOM_STRIKE_REASON
+
+type BanReasonPreset =
+  | (typeof PREDEFINED_BAN_REASONS)[number]
+  | typeof CUSTOM_BAN_REASON
 
 function relativeTime(value: string | null) {
   if (!value) return 'never'
@@ -125,13 +139,18 @@ export function ModerationPlayerCard({
 
   // Ban form
   const [banLength, setBanLength] = useState('7')
-  const [banReason, setBanReason] = useState('')
+  const [banReasonPreset, setBanReasonPreset] =
+    useState<BanReasonPreset>(CUSTOM_BAN_REASON)
+  const [customBanReason, setCustomBanReason] = useState('')
   const customStrikeReasonValue = customStrikeReason.trim()
   const strikeReasonValue =
     strikeReasonPreset === CUSTOM_STRIKE_REASON
       ? customStrikeReasonValue
       : strikeReasonPreset
-  const banReasonValue = banReason.trim()
+  const banReasonValue =
+    banReasonPreset === CUSTOM_BAN_REASON
+      ? customBanReason.trim()
+      : banReasonPreset
 
   const resetForms = () => {
     setStrikeAmount('1')
@@ -139,7 +158,8 @@ export function ModerationPlayerCard({
     setCustomStrikeReason('')
     setStrikeReference('')
     setBanLength('7')
-    setBanReason('')
+    setBanReasonPreset(CUSTOM_BAN_REASON)
+    setCustomBanReason('')
   }
 
   const setActionPanel = (panel: ActionPanel) => {
@@ -424,16 +444,48 @@ export function ModerationPlayerCard({
                   </p>
                 </div>
                 <div className='space-y-1'>
+                  <Label className='text-xs'>Reason preset</Label>
+                  <Select
+                    value={banReasonPreset}
+                    onValueChange={(value) =>
+                      setBanReasonPreset(value as BanReasonPreset)
+                    }
+                  >
+                    <SelectTrigger className='w-full'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={CUSTOM_BAN_REASON}>
+                        Custom only
+                      </SelectItem>
+                      {PREDEFINED_BAN_REASONS.map((reason) => (
+                        <SelectItem key={reason} value={reason}>
+                          {reason}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className='space-y-1'>
                   <Label className='text-xs'>Reason *</Label>
-                  <Textarea
-                    value={banReason}
-                    onChange={(e) => setBanReason(e.target.value)}
-                    rows={2}
-                    maxLength={500}
-                    required
-                    aria-required='true'
-                    placeholder='Repeated offenses, severe harassment...'
-                  />
+                  {banReasonPreset === CUSTOM_BAN_REASON ? (
+                    <>
+                      <Textarea
+                        value={customBanReason}
+                        onChange={(e) => setCustomBanReason(e.target.value)}
+                        rows={2}
+                        maxLength={500}
+                        required
+                        aria-required='true'
+                        placeholder='Repeated offenses, severe harassment...'
+                      />
+                      <p className='text-muted-foreground text-xs'>
+                        Enter a custom reason or pick a preset above.
+                      </p>
+                    </>
+                  ) : (
+                    <Input value={banReasonPreset} readOnly />
+                  )}
                 </div>
               </div>
               <div className='flex justify-end gap-2'>
