@@ -81,6 +81,27 @@ export const botlatro_service = {
     )
   },
 
+  getQueueSettings: async (): Promise<QueueSettings[]> => {
+    const result = await botlatroAuthedRequest<{ queues: QueueSettings[] }>(
+      'api/queues/settings'
+    )
+    return result.queues
+  },
+
+  updateQueueSettings: async (
+    id: number,
+    settings: Partial<Omit<QueueSettings, 'id' | 'queue_name'>>
+  ): Promise<QueueSettings> => {
+    const result = await botlatroAuthedRequest<{
+      success: boolean
+      queue: QueueSettings
+    }>(`api/queues/settings/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(settings),
+    })
+    return result.queue
+  },
+
   get_active_matches: async (): Promise<ActiveMatchQueue[]> => {
     const response = await fetch(`${BOTLATRO_URL}api/matches/active-counts`, {
       headers: {
@@ -388,6 +409,30 @@ export const botlatro_service = {
       body: JSON.stringify(input),
     })
   },
+}
+
+export type QueueSettings = {
+  id: number
+  queue_name: string
+  queue_desc: string
+  queue_icon: string | null
+  color: string
+  default_elo: number
+  members_per_team: number
+  number_of_teams: number
+  elo_search_start: number
+  elo_search_increment: number
+  elo_search_speed: number
+  max_party_elo_difference: number | null
+  best_of_allowed: boolean
+  first_deck_ban_num: number
+  second_deck_ban_num: number
+  use_tuple_bans: boolean
+  role_lock_id: string | null
+  veto_mmr_threshold: number | null
+  instaqueue_min: number
+  instaqueue_max: number
+  locked: boolean
 }
 
 export type LeaderboardEntry = {

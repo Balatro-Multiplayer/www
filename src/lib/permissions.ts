@@ -14,6 +14,7 @@ export const PERMISSION_KEYS = [
   'transcripts.view',
   'transcripts.search',
   'leaderboard.snapshots.view',
+  'queues.manage',
 ] as const
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
@@ -31,6 +32,7 @@ export const ADMIN_NAV_PERMISSIONS = [
   'releases.manage',
   'obs_control.manage',
   'transcripts.search',
+  'queues.manage',
 ] as const satisfies readonly PermissionKey[]
 
 export const LEGACY_ROLE_PERMISSIONS = {
@@ -55,6 +57,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
     'transcripts.view',
     'transcripts.search',
     'leaderboard.snapshots.view',
+    'queues.manage',
   ],
   owner: [
     'permissions.manage',
@@ -72,6 +75,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
     'transcripts.view',
     'transcripts.search',
     'leaderboard.snapshots.view',
+    'queues.manage',
   ],
 } as const satisfies Record<string, readonly PermissionKey[]>
 
@@ -130,6 +134,16 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: 'moderation.bans.manage',
         label: 'Manage bans',
         description: 'Create, edit, and lift bans.',
+      },
+    ],
+  },
+  {
+    title: 'Queue',
+    permissions: [
+      {
+        key: 'queues.manage',
+        label: 'Manage queues',
+        description: 'View and edit queue settings from the bot.',
       },
     ],
   },

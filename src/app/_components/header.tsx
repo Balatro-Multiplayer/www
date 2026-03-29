@@ -123,6 +123,14 @@ export function Header({
                   </p>
                 </NavbarMenuLink>
               ) : null}
+              {hasPermission(session?.user, 'queues.manage') ? (
+                <NavbarMenuLink href='/admin/queue-settings'>
+                  <p className='-mb-1 font-medium text-sm'>Queue Settings</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    View and edit bot queue config
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
               {hasPermission(session?.user, 'blog.manage') ? (
                 <NavbarMenuLink href='/admin/blog'>
                   <p className='-mb-1 font-medium text-sm'>Blog</p>

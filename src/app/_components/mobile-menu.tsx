@@ -273,6 +273,15 @@ export function MobileMenu({
                     Seasons
                   </MobileMenuLink>
                 ) : null}
+                {hasPermission(session?.user, 'queues.manage') ? (
+                  <MobileMenuLink
+                    href='/admin/queue-settings'
+                    icon={<Settings className='size-4' />}
+                    onClick={close}
+                  >
+                    Queue Settings
+                  </MobileMenuLink>
+                ) : null}
                 {hasPermission(session?.user, 'blog.manage') ? (
                   <MobileMenuLink
                     href='/admin/blog'
