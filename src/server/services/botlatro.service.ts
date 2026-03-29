@@ -102,6 +102,18 @@ export const botlatro_service = {
     return result.queue
   },
 
+  lockAllQueues: async (
+    moderatorId: string
+  ): Promise<{ success: boolean; count: number }> => {
+    return botlatroAuthedRequest<{ success: boolean; count: number }>(
+      'api/queues/lock-all',
+      {
+        method: 'POST',
+        body: JSON.stringify({ moderatorId }),
+      }
+    )
+  },
+
   get_active_matches: async (): Promise<ActiveMatchQueue[]> => {
     const response = await fetch(`${BOTLATRO_URL}api/matches/active-counts`, {
       headers: {

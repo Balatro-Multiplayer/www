@@ -70,16 +70,29 @@ const FIELD_CONFIG: FieldDef[] = [
 
 export function QueueSettingsClient() {
   const router = useRouter()
+  const utils = api.useUtils()
   const [editingQueue, setEditingQueue] = useState<QueueSettings | null>(null)
+  const [isLockAllDialogOpen, setIsLockAllDialogOpen] = useState(false)
   const [formData, setFormData] = useState<EditableFields>({})
 
   const { data: queues, isLoading } = api.queues.getSettings.useQuery()
 
   const updateSettings = api.queues.updateSettings.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Queue updated')
+      await utils.queues.getSettings.invalidate()
       setEditingQueue(null)
       setFormData({})
+      startTransition(() => router.refresh())
+    },
+    onError: (error) => toast.error(error.message),
+  })
+
+  const lockAllQueues = api.queues.lockAll.useMutation({
+    onSuccess: async ({ count }) => {
+      toast.success(count === 1 ? 'Locked 1 queue' : `Locked ${count} queues`)
+      setIsLockAllDialogOpen(false)
+      await utils.queues.getSettings.invalidate()
       startTransition(() => router.refresh())
     },
     onError: (error) => toast.error(error.message),
@@ -147,8 +160,58 @@ export function QueueSettingsClient() {
     return <div className='text-muted-foreground text-sm'>No queues found</div>
   }
 
+  const unlockedQueueCount = queues.filter((queue) => !queue.locked).length
+  const isMutating = updateSettings.isPending || lockAllQueues.isPending
+
   return (
     <>
+      <div className='flex justify-end'>
+        <Button
+          disabled={unlockedQueueCount === 0 || isMutating}
+          variant={'destructive'}
+          onClick={() => setIsLockAllDialogOpen(true)}
+        >
+          {lockAllQueues.isPending
+            ? 'Locking...'
+            : unlockedQueueCount === 0
+              ? 'All Queues Locked'
+              : 'Lock All Queues'}
+        </Button>
+        <Dialog
+          open={isLockAllDialogOpen}
+          onOpenChange={setIsLockAllDialogOpen}
+        >
+          <DialogContent className='sm:max-w-md'>
+            <DialogHeader>
+              <DialogTitle>Lock all queues?</DialogTitle>
+              <DialogDescription>
+                This will lock {unlockedQueueCount} currently open
+                {unlockedQueueCount === 1 ? ' queue' : ' queues'} and clear any
+                players waiting in them.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type='button'
+                variant='outline'
+                disabled={isMutating}
+                onClick={() => setIsLockAllDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type='button'
+                variant='destructive'
+                onClick={() => lockAllQueues.mutate()}
+                disabled={isMutating}
+              >
+                {lockAllQueues.isPending ? 'Locking...' : 'Lock All Queues'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
       <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
         {queues.map((queue) => (
           <div
@@ -276,7 +339,7 @@ export function QueueSettingsClient() {
                       onCheckedChange={(checked) =>
                         updateField(field.key, checked)
                       }
-                      disabled={updateSettings.isPending}
+                      disabled={isMutating}
                     />
                   </div>
                 )
@@ -293,14 +356,14 @@ export function QueueSettingsClient() {
                         value={(value as string) || '#FFD700'}
                         onChange={(e) => updateField(field.key, e.target.value)}
                         className='h-9 w-9 cursor-pointer rounded border-0 bg-transparent p-0'
-                        disabled={updateSettings.isPending}
+                        disabled={isMutating}
                       />
                       <Input
                         id={field.key}
                         value={(value as string) ?? ''}
                         onChange={(e) => updateField(field.key, e.target.value)}
                         placeholder='#FFD700'
-                        disabled={updateSettings.isPending}
+                        disabled={isMutating}
                         className='flex-1'
                       />
                     </div>
@@ -330,7 +393,7 @@ export function QueueSettingsClient() {
                         }
                       }}
                       placeholder={field.nullable ? 'None' : undefined}
-                      disabled={updateSettings.isPending}
+                      disabled={isMutating}
                     />
                   </div>
                 )
@@ -349,7 +412,7 @@ export function QueueSettingsClient() {
                       )
                     }
                     placeholder={field.nullable ? 'None' : undefined}
-                    disabled={updateSettings.isPending}
+                    disabled={isMutating}
                   />
                 </div>
               )
@@ -363,11 +426,11 @@ export function QueueSettingsClient() {
                   setEditingQueue(null)
                   setFormData({})
                 }}
-                disabled={updateSettings.isPending}
+                disabled={isMutating}
               >
                 Cancel
               </Button>
-              <Button type='submit' disabled={updateSettings.isPending}>
+              <Button type='submit' disabled={isMutating}>
                 {updateSettings.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
             </DialogFooter>

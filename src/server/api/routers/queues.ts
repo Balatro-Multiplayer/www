@@ -7,6 +7,10 @@ export const queuesRouter = createTRPCRouter({
     return botlatro_service.getQueueSettings()
   }),
 
+  lockAll: permissionProcedure('queues.manage').mutation(async ({ ctx }) => {
+    return botlatro_service.lockAllQueues(ctx.session.user.discord_id)
+  }),
+
   updateSettings: permissionProcedure('queues.manage')
     .input(
       z.object({
