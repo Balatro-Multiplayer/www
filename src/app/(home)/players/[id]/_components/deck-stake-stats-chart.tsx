@@ -60,6 +60,13 @@ export const STAKE_IMAGES: Record<string, string> = {
   unknown: '/stakes/unknown.png',
 }
 
+type StatDatum = {
+  name: string
+  wins: number
+  losses: number
+  total: number
+}
+
 export function DeckImage({
   deck,
   width = 24,
@@ -107,18 +114,203 @@ export function StakeImage({
 }
 
 const deckChartConfig = {
-  count: {
-    label: 'Games',
-    color: 'var(--color-violet-500)',
+  wins: {
+    label: 'Wins',
+    color: 'var(--color-emerald-500)',
+  },
+  losses: {
+    label: 'Losses',
+    color: 'var(--color-rose-500)',
+  },
+  total: {
+    label: 'Total',
   },
 } satisfies ChartConfig
 
 const stakeChartConfig = {
-  count: {
-    label: 'Games',
+  wins: {
+    label: 'Wins',
     color: 'var(--color-emerald-500)',
   },
+  losses: {
+    label: 'Losses',
+    color: 'var(--color-rose-500)',
+  },
+  total: {
+    label: 'Total',
+  },
 } satisfies ChartConfig
+
+function normalizeStatKey(value: string | null | undefined, suffix: string) {
+  return value ? value.replace(suffix, '').trim().toLowerCase() : 'unknown'
+}
+
+function buildStatsData(
+  games: SelectGames[],
+  getName: (game: SelectGames) => string
+) {
+  const stats: Record<string, { wins: number; losses: number }> = {}
+
+  for (const game of games) {
+    const name = getName(game)
+    if (name === 'unknown') continue
+    if (game.result !== 'win' && game.result !== 'loss') continue
+
+    if (!stats[name]) {
+      stats[name] = { wins: 0, losses: 0 }
+    }
+
+    const entry = stats[name]
+    if (game.result === 'win') entry.wins += 1
+    else entry.losses += 1
+  }
+
+  return Object.entries(stats)
+    .map(([name, entry]) => ({
+      name,
+      wins: entry.wins,
+      losses: entry.losses,
+      total: entry.wins + entry.losses,
+    }))
+    .filter((entry) => entry.total > 0)
+    .sort((a, b) => b.total - a.total || b.wins - a.wins)
+}
+
+function formatStatName(value: string) {
+  return value.replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+type TotalLabelProps = {
+  payload?: StatDatum
+  width?: number | string
+  x?: number | string
+  y?: number | string
+}
+
+function TotalLabel({ payload, width, x, y }: TotalLabelProps) {
+  if (!payload || width == null || x == null || y == null) return null
+
+  return (
+    <text
+      x={Number(x) + Number(width) / 2}
+      y={Number(y) - 8}
+      textAnchor='middle'
+      className='fill-foreground'
+      fontSize={10}
+    >
+      {payload.total}
+    </text>
+  )
+}
+
+function StatsLegend() {
+  return (
+    <div className='flex items-center gap-4 px-3 text-muted-foreground text-xs'>
+      <div className='flex items-center gap-1.5'>
+        <span className='size-2 rounded-full bg-emerald-500' />
+        Wins
+      </div>
+      <div className='flex items-center gap-1.5'>
+        <span className='size-2 rounded-full bg-rose-500' />
+        Losses
+      </div>
+    </div>
+  )
+}
+
+function StackedStatsChart({
+  config,
+  data,
+  images,
+}: {
+  config: ChartConfig
+  data: StatDatum[]
+  images: Record<string, string>
+}) {
+  return (
+    <ChartContainer config={config} className='h-[350px] w-full'>
+      <BarChart
+        data={data}
+        margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
+      >
+        <CartesianGrid vertical={false} />
+        <XAxis
+          dataKey='name'
+          tickLine={false}
+          axisLine={false}
+          interval={0}
+          tick={(props) => {
+            const { x, y, payload } = props
+            const imagePath = images[payload.value]
+            const itemCount = data.length
+            const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
+
+            return (
+              <g
+                transform={`translate(${Number(x) - imgSize / 2},${Number(y) + 10})`}
+              >
+                <title>{formatStatName(payload.value)}</title>
+                {imagePath && (
+                  <image href={imagePath} width={imgSize} height={imgSize} />
+                )}
+                {itemCount <= 12 && (
+                  <text
+                    x={imgSize / 2}
+                    y={imgSize + 20}
+                    textAnchor='middle'
+                    fill='currentColor'
+                    fontSize='10'
+                    className='font-medium capitalize'
+                  >
+                    {payload.value}
+                  </text>
+                )}
+              </g>
+            )
+          }}
+        />
+        <YAxis hide />
+        <ChartTooltip
+          cursor={false}
+          content={
+            <ChartTooltipContent
+              labelFormatter={(label, payload) => {
+                const total = payload?.[0]?.payload?.total ?? 0
+                return `${formatStatName(String(label ?? ''))} · ${total} total`
+              }}
+            />
+          }
+        />
+        <Bar
+          dataKey='losses'
+          stackId='results'
+          fill='var(--color-losses)'
+          radius={[0, 0, 4, 4]}
+        >
+          <LabelList
+            dataKey='total'
+            content={(props: TotalLabelProps) =>
+              props.payload?.wins ? null : <TotalLabel {...props} />
+            }
+          />
+        </Bar>
+        <Bar
+          dataKey='wins'
+          stackId='results'
+          fill='var(--color-wins)'
+          radius={[4, 4, 0, 0]}
+        >
+          <LabelList
+            dataKey='total'
+            content={(props: TotalLabelProps) =>
+              props.payload?.wins ? <TotalLabel {...props} /> : null
+            }
+          />
+        </Bar>
+      </BarChart>
+    </ChartContainer>
+  )
+}
 
 export function DeckStakeStatsChart({
   games,
@@ -128,31 +320,13 @@ export function DeckStakeStatsChart({
   season?: Season
 }) {
   const deckData = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const game of games) {
-      const cleanDeck = game.deck
-        ? game.deck.replace('Deck', '').trim().toLowerCase()
-        : 'unknown'
-      if (cleanDeck === 'unknown') continue
-      counts[cleanDeck] = (counts[cleanDeck] ?? 0) + 1
-    }
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
+    return buildStatsData(games, (game) => normalizeStatKey(game.deck, 'Deck'))
   }, [games])
 
   const stakeData = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const game of games) {
-      const cleanStake = game.stake
-        ? game.stake.replace('Stake', '').trim().toLowerCase()
-        : 'unknown'
-      if (cleanStake === 'unknown') continue
-      counts[cleanStake] = (counts[cleanStake] ?? 0) + 1
-    }
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
+    return buildStatsData(games, (game) =>
+      normalizeStatKey(game.stake, 'Stake')
+    )
   }, [games])
 
   return (
@@ -162,71 +336,16 @@ export function DeckStakeStatsChart({
           <CardTitle>Decks Played</CardTitle>
           <CardDescription>{getSeasonDisplayName(season)}</CardDescription>
         </CardHeader>
-        <CardContent className='p-2'>
+        <CardContent className='space-y-3 p-2'>
           {deckData.length > 0 ? (
-            <ChartContainer
-              config={deckChartConfig}
-              className='h-[350px] w-full'
-            >
-              <BarChart
+            <>
+              <StatsLegend />
+              <StackedStatsChart
+                config={deckChartConfig}
                 data={deckData}
-                margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
-              >
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey='name'
-                  tickLine={false}
-                  axisLine={false}
-                  interval={0}
-                  tick={(props) => {
-                    const { x, y, payload } = props
-                    const imagePath = DECK_IMAGES[payload.value]
-                    const itemCount = deckData.length
-                    const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
-                    return (
-                      <g
-                        transform={`translate(${Number(x) - imgSize / 2},${Number(y) + 10})`}
-                      >
-                        <title className='capitalize'>{payload.value}</title>
-                        {imagePath && (
-                          <image
-                            href={imagePath}
-                            width={imgSize}
-                            height={imgSize}
-                          />
-                        )}
-                        {itemCount <= 12 && (
-                          <text
-                            x={imgSize / 2}
-                            y={imgSize + 20}
-                            textAnchor='middle'
-                            fill='currentColor'
-                            fontSize='10'
-                            className='font-medium capitalize'
-                          >
-                            {payload.value}
-                          </text>
-                        )}
-                      </g>
-                    )
-                  }}
-                />
-                <YAxis hide />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent />}
-                />
-                <Bar dataKey='count' fill='var(--color-violet-500)' radius={4}>
-                  <LabelList
-                    dataKey='count'
-                    position='top'
-                    offset={8}
-                    className='fill-foreground'
-                    fontSize={10}
-                  />
-                </Bar>
-              </BarChart>
-            </ChartContainer>
+                images={DECK_IMAGES}
+              />
+            </>
           ) : (
             <div className='flex h-[350px] w-full items-center justify-center text-muted-foreground'>
               No deck data available
@@ -240,71 +359,16 @@ export function DeckStakeStatsChart({
           <CardTitle>Stakes Played</CardTitle>
           <CardDescription>{getSeasonDisplayName(season)}</CardDescription>
         </CardHeader>
-        <CardContent className='p-2'>
+        <CardContent className='space-y-3 p-2'>
           {stakeData.length > 0 ? (
-            <ChartContainer
-              config={stakeChartConfig}
-              className='h-[350px] w-full'
-            >
-              <BarChart
+            <>
+              <StatsLegend />
+              <StackedStatsChart
+                config={stakeChartConfig}
                 data={stakeData}
-                margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
-              >
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey='name'
-                  tickLine={false}
-                  axisLine={false}
-                  interval={0}
-                  tick={(props) => {
-                    const { x, y, payload } = props
-                    const imagePath = STAKE_IMAGES[payload.value]
-                    const itemCount = stakeData.length
-                    const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
-                    return (
-                      <g
-                        transform={`translate(${Number(x) - imgSize / 2},${Number(y) + 10})`}
-                      >
-                        <title className='capitalize'>{payload.value}</title>
-                        {imagePath && (
-                          <image
-                            href={imagePath}
-                            width={imgSize}
-                            height={imgSize}
-                          />
-                        )}
-                        {itemCount <= 12 && (
-                          <text
-                            x={imgSize / 2}
-                            y={imgSize + 20}
-                            textAnchor='middle'
-                            fill='currentColor'
-                            fontSize='10'
-                            className='font-medium capitalize'
-                          >
-                            {payload.value}
-                          </text>
-                        )}
-                      </g>
-                    )
-                  }}
-                />
-                <YAxis hide />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent />}
-                />
-                <Bar dataKey='count' fill='var(--color-emerald-500)' radius={4}>
-                  <LabelList
-                    dataKey='count'
-                    position='top'
-                    offset={8}
-                    className='fill-foreground'
-                    fontSize={10}
-                  />
-                </Bar>
-              </BarChart>
-            </ChartContainer>
+                images={STAKE_IMAGES}
+              />
+            </>
           ) : (
             <div className='flex h-[350px] w-full items-center justify-center text-muted-foreground'>
               No stake data available
