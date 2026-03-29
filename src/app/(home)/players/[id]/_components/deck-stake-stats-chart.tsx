@@ -218,6 +218,21 @@ function StatsLegend() {
   )
 }
 
+function StackedStatsTooltipContent(
+  props: React.ComponentProps<typeof ChartTooltipContent>
+) {
+  const sortedPayload = props.payload
+    ? [...props.payload].sort((a, b) => {
+        if (a.dataKey === b.dataKey) return 0
+        if (a.dataKey === 'wins') return -1
+        if (b.dataKey === 'wins') return 1
+        return 0
+      })
+    : props.payload
+
+  return <ChartTooltipContent {...props} payload={sortedPayload} />
+}
+
 function StackedStatsChart({
   config,
   data,
@@ -273,7 +288,7 @@ function StackedStatsChart({
         <ChartTooltip
           cursor={false}
           content={
-            <ChartTooltipContent
+            <StackedStatsTooltipContent
               labelFormatter={(label, payload) => {
                 const total = payload?.[0]?.payload?.total ?? 0
                 return `${formatStatName(String(label ?? ''))} · ${total} total`
