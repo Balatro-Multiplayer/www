@@ -220,20 +220,20 @@ export const history_router = createTRPCRouter({
           input.sortBy === 'gameId'
             ? player_games.gameId
             : input.sortBy === 'opponentName'
-            ? player_games.opponentName
-            : input.sortBy === 'gameType'
-              ? player_games.gameType
-              : input.sortBy === 'deck'
-                ? player_games.deck
-                : input.sortBy === 'stake'
-                  ? player_games.stake
-                  : input.sortBy === 'opponentMmr'
-                    ? player_games.opponentMmr
-                    : input.sortBy === 'playerMmr'
-                      ? player_games.playerMmr
-                      : input.sortBy === 'mmrChange'
-                        ? player_games.mmrChange
-                        : player_games.gameTime
+              ? player_games.opponentName
+              : input.sortBy === 'gameType'
+                ? player_games.gameType
+                : input.sortBy === 'deck'
+                  ? player_games.deck
+                  : input.sortBy === 'stake'
+                    ? player_games.stake
+                    : input.sortBy === 'opponentMmr'
+                      ? player_games.opponentMmr
+                      : input.sortBy === 'playerMmr'
+                        ? player_games.playerMmr
+                        : input.sortBy === 'mmrChange'
+                          ? player_games.mmrChange
+                          : player_games.gameTime
 
         const where = and(
           eq(player_games.playerId, input.user_id),

@@ -97,12 +97,8 @@
           "name": "account_userId_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -110,10 +106,7 @@
       "compositePrimaryKeys": {
         "account_provider_providerAccountId_pk": {
           "name": "account_provider_providerAccountId_pk",
-          "columns": [
-            "provider",
-            "providerAccountId"
-          ]
+          "columns": ["provider", "providerAccountId"]
         }
       },
       "uniqueConstraints": {},
@@ -204,12 +197,8 @@
           "name": "banned_user_aliases_banned_user_id_banned_users_id_fk",
           "tableFrom": "banned_user_aliases",
           "tableTo": "banned_users",
-          "columnsFrom": [
-            "banned_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["banned_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -303,12 +292,8 @@
           "name": "banned_user_ids_banned_user_id_banned_users_id_fk",
           "tableFrom": "banned_user_ids",
           "tableTo": "banned_users",
-          "columnsFrom": [
-            "banned_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["banned_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -448,12 +433,8 @@
           "name": "blog_posts_author_id_user_id_fk",
           "tableFrom": "blog_posts",
           "tableTo": "user",
-          "columnsFrom": [
-            "author_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["author_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -463,9 +444,7 @@
         "blog_posts_slug_unique": {
           "name": "blog_posts_slug_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         }
       },
       "policies": {},
@@ -520,9 +499,7 @@
         "mod_branches_name_unique": {
           "name": "mod_branches_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -967,12 +944,8 @@
           "name": "games_log_file_id_log_files_id_fk",
           "tableFrom": "games",
           "tableTo": "log_files",
-          "columnsFrom": [
-            "log_file_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["log_file_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1068,12 +1041,8 @@
           "name": "log_file_connections_log_file_id_log_files_id_fk",
           "tableFrom": "log_file_connections",
           "tableTo": "log_files",
-          "columnsFrom": [
-            "log_file_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["log_file_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1081,10 +1050,7 @@
       "compositePrimaryKeys": {
         "log_file_connections_log_file_id_connection_id_lower_pk": {
           "name": "log_file_connections_log_file_id_connection_id_lower_pk",
-          "columns": [
-            "log_file_id",
-            "connection_id_lower"
-          ]
+          "columns": ["log_file_id", "connection_id_lower"]
         }
       },
       "uniqueConstraints": {},
@@ -1121,12 +1087,8 @@
           "name": "log_file_lobby_codes_log_file_id_log_files_id_fk",
           "tableFrom": "log_file_lobby_codes",
           "tableTo": "log_files",
-          "columnsFrom": [
-            "log_file_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["log_file_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1134,10 +1096,7 @@
       "compositePrimaryKeys": {
         "log_file_lobby_codes_log_file_id_lobby_code_lower_pk": {
           "name": "log_file_lobby_codes_log_file_id_lobby_code_lower_pk",
-          "columns": [
-            "log_file_id",
-            "lobby_code_lower"
-          ]
+          "columns": ["log_file_id", "lobby_code_lower"]
         }
       },
       "uniqueConstraints": {},
@@ -1174,12 +1133,8 @@
           "name": "log_file_owner_connections_log_file_id_log_files_id_fk",
           "tableFrom": "log_file_owner_connections",
           "tableTo": "log_files",
-          "columnsFrom": [
-            "log_file_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["log_file_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1187,10 +1142,7 @@
       "compositePrimaryKeys": {
         "log_file_owner_connections_log_file_id_connection_id_lower_pk": {
           "name": "log_file_owner_connections_log_file_id_connection_id_lower_pk",
-          "columns": [
-            "log_file_id",
-            "connection_id_lower"
-          ]
+          "columns": ["log_file_id", "connection_id_lower"]
         }
       },
       "uniqueConstraints": {},
@@ -1227,12 +1179,8 @@
           "name": "log_file_players_log_file_id_log_files_id_fk",
           "tableFrom": "log_file_players",
           "tableTo": "log_files",
-          "columnsFrom": [
-            "log_file_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["log_file_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1240,10 +1188,7 @@
       "compositePrimaryKeys": {
         "log_file_players_log_file_id_player_name_lower_pk": {
           "name": "log_file_players_log_file_id_player_name_lower_pk",
-          "columns": [
-            "log_file_id",
-            "player_name_lower"
-          ]
+          "columns": ["log_file_id", "player_name_lower"]
         }
       },
       "uniqueConstraints": {},
@@ -1332,12 +1277,8 @@
           "name": "log_files_user_id_user_id_fk",
           "tableFrom": "log_files",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1595,10 +1536,7 @@
       "compositePrimaryKeys": {
         "player_games_player_id_game_num_pk": {
           "name": "player_games_player_id_game_num_pk",
-          "columns": [
-            "player_id",
-            "game_num"
-          ]
+          "columns": ["player_id", "game_num"]
         }
       },
       "uniqueConstraints": {},
@@ -1751,12 +1689,8 @@
           "name": "mod_release_branch_id_mod_branches_id_fk",
           "tableFrom": "mod_release",
           "tableTo": "mod_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["branch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1876,12 +1810,8 @@
           "name": "season_snapshots_season_id_seasons_id_fk",
           "tableFrom": "season_snapshots",
           "tableTo": "seasons",
-          "columnsFrom": [
-            "season_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["season_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1999,12 +1929,8 @@
           "name": "session_userId_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2063,9 +1989,7 @@
         "transcripts_game_number_unique": {
           "name": "transcripts_game_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "game_number"
-          ]
+          "columns": ["game_number"]
         }
       },
       "policies": {},
@@ -2176,10 +2100,7 @@
       "compositePrimaryKeys": {
         "verification_token_identifier_token_pk": {
           "name": "verification_token_identifier_token_pk",
-          "columns": [
-            "identifier",
-            "token"
-          ]
+          "columns": ["identifier", "token"]
         }
       },
       "uniqueConstraints": {},

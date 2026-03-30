@@ -421,6 +421,19 @@ export const botlatro_service = {
       body: JSON.stringify(input),
     })
   },
+
+  get_user_bounties: async (user_id: string): Promise<UserBounty[]> => {
+    const result = await botlatroAuthedRequest<{ bounties: UserBounty[] }>(
+      `api/bounties/user/${encodeURIComponent(user_id)}`
+    )
+    return result.bounties
+  },
+
+  get_bounty_completions: async (bounty_name: string): Promise<BountyCompletionsResponse> => {
+    return botlatroAuthedRequest<BountyCompletionsResponse>(
+      `api/bounties/${encodeURIComponent(bounty_name)}/completions`
+    )
+  },
 }
 
 export type QueueSettings = {
@@ -630,4 +643,31 @@ export type WarningInput = {
 
 export type MonitoringSuccess = {
   success: true
+}
+
+export type UserBounty = {
+  id: number
+  bounty_id: number
+  user_id: string
+  is_first: boolean
+  completed_at: string
+  bounty_name: string
+  description: string
+}
+
+export type BountyCompletion = {
+  id: number
+  bounty_id: number
+  user_id: string
+  is_first: boolean
+  completed_at: string
+}
+
+export type BountyCompletionsResponse = {
+  bounty: {
+    id: number
+    bounty_name: string
+    description: string
+  }
+  completions: BountyCompletion[]
 }

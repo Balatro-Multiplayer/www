@@ -18,10 +18,7 @@ export default async function LobbyCodesPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const session = await auth()
-  const canSearchLobbyCodes = hasPermission(
-    session?.user,
-    'transcripts.search'
-  )
+  const canSearchLobbyCodes = hasPermission(session?.user, 'transcripts.search')
 
   if (!canSearchLobbyCodes) {
     return (
@@ -34,8 +31,7 @@ export default async function LobbyCodesPage({
   }
 
   const params = await searchParams
-  const search =
-    typeof params.search === 'string' ? params.search.trim() : ''
+  const search = typeof params.search === 'string' ? params.search.trim() : ''
 
   if (search.length > 0) {
     await api.history.searchTranscriptLobbyCodes.prefetch({

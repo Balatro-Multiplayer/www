@@ -684,7 +684,11 @@ export async function PUT(req: NextRequest) {
       botlatro_service
         .sendWarning({
           title: `Warning: banned user match detected in uploaded log #${logFileId}`,
-          lines: formatBannedUserWarningLines(bannedMatches, logUrl, lobbyCodes),
+          lines: formatBannedUserWarningLines(
+            bannedMatches,
+            logUrl,
+            lobbyCodes
+          ),
         })
         .catch((error) => {
           console.error(

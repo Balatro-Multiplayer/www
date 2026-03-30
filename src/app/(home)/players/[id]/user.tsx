@@ -11,6 +11,7 @@ import {
   Youtube,
 } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { isNonNullish } from 'remeda'
@@ -48,6 +49,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import type { UserBounty } from '@/server/services/botlatro.service'
 import {
   LEGACY_QUEUE_ID,
   OLD_RANKED_CHANNEL,
@@ -129,6 +131,7 @@ const TAB_OPTIONS = [
   { value: 'deck-stake-stats', label: 'Decks / Stakes' },
   { value: 'mmr-trends', label: 'MMR Trends' },
   { value: 'winrate-trends', label: 'Winrate Trends' },
+  { value: 'bounties', label: 'Bounties' },
 ] as const
 
 function UserInfoComponent() {
@@ -146,6 +149,10 @@ function UserInfoComponent() {
   const gamesQuery = api.history.user_games.useSuspenseQuery({ user_id: id })
   const games = gamesQuery[0] || []
   const [discord_user] = api.players.get_user_by_id.useSuspenseQuery({
+    user_id: id,
+  })
+
+  const { data: bounties = [] } = api.bounties.get_user_bounties.useQuery({
     user_id: id,
   })
 
@@ -786,6 +793,9 @@ function UserInfoComponent() {
           <TabsContent value='deck-stake-stats' className='m-0'>
             <DeckStakeStatsChart games={filteredGames} season={season} />
           </TabsContent>
+          <TabsContent value='bounties' className='m-0'>
+            <BountiesSection bounties={bounties} />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
@@ -914,3 +924,96 @@ function QueueCard({
     </div>
   )
 }
+
+/* ── Bounties Section ── */
+
+function bountyNameToIconPath(bountyName: string): string {
+  console.log(bountyName)
+  const slug = bountyName
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
+  return `/bounties/${slug}.png`
+}
+
+function BountyIcon({ bounty }: { bounty: UserBounty }) {
+  return (
+    <TooltipProvider key={bounty.id}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link
+            href={`/bounties/${encodeURIComponent(bounty.bounty_name)}`}
+            className='flex flex-col items-center gap-1.5 transition-opacity hover:opacity-80'
+          >
+            <div
+              className={cn(
+                'relative rounded-md',
+                bounty.is_first &&
+                  'ring-2 ring-amber-400/80 ring-offset-1 ring-offset-background shadow-[0_0_12px_4px_rgba(251,191,36,0.5)]'
+              )}
+            >
+              <Image
+                src={bountyNameToIconPath(bounty.bounty_name)}
+                alt={bounty.bounty_name}
+                width={256}
+                height={256}
+                className='size-24 rounded-md object-contain'
+                unoptimized
+              />
+            </div>
+            <span className='max-w-24 text-center text-muted-foreground text-xs leading-tight line-clamp-2'>
+              {bounty.bounty_name}
+            </span>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent className='max-w-48'>
+          <p className='font-semibold'>{bounty.bounty_name}</p>
+          <p className='mt-0.5 text-xs'>{bounty.description}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+function BountiesSection({ bounties }: { bounties: UserBounty[] }) {
+  if (bounties.length === 0) {
+    return (
+      <div className='flex h-32 items-center justify-center rounded-lg border'>
+        <span className='text-muted-foreground text-sm'>No bounties earned yet</span>
+      </div>
+    )
+  }
+
+  const firstCompletions = bounties.filter((b) => b.is_first)
+  const regularCompletions = bounties.filter((b) => !b.is_first)
+
+  return (
+    <div className='space-y-4 rounded-lg border bg-card p-4'>
+      {firstCompletions.length > 0 && (
+        <div>
+          <h3 className='mb-3 font-semibold text-amber-500 text-md dark:text-amber-400'>
+            First Completions
+          </h3>
+          <div className='flex flex-wrap gap-4'>
+            {firstCompletions.map((bounty) => (
+              <BountyIcon key={bounty.id} bounty={bounty} />
+            ))}
+          </div>
+        </div>
+      )}
+      {regularCompletions.length > 0 && (
+        <div>
+          <h3 className='mb-3 font-semibold text-md'>
+            Completions
+          </h3>
+          <div className='flex flex-wrap gap-4'>
+            {regularCompletions.map((bounty) => (
+              <BountyIcon key={bounty.id} bounty={bounty} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+

@@ -1,5 +1,6 @@
 import { bannedUsersRouter } from '@/server/api/routers/banned-users'
 import { blogRouter } from '@/server/api/routers/blog'
+import { bountiesRouter } from '@/server/api/routers/bounties'
 import { branchesRouter } from '@/server/api/routers/branches'
 import { history_router } from '@/server/api/routers/history'
 import { leaderboard_router } from '@/server/api/routers/leaderboard'
@@ -7,8 +8,8 @@ import { logsRouter } from '@/server/api/routers/logs'
 import { moderationRouter } from '@/server/api/routers/moderation'
 import { playerStateRouter } from '@/server/api/routers/player-state'
 import { playersRouter } from '@/server/api/routers/players'
-import { queuesRouter } from '@/server/api/routers/queues'
 import { profileRouter } from '@/server/api/routers/profile'
+import { queuesRouter } from '@/server/api/routers/queues'
 import { releasesRouter } from '@/server/api/routers/releases'
 import { seasonsRouter } from '@/server/api/routers/seasons'
 import { stats_router } from '@/server/api/routers/stats'
@@ -23,6 +24,7 @@ import { createCallerFactory, createTRPCRouter } from '@/server/api/trpc'
 export const appRouter = createTRPCRouter({
   bannedUsers: bannedUsersRouter,
   blog: blogRouter,
+  bounties: bountiesRouter,
   branches: branchesRouter,
   history: history_router,
   players: playersRouter,

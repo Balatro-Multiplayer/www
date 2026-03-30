@@ -85,10 +85,7 @@ export function LobbyCodesClient({
               <Suspense
                 fallback={
                   <TableRow>
-                    <TableCell
-                      colSpan={7}
-                      className='text-fd-muted-foreground'
-                    >
+                    <TableCell colSpan={7} className='text-fd-muted-foreground'>
                       Loading...
                     </TableCell>
                   </TableRow>

@@ -36,10 +36,14 @@ export default async function Home({
 }) {
   const params = await searchParams
 
-  const activeSeasonNumber = await getActiveSeasonNumber()
-  const activeSeason = getSeasonKey(activeSeasonNumber)
   const seasons = await api.seasons.list()
   const seasonIds = new Set(seasons.map((season) => season.id))
+
+  const activeSeasonNumber =
+    seasons.find((s) => s.isActive)?.id ??
+    seasons.at(-1)?.id ??
+    (await getActiveSeasonNumber())
+  const activeSeason = getSeasonKey(activeSeasonNumber)
 
   const requestedSeason =
     SeasonSchema.safeParse(params.season).success &&

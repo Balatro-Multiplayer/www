@@ -351,24 +351,32 @@ export function PermissionsClient() {
                   >
                     <legend className='sr-only'>{group.title}</legend>
                     <label
-                      className='flex cursor-pointer items-center gap-2 rounded-md p-1 -m-1 hover:bg-muted/30'
+                      className='-m-1 flex cursor-pointer items-center gap-2 rounded-md p-1 hover:bg-muted/30'
                       htmlFor={groupId}
                     >
                       <Checkbox
                         id={groupId}
-                        checked={allChecked ? true : someChecked ? 'indeterminate' : false}
+                        checked={
+                          allChecked
+                            ? true
+                            : someChecked
+                              ? 'indeterminate'
+                              : false
+                        }
                         onCheckedChange={() => toggleGroup(group)}
                       />
-                      <span className='font-medium text-sm select-none'>
+                      <span className='select-none font-medium text-sm'>
                         {group.title}
                       </span>
-                      <span className='text-muted-foreground text-xs select-none'>
+                      <span className='select-none text-muted-foreground text-xs'>
                         {checkedCount}/{groupKeys.length}
                       </span>
                     </label>
                     <div className='mt-2 space-y-0.5 pl-1'>
                       {group.permissions.map((permission) => {
-                        const checked = draftPermissions.includes(permission.key)
+                        const checked = draftPermissions.includes(
+                          permission.key
+                        )
                         const checkboxId = `perm-${permission.key}`
                         const descId = `desc-${permission.key}`
 
@@ -377,7 +385,7 @@ export function PermissionsClient() {
                             key={permission.key}
                             htmlFor={checkboxId}
                             className={cn(
-                              'flex cursor-pointer items-start gap-3 rounded-md border p-2 transition-colors select-none',
+                              'flex cursor-pointer select-none items-start gap-3 rounded-md border p-2 transition-colors',
                               checked
                                 ? 'border-primary/30 bg-primary/5'
                                 : 'border-transparent hover:border-border hover:bg-muted/30'
