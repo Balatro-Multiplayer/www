@@ -32,7 +32,9 @@ const TABS = STAT_TABS.map((value) => ({
             ? 'Season Overview'
             : value === 'live-matches'
               ? 'Live Matches'
-              : 'Game Activity',
+              : value === 'bounties'
+                ? 'Bounties'
+                : 'Game Activity',
 }))
 
 type StatsTabsProps = {
