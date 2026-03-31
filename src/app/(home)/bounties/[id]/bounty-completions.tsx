@@ -3,9 +3,11 @@
 import { format } from 'date-fns'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { BountyCompletion } from '@/server/services/botlatro.service'
-import { api } from '@/trpc/react'
+import { api, type RouterOutputs } from '@/trpc/react'
+
+type BountyCompletion = RouterOutputs['bounties']['get_bounty_completions']['completions'][number]
 
 function bountyNameToIconPath(bountyName: string): string {
   const slug = bountyName
@@ -31,7 +33,7 @@ function CompletionRow({
         {index + 1}
       </span>
       <span className='flex-1 font-medium text-sm'>
-        {completion.user_id}
+        {completion.display_name}
       </span>
       {completion.is_first && (
         <span className='rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-600 text-xs dark:text-amber-400'>
@@ -46,6 +48,7 @@ function CompletionRow({
 }
 
 export function BountyCompletions({ bountyName }: { bountyName: string }) {
+  const [imgError, setImgError] = useState(false)
   const { data, isLoading } = api.bounties.get_bounty_completions.useQuery({
     bounty_name: bountyName,
   })
@@ -84,12 +87,13 @@ export function BountyCompletions({ bountyName }: { bountyName: string }) {
           )}
         >
           <Image
-            src={iconPath}
+            src={imgError ? '/bounties/placeholder.png' : iconPath}
             alt={bounty.bounty_name}
             width={256}
             height={256}
             className='size-24 rounded-md object-contain'
             unoptimized
+            onError={() => setImgError(true)}
           />
         </div>
         <div className='min-w-0 flex-1'>
@@ -112,7 +116,7 @@ export function BountyCompletions({ bountyName }: { bountyName: string }) {
             href={`/players/${firstCompletion.user_id}`}
             className='flex items-center gap-3 rounded-lg px-1 py-1 transition-colors hover:bg-amber-500/10'
           >
-            <span className='font-medium text-sm'>{firstCompletion.user_id}</span>
+            <span className='font-medium text-sm'>{firstCompletion.display_name}</span>
             <span className='ml-auto text-muted-foreground text-xs'>
               {format(new Date(firstCompletion.completed_at), 'MMM d, yyyy')}
             </span>
@@ -126,7 +130,7 @@ export function BountyCompletions({ bountyName }: { bountyName: string }) {
           <div className='border-b px-3 py-3'>
             <h2 className='font-semibold text-sm'>All Completions</h2>
           </div>
-          <div className='divide-y'>
+          <div className='max-h-[32rem] overflow-y-auto divide-y'>
             {sorted.map((completion, index) => (
               <CompletionRow key={completion.id} completion={completion} index={index} />
             ))}

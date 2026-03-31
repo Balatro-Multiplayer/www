@@ -7,11 +7,14 @@ import { redis } from '../redis'
 const BOTLATRO_URL = 'http://balatro.virtualized.dev:4931/'
 const TRANSCRIPT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7
 const GUILD_MEMBER_SEARCH_CACHE_TTL_SECONDS = 60 * 60 * 24
+const GUILD_MEMBER_CACHE_TTL_SECONDS = 60 * 60 * 24
 
 export const TRANSCRIPT_CACHE_KEY = (gameNumber: number) =>
   `transcript:${gameNumber}`
 export const GUILD_MEMBER_SEARCH_CACHE_KEY = (query: string) =>
   `discord:guild-member-search:${query.toLowerCase()}`
+export const GUILD_MEMBER_CACHE_KEY = (user_id: string) =>
+  `discord:guild-member:${user_id}`
 
 async function botlatroAuthedRequest<T>(
   path: string,
@@ -76,9 +79,16 @@ type TranscriptLobbyCodeSearchResponse = {
 
 export const botlatro_service = {
   getUser: async (user_id: string): Promise<GuildMemberUser> => {
-    return botlatroAuthedRequest<GuildMemberUser>(
+    const cacheKey = GUILD_MEMBER_CACHE_KEY(user_id)
+    const cached = await redis.get(cacheKey)
+    if (cached) {
+      return JSON.parse(cached) as GuildMemberUser
+    }
+    const member = await botlatroAuthedRequest<GuildMemberUser>(
       `api/users/${encodeURIComponent(user_id)}`
     )
+    await redis.setEx(cacheKey, GUILD_MEMBER_CACHE_TTL_SECONDS, JSON.stringify(member))
+    return member
   },
 
   getQueueSettings: async (): Promise<QueueSettings[]> => {
@@ -659,6 +669,7 @@ export type BountyCompletion = {
   id: number
   bounty_id: number
   user_id: string
+  display_name: string
   is_first: boolean
   completed_at: string
 }

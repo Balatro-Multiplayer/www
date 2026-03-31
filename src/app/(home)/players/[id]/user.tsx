@@ -11,7 +11,6 @@ import {
   Youtube,
 } from 'lucide-react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { isNonNullish } from 'remeda'
@@ -29,6 +28,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Tooltip,
   TooltipContent,
@@ -48,6 +52,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BountyCompletions } from '@/app/(home)/bounties/[id]/bounty-completions'
 import { cn } from '@/lib/utils'
 import type { UserBounty } from '@/server/services/botlatro.service'
 import {
@@ -937,41 +942,53 @@ function bountyNameToIconPath(bountyName: string): string {
 }
 
 function BountyIcon({ bounty }: { bounty: UserBounty }) {
+  const [open, setOpen] = useState(false)
+  const [imgError, setImgError] = useState(false)
   return (
-    <TooltipProvider key={bounty.id}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Link
-            href={`/bounties/${encodeURIComponent(bounty.bounty_name)}`}
-            className='flex flex-col items-center gap-1.5 transition-opacity hover:opacity-80'
-          >
-            <div
-              className={cn(
-                'relative rounded-md',
-                bounty.is_first &&
-                  'ring-2 ring-amber-400/80 ring-offset-1 ring-offset-background shadow-[0_0_12px_4px_rgba(251,191,36,0.5)]'
-              )}
+    <>
+      <TooltipProvider key={bounty.id}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type='button'
+              onClick={() => setOpen(true)}
+              className='flex flex-col items-center gap-1.5 transition-opacity hover:opacity-80'
             >
-              <Image
-                src={bountyNameToIconPath(bounty.bounty_name)}
-                alt={bounty.bounty_name}
-                width={256}
-                height={256}
-                className='size-24 rounded-md object-contain'
-                unoptimized
-              />
-            </div>
-            <span className='max-w-24 text-center text-muted-foreground text-xs leading-tight line-clamp-2'>
-              {bounty.bounty_name}
-            </span>
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent className='max-w-48'>
-          <p className='font-semibold'>{bounty.bounty_name}</p>
-          <p className='mt-0.5 text-xs'>{bounty.description}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+              <div
+                className={cn(
+                  'relative rounded-md',
+                  bounty.is_first &&
+                    'ring-2 ring-amber-400/80 ring-offset-1 ring-offset-background shadow-[0_0_12px_4px_rgba(251,191,36,0.5)]'
+                )}
+              >
+                <Image
+                  src={imgError ? '/bounties/placeholder.png' : bountyNameToIconPath(bounty.bounty_name)}
+                  alt={bounty.bounty_name}
+                  width={256}
+                  height={256}
+                  className='size-24 rounded-md object-contain'
+                  unoptimized
+                  onError={() => setImgError(true)}
+                />
+              </div>
+              <span className='max-w-24 text-center text-muted-foreground text-xs leading-tight line-clamp-2'>
+                {bounty.bounty_name}
+              </span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className='max-w-48'>
+            <p className='font-semibold'>{bounty.bounty_name}</p>
+            <p className='mt-0.5 text-xs'>{bounty.description}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className='max-w-2xl max-h-[80vh] overflow-y-auto'>
+          <DialogTitle className='sr-only'>{bounty.bounty_name}</DialogTitle>
+          <BountyCompletions bountyName={bounty.bounty_name} />
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
