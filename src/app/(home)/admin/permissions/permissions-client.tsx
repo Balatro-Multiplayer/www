@@ -334,7 +334,7 @@ export function PermissionsClient() {
           </div>
 
           <ScrollArea className='max-h-[55vh] pr-4'>
-            <div className='space-y-4' role='form' aria-label='Permissions'>
+            <form className='space-y-4' aria-label='Permissions'>
               {PERMISSION_GROUPS.map((group) => {
                 const groupKeys = group.permissions.map((p) => p.key)
                 const checkedCount = groupKeys.filter((k) =>
@@ -421,7 +421,7 @@ export function PermissionsClient() {
                   </fieldset>
                 )
               })}
-            </div>
+            </form>
           </ScrollArea>
 
           <DialogFooter>
