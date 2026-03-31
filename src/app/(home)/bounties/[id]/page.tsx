@@ -10,7 +10,9 @@ export default async function BountyPage({ params }: Props) {
   const { id } = await params
   const bountyName = decodeURIComponent(id)
 
-  await api.bounties.get_bounty_completions.prefetch({ bounty_name: bountyName })
+  await api.bounties.get_bounty_completions.prefetch({
+    bounty_name: bountyName,
+  })
 
   return (
     <Suspense>

@@ -14,6 +14,7 @@ import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { isNonNullish } from 'remeda'
+import { BountyCompletions } from '@/app/(home)/bounties/[id]/bounty-completions'
 import {
   DeckImage,
   DeckStakeStatsChart,
@@ -27,12 +28,8 @@ import { TimeZoneProvider } from '@/components/timezone-provider'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   Tooltip,
   TooltipContent,
@@ -52,7 +49,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { BountyCompletions } from '@/app/(home)/bounties/[id]/bounty-completions'
 import { cn } from '@/lib/utils'
 import type { UserBounty } from '@/server/services/botlatro.service'
 import {
@@ -958,11 +954,15 @@ function BountyIcon({ bounty }: { bounty: UserBounty }) {
                 className={cn(
                   'relative rounded-md',
                   bounty.is_first &&
-                    'ring-2 ring-amber-400/80 ring-offset-1 ring-offset-background shadow-[0_0_12px_4px_rgba(251,191,36,0.5)]'
+                    'shadow-[0_0_12px_4px_rgba(251,191,36,0.5)] ring-2 ring-amber-400/80 ring-offset-1 ring-offset-background'
                 )}
               >
                 <Image
-                  src={imgError ? '/bounties/placeholder.png' : bountyNameToIconPath(bounty.bounty_name)}
+                  src={
+                    imgError
+                      ? '/bounties/placeholder.png'
+                      : bountyNameToIconPath(bounty.bounty_name)
+                  }
                   alt={bounty.bounty_name}
                   width={256}
                   height={256}
@@ -971,7 +971,7 @@ function BountyIcon({ bounty }: { bounty: UserBounty }) {
                   onError={() => setImgError(true)}
                 />
               </div>
-              <span className='max-w-24 text-center text-muted-foreground text-xs leading-tight line-clamp-2'>
+              <span className='line-clamp-2 max-w-24 text-center text-muted-foreground text-xs leading-tight'>
                 {bounty.bounty_name}
               </span>
             </button>
@@ -983,7 +983,7 @@ function BountyIcon({ bounty }: { bounty: UserBounty }) {
         </Tooltip>
       </TooltipProvider>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className='max-w-2xl max-h-[80vh] overflow-y-auto'>
+        <DialogContent className='max-h-[80vh] max-w-2xl overflow-y-auto'>
           <DialogTitle className='sr-only'>{bounty.bounty_name}</DialogTitle>
           <BountyCompletions bountyName={bounty.bounty_name} />
         </DialogContent>
@@ -996,7 +996,9 @@ function BountiesSection({ bounties }: { bounties: UserBounty[] }) {
   if (bounties.length === 0) {
     return (
       <div className='flex h-32 items-center justify-center rounded-lg border'>
-        <span className='text-muted-foreground text-sm'>No bounties earned yet</span>
+        <span className='text-muted-foreground text-sm'>
+          No bounties earned yet
+        </span>
       </div>
     )
   }
@@ -1020,9 +1022,7 @@ function BountiesSection({ bounties }: { bounties: UserBounty[] }) {
       )}
       {regularCompletions.length > 0 && (
         <div>
-          <h3 className='mb-3 font-semibold text-md'>
-            Completions
-          </h3>
+          <h3 className='mb-3 font-semibold text-md'>Completions</h3>
           <div className='flex flex-wrap gap-4'>
             {regularCompletions.map((bounty) => (
               <BountyIcon key={bounty.id} bounty={bounty} />
@@ -1033,4 +1033,3 @@ function BountiesSection({ bounties }: { bounties: UserBounty[] }) {
     </div>
   )
 }
-

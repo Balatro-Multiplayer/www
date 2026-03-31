@@ -7,7 +7,8 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { api, type RouterOutputs } from '@/trpc/react'
 
-type BountyCompletion = RouterOutputs['bounties']['get_bounty_completions']['completions'][number]
+type BountyCompletion =
+  RouterOutputs['bounties']['get_bounty_completions']['completions'][number]
 
 function bountyNameToIconPath(bountyName: string): string {
   const slug = bountyName
@@ -73,7 +74,8 @@ export function BountyCompletions({ bountyName }: { bountyName: string }) {
   const iconPath = bountyNameToIconPath(bounty.bounty_name)
   const firstCompletion = completions.find((c) => c.is_first)
   const sorted = [...completions].sort(
-    (a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
+    (a, b) =>
+      new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
   )
 
   return (
@@ -83,7 +85,7 @@ export function BountyCompletions({ bountyName }: { bountyName: string }) {
         <div
           className={cn(
             'relative shrink-0 rounded-md',
-            'ring-2 ring-amber-400/80 ring-offset-2 ring-offset-background shadow-[0_0_16px_6px_rgba(251,191,36,0.4)]'
+            'shadow-[0_0_16px_6px_rgba(251,191,36,0.4)] ring-2 ring-amber-400/80 ring-offset-2 ring-offset-background'
           )}
         >
           <Image
@@ -98,9 +100,13 @@ export function BountyCompletions({ bountyName }: { bountyName: string }) {
         </div>
         <div className='min-w-0 flex-1'>
           <h1 className='font-bold text-2xl'>{bounty.bounty_name}</h1>
-          <p className='mt-1 text-muted-foreground text-sm'>{bounty.description}</p>
+          <p className='mt-1 text-muted-foreground text-sm'>
+            {bounty.description}
+          </p>
           <p className='mt-3 text-muted-foreground text-sm'>
-            <span className='font-medium text-foreground'>{completions.length}</span>{' '}
+            <span className='font-medium text-foreground'>
+              {completions.length}
+            </span>{' '}
             {completions.length === 1 ? 'completion' : 'completions'}
           </p>
         </div>
@@ -116,7 +122,9 @@ export function BountyCompletions({ bountyName }: { bountyName: string }) {
             href={`/players/${firstCompletion.user_id}`}
             className='flex items-center gap-3 rounded-lg px-1 py-1 transition-colors hover:bg-amber-500/10'
           >
-            <span className='font-medium text-sm'>{firstCompletion.display_name}</span>
+            <span className='font-medium text-sm'>
+              {firstCompletion.display_name}
+            </span>
             <span className='ml-auto text-muted-foreground text-xs'>
               {format(new Date(firstCompletion.completed_at), 'MMM d, yyyy')}
             </span>
@@ -130,9 +138,13 @@ export function BountyCompletions({ bountyName }: { bountyName: string }) {
           <div className='border-b px-3 py-3'>
             <h2 className='font-semibold text-sm'>All Completions</h2>
           </div>
-          <div className='max-h-[32rem] overflow-y-auto divide-y'>
+          <div className='max-h-[32rem] divide-y overflow-y-auto'>
             {sorted.map((completion, index) => (
-              <CompletionRow key={completion.id} completion={completion} index={index} />
+              <CompletionRow
+                key={completion.id}
+                completion={completion}
+                index={index}
+              />
             ))}
           </div>
         </div>

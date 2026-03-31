@@ -87,7 +87,11 @@ export const botlatro_service = {
     const member = await botlatroAuthedRequest<GuildMemberUser>(
       `api/users/${encodeURIComponent(user_id)}`
     )
-    await redis.setEx(cacheKey, GUILD_MEMBER_CACHE_TTL_SECONDS, JSON.stringify(member))
+    await redis.setEx(
+      cacheKey,
+      GUILD_MEMBER_CACHE_TTL_SECONDS,
+      JSON.stringify(member)
+    )
     return member
   },
 
@@ -439,7 +443,9 @@ export const botlatro_service = {
     return result.bounties
   },
 
-  get_bounty_completions: async (bounty_name: string): Promise<BountyCompletionsResponse> => {
+  get_bounty_completions: async (
+    bounty_name: string
+  ): Promise<BountyCompletionsResponse> => {
     return botlatroAuthedRequest<BountyCompletionsResponse>(
       `api/bounties/${encodeURIComponent(bounty_name)}/completions`
     )
