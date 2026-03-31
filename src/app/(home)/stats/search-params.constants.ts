@@ -13,6 +13,7 @@ export const STAT_TABS = [
   'season-overview',
   'game-activity',
   'live-matches',
+  'bounties',
 ] as const
 
 export const STATS_FILTER_MODES = ['season', 'dateRange'] as const

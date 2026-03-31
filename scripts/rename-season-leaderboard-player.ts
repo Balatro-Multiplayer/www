@@ -342,7 +342,9 @@ async function main() {
   await redis.del(getSeasonQueuesCacheKey(args.seasonId))
 
   console.log(`uploaded=${nextObjectKey}`)
-  console.log(`cleared=${getSeasonLeaderboardKey(args.seasonId, snapshot.queueId)}`)
+  console.log(
+    `cleared=${getSeasonLeaderboardKey(args.seasonId, snapshot.queueId)}`
+  )
 }
 
 main()

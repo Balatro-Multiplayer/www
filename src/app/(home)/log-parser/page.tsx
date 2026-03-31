@@ -775,7 +775,8 @@ function FinalJokerList({
 // Main component
 export default function LogParser() {
   const formatter = useFormatter()
-  const resolveCocktailDecksMutation = api.logs.resolveCocktailDecks.useMutation()
+  const resolveCocktailDecksMutation =
+    api.logs.resolveCocktailDecks.useMutation()
   const searchParams = useSearchParams()
   const { data: session } = useSession()
   const [parsedGames, setParsedGames] = useState<Game[]>([])

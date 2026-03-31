@@ -4,8 +4,6 @@ import { format } from 'date-fns'
 import { BarChart3, CalendarIcon, PieChartIcon } from 'lucide-react'
 import { parseAsString, useQueryStates } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import {
   Bar,
   BarChart,
@@ -27,6 +25,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart'
+import { Label } from '@/components/ui/label'
 import {
   Popover,
   PopoverContent,
@@ -39,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import {
@@ -271,7 +271,7 @@ export function DeckPopularityChart({
             />
             <Label
               htmlFor='combine-specialty-cocktails'
-              className='cursor-pointer text-sm whitespace-nowrap'
+              className='cursor-pointer whitespace-nowrap text-sm'
             >
               Combine specialty cocktails
             </Label>

@@ -66,6 +66,7 @@ export default async function PlayerPage({ params, searchParams }: Props) {
 
   if (id) {
     await Promise.all([
+      api.bounties.get_user_bounties.prefetch({ user_id: id }),
       api.history.user_games.prefetch({ user_id: id }),
       api.history.user_games_page.prefetch({
         user_id: id,

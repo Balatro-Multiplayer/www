@@ -18,11 +18,9 @@ async function fetchCocktailDecks(seed: string, config: string) {
     return null
   }
 
-  const payload = (await response.json().catch(() => null)) as
-    | {
-        decks?: unknown
-      }
-    | null
+  const payload = (await response.json().catch(() => null)) as {
+    decks?: unknown
+  } | null
 
   if (!Array.isArray(payload?.decks)) {
     return null

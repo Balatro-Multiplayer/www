@@ -7,11 +7,14 @@ import { redis } from '../redis'
 const BOTLATRO_URL = 'http://balatro.virtualized.dev:4931/'
 const TRANSCRIPT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7
 const GUILD_MEMBER_SEARCH_CACHE_TTL_SECONDS = 60 * 60 * 24
+const GUILD_MEMBER_CACHE_TTL_SECONDS = 60 * 60 * 24
 
 export const TRANSCRIPT_CACHE_KEY = (gameNumber: number) =>
   `transcript:${gameNumber}`
 export const GUILD_MEMBER_SEARCH_CACHE_KEY = (query: string) =>
   `discord:guild-member-search:${query.toLowerCase()}`
+export const GUILD_MEMBER_CACHE_KEY = (user_id: string) =>
+  `discord:guild-member:${user_id}`
 
 async function botlatroAuthedRequest<T>(
   path: string,
@@ -76,9 +79,20 @@ type TranscriptLobbyCodeSearchResponse = {
 
 export const botlatro_service = {
   getUser: async (user_id: string): Promise<GuildMemberUser> => {
-    return botlatroAuthedRequest<GuildMemberUser>(
+    const cacheKey = GUILD_MEMBER_CACHE_KEY(user_id)
+    const cached = await redis.get(cacheKey)
+    if (cached) {
+      return JSON.parse(cached) as GuildMemberUser
+    }
+    const member = await botlatroAuthedRequest<GuildMemberUser>(
       `api/users/${encodeURIComponent(user_id)}`
     )
+    await redis.setEx(
+      cacheKey,
+      GUILD_MEMBER_CACHE_TTL_SECONDS,
+      JSON.stringify(member)
+    )
+    return member
   },
 
   getQueueSettings: async (): Promise<QueueSettings[]> => {
@@ -421,6 +435,21 @@ export const botlatro_service = {
       body: JSON.stringify(input),
     })
   },
+
+  get_user_bounties: async (user_id: string): Promise<UserBounty[]> => {
+    const result = await botlatroAuthedRequest<{ bounties: UserBounty[] }>(
+      `api/bounties/user/${encodeURIComponent(user_id)}`
+    )
+    return result.bounties
+  },
+
+  get_bounty_completions: async (
+    bounty_name: string
+  ): Promise<BountyCompletionsResponse> => {
+    return botlatroAuthedRequest<BountyCompletionsResponse>(
+      `api/bounties/${encodeURIComponent(bounty_name)}/completions`
+    )
+  },
 }
 
 export type QueueSettings = {
@@ -630,4 +659,32 @@ export type WarningInput = {
 
 export type MonitoringSuccess = {
   success: true
+}
+
+export type UserBounty = {
+  id: number
+  bounty_id: number
+  user_id: string
+  is_first: boolean
+  completed_at: string
+  bounty_name: string
+  description: string
+}
+
+export type BountyCompletion = {
+  id: number
+  bounty_id: number
+  user_id: string
+  display_name: string
+  is_first: boolean
+  completed_at: string
+}
+
+export type BountyCompletionsResponse = {
+  bounty: {
+    id: number
+    bounty_name: string
+    description: string
+  }
+  completions: BountyCompletion[]
 }
