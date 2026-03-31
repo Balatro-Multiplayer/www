@@ -983,7 +983,7 @@ function BountyIcon({ bounty }: { bounty: UserBounty }) {
         </Tooltip>
       </TooltipProvider>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className='max-h-[80vh] max-w-2xl overflow-y-auto'>
+        <DialogContent className='max-h-[80vh] max-w-2xl overflow-y-auto pt-10'>
           <DialogTitle className='sr-only'>{bounty.bounty_name}</DialogTitle>
           <BountyCompletions bountyName={bounty.bounty_name} />
         </DialogContent>
