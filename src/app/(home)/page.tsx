@@ -59,7 +59,7 @@ export default function Home() {
             </div>
             <div className='mt-8 w-full max-w-5xl rounded-lg border bg-card p-4 shadow-xl'>
               <Image
-                src='/multiplayer-screenshot.jpeg'
+                src='/background.png'
                 width={1200}
                 height={600}
                 alt='Balatro Multiplayer Screenshot'
@@ -392,7 +392,7 @@ export default function Home() {
               </div>
               <div className='flex items-center justify-center'>
                 <Image
-                  src='/multiplayer-screenshot.jpeg'
+                  src='/background.png'
                   width={500}
                   height={500}
                   alt='Balatro Multiplayer Gameplay'
