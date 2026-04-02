@@ -7,7 +7,7 @@ const ROOT_DOCS_OG_SLUG = '_index'
 export const siteConfig = {
   description: 'The official Balatro Multiplayer mod website.',
   name: 'Balatro Multiplayer',
-  ogImage: '/background.png',
+  ogImage: '/multiplayer-screenshot.jpeg',
   url: 'https://balatromp.com',
 } as const
 

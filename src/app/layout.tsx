@@ -1,7 +1,7 @@
 import '@/styles/globals.css'
 import { RootProvider } from 'fumadocs-ui/provider/next'
 import type { Metadata } from 'next'
-import { Comic_Relief } from 'next/font/google'
+import { Geist } from 'next/font/google'
 import localFont from 'next/font/local'
 import { SessionProvider } from 'next-auth/react'
 import { NextIntlClientProvider } from 'next-intl'
@@ -37,11 +37,9 @@ export const metadata: Metadata = {
   icons: [{ rel: 'icon', url: '/favicon.ico' }],
 }
 
-const comicRelief = Comic_Relief({
+const geist = Geist({
   subsets: ['latin'],
-  weight: ['400', '700'],
-  display: 'swap',
-  variable: '--font-comic-relief',
+  variable: '--font-geist-sans',
 })
 
 const m6x11 = localFont({
@@ -57,7 +55,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${comicRelief.variable} ${m6x11.variable}`}
+      className={`${geist.variable} ${m6x11.variable}`}
       suppressHydrationWarning
     >
       <head>
