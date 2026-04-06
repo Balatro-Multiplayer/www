@@ -16,37 +16,15 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart'
 import type { SelectGames } from '@/server/db/types'
+import {
+  DECK_IMAGES,
+  getDeckDescription,
+  getDeckDisplayName,
+  getDeckImage,
+} from '@/shared/decks'
 import { getSeasonDisplayName, type Season } from '@/shared/seasons'
 
-export const DECK_IMAGES: Record<string, string> = {
-  red: '/decks/red.png',
-  blue: '/decks/blue.png',
-  yellow: '/decks/yellow.png',
-  green: '/decks/green.png',
-  black: '/decks/black.png',
-  magic: '/decks/magic.png',
-  nebula: '/decks/nebula.png',
-  ghost: '/decks/ghost.png',
-  abandoned: '/decks/abandoned.png',
-  checkered: '/decks/checkered.png',
-  zodiac: '/decks/zodiac.png',
-  painted: '/decks/painted.png',
-  anaglyph: '/decks/anaglyph.png',
-  plasma: '/decks/plasma.png',
-  erratic: '/decks/erratic.png',
-  challenge: '/decks/challenge.png',
-  heidelberg: '/decks/heidelberg.png',
-  gradient: '/decks/gradient.png',
-  white: '/decks/white.png',
-  violet: '/decks/violet.png',
-  sibyl: '/decks/sibyl.png',
-  orange: '/decks/orange.png',
-  oracle: '/decks/oracle.png',
-  indigo: '/decks/indigo.png',
-  cocktail: '/decks/cocktail.png',
-  'specialty cocktails': '/decks/cocktail.png',
-  unknown: '/decks/unknown.png',
-}
+export { DECK_IMAGES } from '@/shared/decks'
 
 export const STAKE_IMAGES: Record<string, string> = {
   white: '/stakes/white_stake.png',
@@ -78,11 +56,12 @@ export function DeckImage({
   height?: number
   className?: string
 }) {
-  const src = (deck ? DECK_IMAGES[deck] : null) ?? DECK_IMAGES.unknown ?? ''
+  const src =
+    (deck ? getDeckImage(deck) : null) ?? DECK_IMAGES.unknown ?? ''
   return (
     <Image
       src={src}
-      alt={deck ?? 'unknown'}
+      alt={deck ? getDeckDisplayName(deck) : 'unknown'}
       width={width}
       height={height}
       className={className}
@@ -177,7 +156,10 @@ function buildStatsData(
 }
 
 function formatStatName(value: string) {
-  return value.replace(/\b\w/g, (char) => char.toUpperCase())
+  return value
+    .split(' ')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
 }
 
 type TotalLabelProps = {
@@ -237,11 +219,20 @@ function StackedStatsChart({
   config,
   data,
   images,
+  formatName,
+  getImage,
+  getTooltipDesc,
 }: {
   config: ChartConfig
   data: StatDatum[]
   images: Record<string, string>
+  formatName?: (key: string) => string
+  getImage?: (key: string) => string | undefined
+  getTooltipDesc?: (key: string) => string
 }) {
+  const resolveName = formatName ?? formatStatName
+  const resolveImage = getImage ?? ((key: string) => images[key])
+
   return (
     <ChartContainer config={config} className='h-[350px] w-full'>
       <BarChart
@@ -256,15 +247,19 @@ function StackedStatsChart({
           interval={0}
           tick={(props) => {
             const { x, y, payload } = props
-            const imagePath = images[payload.value]
+            const imagePath = resolveImage(payload.value)
             const itemCount = data.length
             const imgSize = Math.max(20, Math.min(40, 600 / itemCount))
+            const desc = getTooltipDesc?.(payload.value)
 
             return (
               <g
                 transform={`translate(${Number(x) - imgSize / 2},${Number(y) + 10})`}
               >
-                <title>{formatStatName(payload.value)}</title>
+                <title>
+                  {resolveName(payload.value)}
+                  {desc ? `: ${desc}` : ''}
+                </title>
                 {imagePath && (
                   <image href={imagePath} width={imgSize} height={imgSize} />
                 )}
@@ -275,9 +270,9 @@ function StackedStatsChart({
                     textAnchor='middle'
                     fill='currentColor'
                     fontSize='10'
-                    className='font-medium capitalize'
+                    className='font-medium'
                   >
-                    {payload.value}
+                    {resolveName(payload.value)}
                   </text>
                 )}
               </g>
@@ -291,7 +286,18 @@ function StackedStatsChart({
             <StackedStatsTooltipContent
               labelFormatter={(label, payload) => {
                 const total = payload?.[0]?.payload?.total ?? 0
-                return `${formatStatName(String(label ?? ''))} · ${total} total`
+                const name = resolveName(String(label ?? ''))
+                const desc = getTooltipDesc?.(String(label ?? ''))
+                return (
+                  <span className='inline-block max-w-48'>
+                    {name} · {total} total
+                    {desc && (
+                      <span className='block text-muted-foreground font-normal text-xs'>
+                        {desc}
+                      </span>
+                    )}
+                  </span>
+                )
               }}
             />
           }
@@ -359,6 +365,9 @@ export function DeckStakeStatsChart({
                 config={deckChartConfig}
                 data={deckData}
                 images={DECK_IMAGES}
+                formatName={getDeckDisplayName}
+                getImage={getDeckImage}
+                getTooltipDesc={getDeckDescription}
               />
             </>
           ) : (
