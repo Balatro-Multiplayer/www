@@ -9,14 +9,14 @@ import { jokers } from '@/shared/jokers'
 type LuaValue = string | number | boolean | null | LuaTable | LuaValue[]
 type LuaTable = { [key: string]: LuaValue }
 
-type LogEvent = {
+export type LogEvent = {
   timestamp: Date
   text: string
   type: 'event' | 'status' | 'system' | 'shop' | 'action' | 'error' | 'info'
   img?: string
 }
 
-type GameOptions = {
+export type GameOptions = {
   back?: string | null
   cocktail?: string | null
   custom_seed?: string | null
@@ -58,7 +58,7 @@ type GameStartInfo = {
   seed: string | null
 }
 
-type HandScore = {
+export type HandScore = {
   timestamp: Date
   gainedScore: number
   totalScore: number
@@ -66,7 +66,7 @@ type HandScore = {
   isLogOwner: boolean
 }
 
-type PvpBlind = {
+export type PvpBlind = {
   blindNumber: number
   startTimestamp: Date
   endTimestamp?: Date
@@ -87,6 +87,7 @@ export type ParsedLogGame = {
   guestMods: string[]
   isHost: boolean | null
   deck: string | null
+  cocktailDecks: string[] | null
   seed: string | null
   options: GameOptions | null
   moneyGained: number
@@ -347,6 +348,7 @@ const initGame = (id: number, startDate: Date): ParsedLogGame => ({
   guestMods: [],
   isHost: null,
   deck: null,
+  cocktailDecks: null,
   seed: null,
   options: null,
   moneyGained: 0,
@@ -801,6 +803,9 @@ async function parseJokersFromString(str: string) {
 function normalizeParsedGames(games: ParsedLogGame[]) {
   return games.map((game) => ({
     ...game,
+    cocktailDecks: Array.isArray(game.cocktailDecks)
+      ? game.cocktailDecks.filter((deck): deck is string => !!deck)
+      : null,
     logOwnerDeck: normalizeDeckCards(game.logOwnerDeck),
     opponentDeck: normalizeDeckCards(game.opponentDeck),
   }))

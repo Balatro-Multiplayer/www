@@ -10,7 +10,9 @@ import {
   extractLogLobbyCodes,
   extractLogOwnerConnectionIds,
 } from '@/lib/log-file-players'
+import { type ParsedLogGame, parseLogSource } from '@/lib/log-source-parser'
 import { auth } from '@/server/auth'
+import { fetchCocktailDecks } from '@/server/api/routers/logs'
 import {
   type BannedUserMatch,
   listBannedUserRegistryEntries,
@@ -411,6 +413,199 @@ function formatBannedUserWarningLines(
   return lines
 }
 
+async function resolveCocktailDecksForGames(
+  parsedGames: ParsedLogGame[]
+): Promise<ParsedLogGame[]> {
+  const requestCache = new Map<string, Promise<string[] | null>>()
+  let changed = false
+
+  const resolved = await Promise.all(
+    parsedGames.map(async (game) => {
+      if (
+        normalizeLookupKey(game.deck ?? '') !== 'cocktail' ||
+        !game.seed ||
+        !game.options?.cocktail
+      ) {
+        return game
+      }
+
+      const cacheKey = `${game.seed}:${game.options.cocktail}`
+      let request = requestCache.get(cacheKey)
+
+      if (!request) {
+        request = fetchCocktailDecks(game.seed, game.options.cocktail)
+        requestCache.set(cacheKey, request)
+      }
+
+      const decks = await request
+      if (decks) {
+        changed = true
+        return { ...game, cocktailDecks: decks }
+      }
+
+      return game
+    })
+  )
+
+  return changed ? resolved : parsedGames
+}
+
+async function parseAndSaveGames(
+  logFileId: number,
+  fileContent: string,
+  isFirstParse: boolean
+) {
+  const parsedGames = await resolveCocktailDecksForGames(
+    await parseLogSource(fileContent)
+  )
+
+  const players = extractLogFilePlayers(parsedGames)
+  const allConnectionIds = extractLogConnectionIds(parsedGames)
+  const connectionIds = extractLogOwnerConnectionIds(parsedGames)
+  const lobbyCodes = extractLogLobbyCodes(parsedGames)
+  const gameRows = extractGameRows(parsedGames, logFileId)
+  const cheatFlags = detectCheatFlags(parsedGames)
+  const extractedIdSet = new Set(
+    allConnectionIds.map((connectionId) => connectionId.toLowerCase())
+  )
+  const bannedMatches = (await listBannedUserRegistryEntries()).flatMap(
+    (entry) => {
+      const matchedIds = entry.ids.filter((value) =>
+        extractedIdSet.has(value.toLowerCase())
+      )
+
+      if (matchedIds.length === 0) {
+        return []
+      }
+
+      return [
+        {
+          entryId: entry.id,
+          label: entry.label,
+          matchedAliases: entry.aliases,
+          matchedIds,
+        },
+      ]
+    }
+  )
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(logFiles)
+      .set({ parsedJson: parsedGames })
+      .where(eq(logFiles.id, logFileId))
+
+    await tx
+      .delete(logFilePlayers)
+      .where(eq(logFilePlayers.logFileId, logFileId))
+
+    await tx
+      .delete(logFileConnections)
+      .where(eq(logFileConnections.logFileId, logFileId))
+
+    await tx
+      .delete(logFileLobbyCodes)
+      .where(eq(logFileLobbyCodes.logFileId, logFileId))
+
+    await tx
+      .delete(logFileOwnerConnections)
+      .where(eq(logFileOwnerConnections.logFileId, logFileId))
+
+    await tx.delete(games).where(eq(games.logFileId, logFileId))
+
+    if (players.length > 0) {
+      await tx.insert(logFilePlayers).values(
+        players.map((player) => ({
+          logFileId,
+          playerName: player.playerName,
+          playerNameLower: player.playerNameLower,
+        }))
+      )
+    }
+
+    if (connectionIds.length > 0) {
+      await tx.insert(logFileOwnerConnections).values(
+        connectionIds.map((connectionId) => ({
+          logFileId,
+          connectionId,
+          connectionIdLower: connectionId.toLowerCase(),
+        }))
+      )
+    }
+
+    if (allConnectionIds.length > 0) {
+      await tx.insert(logFileConnections).values(
+        allConnectionIds.map((connectionId) => ({
+          logFileId,
+          connectionId,
+          connectionIdLower: connectionId.toLowerCase(),
+        }))
+      )
+    }
+
+    if (lobbyCodes.length > 0) {
+      await tx.insert(logFileLobbyCodes).values(
+        lobbyCodes.map((lobbyCode) => ({
+          logFileId,
+          lobbyCode,
+          lobbyCodeLower: lobbyCode.toLowerCase(),
+        }))
+      )
+    }
+
+    if (gameRows.length > 0) {
+      await tx.insert(games).values(gameRows)
+    }
+  })
+
+  if (isFirstParse && cheatFlags.length > 0) {
+    const logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
+
+    void buildWarningContextByGameIndex(
+      parsedGames,
+      cheatFlags.map((flag) => flag.gameIndex)
+    )
+      .then((contextByGameIndex) =>
+        botlatro_service.sendWarning({
+          title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
+          lines: sanitizeWarningLines([
+            `Log: ${logUrl}`,
+            ...formatGroupedCheatWarningLines(
+              cheatFlags,
+              logUrl,
+              parsedGames,
+              contextByGameIndex
+            ),
+          ]),
+        })
+      )
+      .catch((error) => {
+        console.error(
+          `Failed to send cheat warning for log ${logFileId}:`,
+          error
+        )
+      })
+  }
+
+  if (isFirstParse && bannedMatches.length > 0) {
+    const logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
+
+    botlatro_service
+      .sendWarning({
+        title: `Warning: banned user match detected in uploaded log #${logFileId}`,
+        lines: formatBannedUserWarningLines(bannedMatches, logUrl, lobbyCodes),
+      })
+      .catch((error) => {
+        console.error(
+          `Failed to send banned user warning for log ${logFileId}:`,
+          error
+        )
+      })
+  }
+
+  return parsedGames
+}
+
 export async function POST(req: NextRequest) {
   try {
     // Check if user is authenticated (optional)
@@ -427,7 +622,7 @@ export async function POST(req: NextRequest) {
 
     // Convert the file to a buffer and text
     const buffer = Buffer.from(await file.arrayBuffer())
-    const _fileContent = await file.text()
+    const fileContent = await file.text()
     const shouldBypassDedupe =
       env.NODE_ENV !== 'production' && env.LOG_DEDUPE_BYPASS === 'true'
     const fileHash = createHash('sha256').update(buffer).digest('hex')
@@ -439,6 +634,7 @@ export async function POST(req: NextRequest) {
             id: true,
             fileName: true,
             fileUrl: true,
+            parsedJson: true,
             createdAt: true,
           },
           where: eq(logFiles.fileHash, fileHash),
@@ -453,6 +649,7 @@ export async function POST(req: NextRequest) {
           fileName: existingLogFile.fileName,
           fileUrl: existingLogFile.fileUrl,
           createdAt: existingLogFile.createdAt,
+          parsedGames: existingLogFile.parsedJson,
           userId,
           userName: session?.user?.name ?? null,
           userEmail: session?.user?.email ?? null,
@@ -491,19 +688,23 @@ export async function POST(req: NextRequest) {
         )
       }
 
+      const parsedGames = await parseAndSaveGames(
+        restoredLogFile.id,
+        fileContent,
+        !Array.isArray(existingLogFile.parsedJson)
+      )
+
       return NextResponse.json({
         id: restoredLogFile.id,
         fileName: restoredLogFile.fileName,
         fileUrl: restoredLogFile.fileUrl,
         createdAt: restoredLogFile.createdAt,
+        parsedGames,
         userId,
         userName: session?.user?.name ?? null,
         userEmail: session?.user?.email ?? null,
       })
     }
-
-    // Store the information in the database with an empty JSON object for now
-    // The actual parsed games will be updated via PUT request
     const [insertedLogFile] = await db
       .insert(logFiles)
       .values({
@@ -534,12 +735,14 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       )
     }
-    // Return the log file information
+    const parsedGames = await parseAndSaveGames(logFile.id, fileContent, true)
+
     return NextResponse.json({
       id: logFile.id,
       fileName: logFile.fileName,
       fileUrl: logFile.fileUrl,
       createdAt: logFile.createdAt,
+      parsedGames,
       userId,
       userName: session?.user?.name ?? null,
       userEmail: session?.user?.email ?? null,
@@ -555,12 +758,8 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    // Check if user is authenticated (optional)
-    const _session = await auth()
-
-    // Parse the JSON data
     const data = await req.json()
-    const { logFileId, parsedGames } = data
+    const { logFileId } = data
 
     if (!logFileId) {
       return NextResponse.json(
@@ -569,178 +768,42 @@ export async function PUT(req: NextRequest) {
       )
     }
 
-    if (!parsedGames || !Array.isArray(parsedGames)) {
-      return NextResponse.json(
-        { error: 'Invalid parsed games data' },
-        { status: 400 }
-      )
-    }
-
-    const players = extractLogFilePlayers(parsedGames)
-    const allConnectionIds = extractLogConnectionIds(parsedGames)
-    const connectionIds = extractLogOwnerConnectionIds(parsedGames)
-    const lobbyCodes = extractLogLobbyCodes(parsedGames)
-    const gameRows = extractGameRows(parsedGames, logFileId)
-    const cheatFlags = detectCheatFlags(parsedGames)
-    const extractedIdSet = new Set(
-      allConnectionIds.map((connectionId) => connectionId.toLowerCase())
-    )
-    const bannedMatches = (await listBannedUserRegistryEntries()).flatMap(
-      (entry) => {
-        const matchedIds = entry.ids.filter((value) =>
-          extractedIdSet.has(value.toLowerCase())
-        )
-
-        if (matchedIds.length === 0) {
-          return []
-        }
-
-        return [
-          {
-            entryId: entry.id,
-            label: entry.label,
-            matchedAliases: entry.aliases,
-            matchedIds,
-          },
-        ]
-      }
-    )
-    const existingLogFile = await db.query.logFiles.findFirst({
+    const logFile = await db.query.logFiles.findFirst({
       columns: {
+        id: true,
+        fileUrl: true,
         parsedJson: true,
       },
       where: eq(logFiles.id, logFileId),
     })
-    const shouldSendCheatWarning =
-      cheatFlags.length > 0 && !Array.isArray(existingLogFile?.parsedJson)
-    const shouldSendBannedUserWarning =
-      bannedMatches.length > 0 && !Array.isArray(existingLogFile?.parsedJson)
 
-    await db.transaction(async (tx) => {
-      await tx
-        .update(logFiles)
-        .set({
-          parsedJson: parsedGames,
-        })
-        .where(eq(logFiles.id, logFileId))
-
-      await tx
-        .delete(logFilePlayers)
-        .where(eq(logFilePlayers.logFileId, logFileId))
-
-      await tx
-        .delete(logFileConnections)
-        .where(eq(logFileConnections.logFileId, logFileId))
-
-      await tx
-        .delete(logFileLobbyCodes)
-        .where(eq(logFileLobbyCodes.logFileId, logFileId))
-
-      await tx
-        .delete(logFileOwnerConnections)
-        .where(eq(logFileOwnerConnections.logFileId, logFileId))
-
-      await tx.delete(games).where(eq(games.logFileId, logFileId))
-
-      if (players.length > 0) {
-        await tx.insert(logFilePlayers).values(
-          players.map((player) => ({
-            logFileId,
-            playerName: player.playerName,
-            playerNameLower: player.playerNameLower,
-          }))
-        )
-      }
-
-      if (connectionIds.length > 0) {
-        await tx.insert(logFileOwnerConnections).values(
-          connectionIds.map((connectionId) => ({
-            logFileId,
-            connectionId,
-            connectionIdLower: connectionId.toLowerCase(),
-          }))
-        )
-      }
-
-      if (allConnectionIds.length > 0) {
-        await tx.insert(logFileConnections).values(
-          allConnectionIds.map((connectionId) => ({
-            logFileId,
-            connectionId,
-            connectionIdLower: connectionId.toLowerCase(),
-          }))
-        )
-      }
-
-      if (lobbyCodes.length > 0) {
-        await tx.insert(logFileLobbyCodes).values(
-          lobbyCodes.map((lobbyCode) => ({
-            logFileId,
-            lobbyCode,
-            lobbyCodeLower: lobbyCode.toLowerCase(),
-          }))
-        )
-      }
-
-      if (gameRows.length > 0) {
-        await tx.insert(games).values(gameRows)
-      }
-    })
-
-    if (shouldSendCheatWarning) {
-      const logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
-
-      void buildWarningContextByGameIndex(
-        parsedGames,
-        cheatFlags.map((flag) => flag.gameIndex)
+    if (!logFile?.fileUrl) {
+      return NextResponse.json(
+        { error: 'Log file not found or has no stored file' },
+        { status: 404 }
       )
-        .then((contextByGameIndex) =>
-          botlatro_service.sendWarning({
-            title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
-            lines: sanitizeWarningLines([
-              `Log: ${logUrl}`,
-              ...formatGroupedCheatWarningLines(
-                cheatFlags,
-                logUrl,
-                parsedGames,
-                contextByGameIndex
-              ),
-            ]),
-          })
-        )
-        .catch((error) => {
-          console.error(
-            `Failed to send cheat warning for log ${logFileId}:`,
-            error
-          )
-        })
     }
 
-    if (shouldSendBannedUserWarning) {
-      const logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
-
-      botlatro_service
-        .sendWarning({
-          title: `Warning: banned user match detected in uploaded log #${logFileId}`,
-          lines: formatBannedUserWarningLines(
-            bannedMatches,
-            logUrl,
-            lobbyCodes
-          ),
-        })
-        .catch((error) => {
-          console.error(
-            `Failed to send banned user warning for log ${logFileId}:`,
-            error
-          )
-        })
+    const response = await fetch(logFile.fileUrl)
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Failed to fetch stored log file' },
+        { status: 500 }
+      )
     }
 
-    return NextResponse.json({ success: true })
+    const fileContent = await response.text()
+    const parsedGames = await parseAndSaveGames(
+      logFileId,
+      fileContent,
+      !Array.isArray(logFile.parsedJson)
+    )
+
+    return NextResponse.json({ success: true, parsedGames })
   } catch (error) {
-    console.error('Error updating parsed games:', error)
+    console.error('Error reparsing log file:', error)
     return NextResponse.json(
-      { error: 'Failed to update parsed games' },
+      { error: 'Failed to reparse log file' },
       { status: 500 }
     )
   }

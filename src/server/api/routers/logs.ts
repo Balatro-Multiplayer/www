@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { env } from '@/env'
 import { createTRPCRouter, publicProcedure } from '@/server/api/trpc'
 
-async function fetchCocktailDecks(seed: string, config: string) {
+export async function fetchCocktailDecks(seed: string, config: string) {
   const url = new URL('/cocktail', env.SEED_URL)
   url.searchParams.set('seed', seed)
   url.searchParams.set('config', config)
