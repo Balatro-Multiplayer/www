@@ -10,6 +10,61 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/trpc/react'
 
+function LeaderboardRenameSection() {
+  const [newName, setNewName] = useState('')
+
+  const { mutate: rename, isPending } =
+    api.profile.renameOnLeaderboards.useMutation({
+      onSuccess: (data) => {
+        if (data.updated === 0) {
+          toast.info('No leaderboard entries found for your account')
+        } else {
+          toast.success(
+            `Updated your name on ${data.updated} leaderboard ${data.updated === 1 ? 'entry' : 'entries'}`
+          )
+        }
+        setNewName('')
+      },
+      onError: (err) => {
+        toast.error(err.message)
+      },
+    })
+
+  return (
+    <div className='rounded-lg border bg-white p-6 dark:bg-zinc-800/20'>
+      <h2 className='mb-4 font-semibold text-xl'>Leaderboard Display Name</h2>
+      <p className='mb-4 text-gray-500 dark:text-zinc-400'>
+        Change your name on past season leaderboards. This won&apos;t affect
+        your current Discord username.
+      </p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!newName.trim()) return
+          rename({ newName: newName.trim() })
+        }}
+        className='flex items-end gap-2'
+      >
+        <div className='flex-1'>
+          <Label className='mb-2' htmlFor='leaderboard-name'>
+            New Name
+          </Label>
+          <Input
+            id='leaderboard-name'
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder='Enter new display name'
+            maxLength={50}
+          />
+        </div>
+        <Button disabled={isPending || !newName.trim()} type='submit'>
+          {isPending ? 'Updating...' : 'Rename'}
+        </Button>
+      </form>
+    </div>
+  )
+}
+
 export function ProfileSettingsPageClient({
   userId,
 }: {
@@ -64,6 +119,8 @@ export function ProfileSettingsPageClient({
             </Link>
           )}
         </div>
+
+        <LeaderboardRenameSection />
 
         <form
           onSubmit={(e) => {
