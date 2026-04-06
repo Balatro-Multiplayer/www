@@ -26,8 +26,10 @@ function aggregateDeckStats(matches: { deck: string | null }[]) {
   let total = 0
   for (const m of matches) {
     if (!m.deck) continue
-    const deck = m.deck.replace('Deck', '').trim().toLowerCase()
+    let deck = m.deck.replace('Deck', '').trim().toLowerCase()
     if (!deck || deck === 'unknown') continue
+    // Normalize verbose cocktail variants to their short name
+    deck = deck.replace(/\s*~.*$/, '')
     counts[deck] = (counts[deck] ?? 0) + 1
     total++
   }

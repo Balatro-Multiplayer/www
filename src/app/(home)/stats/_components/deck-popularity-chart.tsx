@@ -57,6 +57,174 @@ import {
 import { resolveStatsSeason } from '../search-params.constants'
 import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 
+const DECK_INFO: Record<string, { name: string; description: string }> = {
+  abandoned: {
+    name: 'Abandoned Deck',
+    description: 'Start run with no Face Cards in your deck',
+  },
+  anaglyph: {
+    name: 'Anaglyph Deck',
+    description: 'After defeating each Boss Blind, gain a Double Tag',
+  },
+  black: {
+    name: 'Black Deck',
+    description: '+1 Joker slot, -1 hand every round',
+  },
+  blue: {
+    name: 'Blue Deck',
+    description: '+1 hand every round',
+  },
+  challenge: {
+    name: 'Challenge Deck',
+    description: 'Challenge mode deck',
+  },
+  checkered: {
+    name: 'Checkered Deck',
+    description: 'Start run with 26 Spades and 26 Hearts in deck',
+  },
+  cocktail: {
+    name: 'Cocktail Deck',
+    description: 'Copies all effects of 3 other decks at random',
+  },
+  'specialty cocktails': {
+    name: 'Specialty Cocktails',
+    description: 'All custom Cocktail Deck variants combined',
+  },
+  'virtualized cocktail': {
+    name: "Virtualized Cocktail",
+    description: 'Magic + Heidelberg + Zodiac',
+  },
+  "jake's cocktail": {
+    name: "Jake's Cocktail",
+    description: 'Indigo + Violet + Magic',
+  },
+  "fantom's cocktail": {
+    name: "Fantom's Cocktail",
+    description: 'Abandoned + Orange + Magic',
+  },
+  erratic: {
+    name: 'Erratic Deck',
+    description: 'All Ranks and Suits in deck are randomized',
+  },
+  ghost: {
+    name: 'Ghost Deck',
+    description: 'Spectral cards may appear in the shop, start with a Hex card',
+  },
+  gradient: {
+    name: 'Gradient Deck',
+    description:
+      'Cards are also considered one rank higher or lower for all Joker effects',
+  },
+  green: {
+    name: 'Green Deck',
+    description:
+      'At end of each Round: earn money per remaining Hand and Discard',
+  },
+  heidelberg: {
+    name: 'Heidelberg Deck',
+    description:
+      'Creates a Negative copy of 1 random consumable card at the end of the shop',
+  },
+  indigo: {
+    name: 'Indigo Deck',
+    description:
+      'Choose +1 additional card from all Booster Packs. Booster Packs are unskippable',
+  },
+  magic: {
+    name: 'Magic Deck',
+    description:
+      'Start run with the Crystal Ball voucher and 2 copies of The Fool',
+  },
+  nebula: {
+    name: 'Nebula Deck',
+    description: 'Start run with the Telescope voucher, -1 consumable slot',
+  },
+  orange: {
+    name: 'Orange Deck',
+    description:
+      'Start run with a Giga Standard Pack, and 2 copies of The Hanged Man',
+  },
+  oracle: {
+    name: 'Oracle Deck',
+    description:
+      'Start run with Medium and Clearance Sale. Balance capped at $50 + current interest cap',
+  },
+  painted: {
+    name: 'Painted Deck',
+    description: '+2 hand size, -1 Joker slot',
+  },
+  plasma: {
+    name: 'Plasma Deck',
+    description:
+      'Balance Chips and Mult when calculating score for played hand. X2 base Blind size',
+  },
+  red: {
+    name: 'Red Deck',
+    description: '+1 discard every round',
+  },
+  violet: {
+    name: 'Violet Deck',
+    description:
+      '+1 Voucher in shop. Vouchers are 50% off during Ante 1, and 30% off during Ante 2',
+  },
+  white: {
+    name: 'White Deck',
+    description:
+      "View Nemesis' current deck and Joker setup (updates at PvP blind)",
+  },
+  yellow: {
+    name: 'Yellow Deck',
+    description: 'Start with extra $10',
+  },
+  zodiac: {
+    name: 'Zodiac Deck',
+    description:
+      'Start run with Tarot Merchant, Planet Merchant, and Overstock vouchers',
+  },
+  sibyl: {
+    name: 'Sibyl Deck',
+    description: 'Sibyl deck',
+  },
+}
+
+function normalizeDeckKey(key: string) {
+  return key.replace(/[\u2018\u2019]/g, "'")
+}
+
+function isCocktailVariant(key: string) {
+  return key.includes('cocktail') && key !== 'cocktail'
+}
+
+function lookupDeckInfo(key: string) {
+  return DECK_INFO[key] ?? DECK_INFO[normalizeDeckKey(key)]
+}
+
+function getDeckDisplayName(key: string) {
+  const info = lookupDeckInfo(key)
+  if (info) return info.name
+  if (isCocktailVariant(key)) {
+    // Capitalize first letter of each space-separated word
+    return key
+      .split(' ')
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+  }
+  return key
+}
+
+function getDeckDescription(key: string) {
+  const info = lookupDeckInfo(key)
+  if (info) return info.description
+  if (isCocktailVariant(key)) return 'Custom Cocktail Deck variant'
+  return ''
+}
+
+function getDeckImage(key: string) {
+  if (DECK_IMAGES[key]) return DECK_IMAGES[key]
+  if (isCocktailVariant(key)) return DECK_IMAGES.cocktail
+  return undefined
+}
+
 const PIE_COLORS = [
   'var(--color-violet-500)',
   'var(--color-blue-500)',
@@ -199,13 +367,34 @@ export function DeckPopularityChart({
     queueId: queueId === 'all' ? undefined : queueId,
   })
 
+  // Normalize verbose cocktail variants (e.g. "virtualized cocktail ~ magic zodiac heidelberg" → "virtualized cocktail")
+  const normalizedData = useMemo(() => {
+    const merged: Record<string, { games: number }> = {}
+    for (const entry of rawData) {
+      const key = entry.deck.replace(/\s*~.*$/, '')
+      merged[key] = { games: (merged[key]?.games ?? 0) + entry.games }
+    }
+    const totalGames = Object.values(merged).reduce(
+      (sum, d) => sum + d.games,
+      0
+    )
+    return Object.entries(merged)
+      .map(([deck, { games }]) => ({
+        deck,
+        games,
+        pickRate:
+          totalGames > 0 ? Math.round((games / totalGames) * 1000) / 10 : 0,
+      }))
+      .sort((a, b) => b.games - a.games)
+  }, [rawData])
+
   const data = useMemo(() => {
-    if (!combineSpecialtyCocktails) return rawData
+    if (!combineSpecialtyCocktails) return normalizedData
 
     let specialtyGames = 0
-    const filtered: typeof rawData = []
+    const filtered: typeof normalizedData = []
 
-    for (const entry of rawData) {
+    for (const entry of normalizedData) {
       const isSpecialty =
         entry.deck.includes('cocktail') && entry.deck !== 'cocktail'
       if (isSpecialty) {
@@ -216,7 +405,7 @@ export function DeckPopularityChart({
     }
 
     if (specialtyGames > 0) {
-      const totalGames = rawData.reduce((sum, d) => sum + d.games, 0)
+      const totalGames = normalizedData.reduce((sum, d) => sum + d.games, 0)
       filtered.push({
         deck: 'specialty cocktails',
         games: specialtyGames,
@@ -225,7 +414,6 @@ export function DeckPopularityChart({
             ? Math.round((specialtyGames / totalGames) * 1000) / 10
             : 0,
       })
-      // Re-sort by games descending
       filtered.sort((a, b) => b.games - a.games)
     }
 
@@ -401,7 +589,7 @@ export function DeckPopularityChart({
                     interval={0}
                     tick={(props) => {
                       const { x, y, payload } = props
-                      const imagePath = DECK_IMAGES[payload.value]
+                      const imagePath = getDeckImage(payload.value)
                       const itemCount = data.length
                       const imgSize = Math.max(
                         20,
@@ -411,7 +599,12 @@ export function DeckPopularityChart({
                         <g
                           transform={`translate(${Number(x) - imgSize / 2},${Number(y) + 10})`}
                         >
-                          <title className='capitalize'>{payload.value}</title>
+                          <title>
+                            {getDeckDisplayName(payload.value)}
+                            {getDeckDescription(payload.value)
+                              ? `: ${getDeckDescription(payload.value)}`
+                              : ''}
+                          </title>
                           {imagePath && (
                             <image
                               href={imagePath}
@@ -426,9 +619,9 @@ export function DeckPopularityChart({
                               textAnchor='middle'
                               fill='currentColor'
                               fontSize='10'
-                              className='font-medium capitalize'
+                              className='font-medium'
                             >
-                              {payload.value}
+                              {getDeckDisplayName(payload.value)}
                             </text>
                           )}
                         </g>
@@ -442,9 +635,27 @@ export function DeckPopularityChart({
                       <ChartTooltipContent
                         formatter={(_value, _name, item) => {
                           const entry = item.payload
-                          return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
+                          const desc = getDeckDescription(entry.deck)
+                          return (
+                            <span>
+                              {entry.games.toLocaleString()} games ·{' '}
+                              {entry.pickRate}% pick rate
+                              {desc && (
+                                <span className='mt-1 block text-muted-foreground'>
+                                  {desc.split('\n').map((line, i) => (
+                                    <span key={i}>
+                                      {i > 0 && <br />}
+                                      {line}
+                                    </span>
+                                  ))}
+                                </span>
+                              )}
+                            </span>
+                          )
                         }}
-                        labelFormatter={(label) => String(label ?? '')}
+                        labelFormatter={(label) =>
+                          getDeckDisplayName(String(label ?? ''))
+                        }
                       />
                     }
                   />
@@ -483,9 +694,9 @@ export function DeckPopularityChart({
                     dataKey='deck'
                     tickLine={false}
                     axisLine={false}
-                    width={70}
+                    width={100}
                     tick={{ fontSize: 12 }}
-                    className='capitalize'
+                    tickFormatter={(value) => getDeckDisplayName(value)}
                   />
                   <ChartTooltip
                     cursor={false}
@@ -493,9 +704,27 @@ export function DeckPopularityChart({
                       <ChartTooltipContent
                         formatter={(_value, _name, item) => {
                           const entry = item.payload
-                          return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
+                          const desc = getDeckDescription(entry.deck)
+                          return (
+                            <span>
+                              {entry.games.toLocaleString()} games ·{' '}
+                              {entry.pickRate}% pick rate
+                              {desc && (
+                                <span className='mt-1 block text-muted-foreground'>
+                                  {desc.split('\n').map((line, i) => (
+                                    <span key={i}>
+                                      {i > 0 && <br />}
+                                      {line}
+                                    </span>
+                                  ))}
+                                </span>
+                              )}
+                            </span>
+                          )
                         }}
-                        labelFormatter={(label) => String(label ?? '')}
+                        labelFormatter={(label) =>
+                          getDeckDisplayName(String(label ?? ''))
+                        }
                       />
                     }
                   />
@@ -529,9 +758,25 @@ export function DeckPopularityChart({
                     <ChartTooltipContent
                       formatter={(_value, _name, item) => {
                         const entry = item.payload
-                        return `${entry.games.toLocaleString()} games · ${entry.pickRate}% pick rate`
+                        const desc = getDeckDescription(entry.deck)
+                        return (
+                          <span>
+                            {entry.games.toLocaleString()} games ·{' '}
+                            {entry.pickRate}% pick rate
+                            {desc && (
+                              <>
+                                <br />
+                                <span className='text-muted-foreground'>
+                                  {desc}
+                                </span>
+                              </>
+                            )}
+                          </span>
+                        )
                       }}
-                      labelFormatter={(label) => String(label ?? '')}
+                      labelFormatter={(label) =>
+                        getDeckDisplayName(String(label ?? ''))
+                      }
                     />
                   }
                 />
@@ -580,7 +825,9 @@ export function DeckPopularityChart({
                       backgroundColor: PIE_COLORS[i % PIE_COLORS.length],
                     }}
                   />
-                  <span className='truncate'>{entry.deck}</span>
+                  <span className='truncate'>
+                    {getDeckDisplayName(entry.deck)}
+                  </span>
                   <span className='ml-auto text-fd-muted-foreground'>
                     {entry.pickRate}%
                   </span>
