@@ -164,18 +164,56 @@ function formatWarningDeckLabel(game: unknown, fallbackDeck: string) {
   return `${deckName} (${resolvedDecks.join(', ')})`
 }
 
+function getEventsBeforeFirstShop(game: unknown) {
+  if (!game || typeof game !== 'object' || Array.isArray(game)) {
+    return []
+  }
+
+  const events = (game as { events?: unknown }).events
+  if (!Array.isArray(events)) {
+    return []
+  }
+
+  const collected: string[] = []
+
+  for (const event of events) {
+    if (!event || typeof event !== 'object') continue
+    const text = typeof event.text === 'string' ? event.text.trim() : null
+    if (!text) continue
+
+    if (text === 'Moved to Shop' || event.type === 'shop') {
+      break
+    }
+
+    collected.push(text)
+  }
+
+  return collected
+}
+
 function formatCheatFlagDetails(
   flag: ReturnType<typeof detectCheatFlags>[number],
-  issueNumber: number
+  issueNumber: number,
+  parsedGame: unknown
 ) {
   if (flag.type === 'first_round_overearn') {
-    return [
+    const lines = [
       `Issue ${issueNumber} · first-round over-earn`,
       `- Blind: ${flag.blindName}`,
       `- Player: ${flag.playerName}`,
       `- Earned before shop: $${formatCurrency(flag.actualEarned)} (max $${formatCurrency(flag.expectedEarned)})`,
       `- Total money: $${formatCurrency(flag.actualMoney)} (max $${formatCurrency(flag.expectedMoney)})`,
     ]
+
+    const preShopEvents = getEventsBeforeFirstShop(parsedGame)
+    if (preShopEvents.length > 0) {
+      lines.push('- Events before first shop:')
+      for (const event of preShopEvents) {
+        lines.push(`  · ${event}`)
+      }
+    }
+
+    return lines
   }
 
   return [
@@ -245,7 +283,7 @@ function formatGroupedCheatWarningLines(
     }
 
     for (const [issueIndex, flag] of gameFlags.entries()) {
-      lines.push(...formatCheatFlagDetails(flag, issueIndex + 1))
+      lines.push(...formatCheatFlagDetails(flag, issueIndex + 1, parsedGame))
     }
 
     lines.push(`View: ${gameUrl.toString()}`)

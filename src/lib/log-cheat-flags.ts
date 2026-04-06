@@ -159,6 +159,10 @@ function isGreenDeck(deck: string) {
   return deck.trim().toLowerCase() === 'green'
 }
 
+function isOrangeDeck(deck: string) {
+  return deck.trim().toLowerCase() === 'orange'
+}
+
 function getStartingMoney(deck: string) {
   return isYellowDeck(deck)
     ? YELLOW_DECK_STARTING_MONEY
@@ -287,11 +291,13 @@ function detectFirstRoundOverearnFlag(
     Math.max(0, getStartingHands(deck) - 1) * getMoneyPerRemainingHand(deck)
   const discardsLeftReward =
     getStartingDiscards(stake) * getMoneyPerRemainingDiscard(deck)
+  const orangeDeckBuffer = isOrangeDeck(deck) ? 3 : 0
   const expectedEarned =
     blindReward +
     getInterestForFirstBlind(deck) +
     handsLeftReward +
-    discardsLeftReward
+    discardsLeftReward +
+    orangeDeckBuffer
   const actualEarned = getEarnedBeforeFirstShop(events)
 
   if (actualEarned <= expectedEarned) {
