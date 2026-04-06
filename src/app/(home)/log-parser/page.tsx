@@ -1270,6 +1270,16 @@ export default function LogParser() {
           continue
         }
 
+        if (line.includes('Resetting game states')) {
+          if (
+            !currentGame.endDate &&
+            timestamp.getTime() !== currentGame.startDate.getTime()
+          ) {
+            currentGame.endDate = timestamp
+          }
+          continue
+        }
+
         // Parse endPvP messages to determine the winner of each blind
         if (line.includes('Client got endPvP message')) {
           if (currentGame.currentPvpBlind !== null) {

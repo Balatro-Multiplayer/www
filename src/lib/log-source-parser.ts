@@ -1230,6 +1230,16 @@ export async function parseLogSource(content: string) {
       continue
     }
 
+    if (line.includes('Resetting game states')) {
+      if (
+        !currentGame.endDate &&
+        timestamp.getTime() !== currentGame.startDate.getTime()
+      ) {
+        currentGame.endDate = timestamp
+      }
+      continue
+    }
+
     if (line.includes('Client got endPvP message')) {
       if (currentGame.currentPvpBlind !== null) {
         const lostMatch = line.match(/lost: (true|false)/)
