@@ -1,5 +1,6 @@
 'use client'
 
+import { SiTwitch, SiYoutube } from '@icons-pack/react-simple-icons'
 import { format } from 'date-fns'
 import {
   Calendar,
@@ -7,8 +8,6 @@ import {
   ChevronUp,
   ListFilter,
   Swords,
-  Twitch,
-  Youtube,
 } from 'lucide-react'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
@@ -411,7 +410,7 @@ function UserInfoComponent() {
                       rel='noopener noreferrer'
                       className='inline-flex items-center justify-center rounded-md border bg-background p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-purple-500'
                     >
-                      <Twitch className='size-3.5' />
+                      <SiTwitch className='size-3.5' />
                     </a>
                   )}
                   {discord_user.youtube_url && (
@@ -421,7 +420,7 @@ function UserInfoComponent() {
                       rel='noopener noreferrer'
                       className='inline-flex items-center justify-center rounded-md border bg-background p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-red-500'
                     >
-                      <Youtube className='size-3.5' />
+                      <SiYoutube className='size-3.5' />
                     </a>
                   )}
                   {historicRankedData?.data &&

@@ -61,11 +61,8 @@ export default async function RootLayout({
       <head>
         <title />
         <PlausibleProvider
-          domain='balatromp.com'
-          customDomain={'https://plausible.balatromp.com'}
-          trackOutboundLinks
-          trackFileDownloads
-          selfHosted
+          src='https://plausible.balatromp.com/js/script.file-downloads.outbound-links.js'
+          init={{ captureOnLocalhost: false }}
         />
       </head>
       <body className={'flex min-h-screen flex-col'}>

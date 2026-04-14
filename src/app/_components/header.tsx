@@ -1,7 +1,7 @@
 'use client'
 
 import type { HomeLayoutProps } from 'fumadocs-ui/layouts/home'
-import { type LinkItemType, renderTitleNav } from 'fumadocs-ui/layouts/shared'
+import type { LinkItemType } from 'fumadocs-ui/layouts/shared'
 import { LogIn, LogOut, Settings, Shield, Tv, User } from 'lucide-react'
 import Link from 'next/link'
 import { signIn, signOut, useSession } from 'next-auth/react'
@@ -67,10 +67,12 @@ export function Header({
 
   return (
     <Navbar>
-      {renderTitleNav(nav, {
-        href: nav.url ?? '/',
-        className: 'inline-flex items-center gap-2.5 font-semibold',
-      })}
+      <Link
+        href={nav.url ?? '/'}
+        className='inline-flex items-center gap-2.5 font-semibold'
+      >
+        {typeof nav.title === 'function' ? <nav.title /> : nav.title}
+      </Link>
       {nav.children}
       <ul className='flex flex-row items-center gap-2 px-6 max-md:hidden'>
         {navItems

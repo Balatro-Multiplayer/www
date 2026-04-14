@@ -5,7 +5,7 @@ import { buttonVariants } from 'fumadocs-ui/components/ui/button'
 import {
   LinkItem as BaseLinkItem,
   type LinkItemType,
-} from 'fumadocs-ui/utils/link-item'
+} from 'fumadocs-ui/layouts/shared'
 import type { ComponentPropsWithoutRef } from 'react'
 import {
   NavigationMenuContent,

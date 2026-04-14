@@ -16,7 +16,7 @@ import {
   NavigationMenuTrigger,
   NavigationMenuViewport,
 } from 'fumadocs-ui/components/ui/navigation-menu'
-import { LinkItem as BaseLinkItem } from 'fumadocs-ui/utils/link-item'
+import { LinkItem as BaseLinkItem } from 'fumadocs-ui/layouts/shared'
 import { type ComponentProps, type HTMLAttributes, useState } from 'react'
 import { cn } from '@/lib/utils'
 

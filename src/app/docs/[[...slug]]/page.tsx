@@ -72,18 +72,22 @@ export default async function Page(props: {
         <MDX
           components={{
             ...defaultMdxComponents,
-            img: (props: ImageZoomProps) => {
+            img: (props) => {
               const isDev =
                 env.NODE_ENV === 'development' || env.IS_PREVIEW === 'true'
+              const imageProps = props as ImageZoomProps
               if (isDev) {
-                return <ImageZoom {...props} />
+                return <ImageZoom {...imageProps} />
               }
 
-              const src = typeof props.src === 'string' ? props.src : undefined
+              const src =
+                typeof imageProps.src === 'string' ? imageProps.src : undefined
               return (
                 <ImageZoom
-                  {...props}
-                  src={src?.startsWith('/') ? `${CDN_URL}${src}` : props.src}
+                  {...imageProps}
+                  src={
+                    src?.startsWith('/') ? `${CDN_URL}${src}` : imageProps.src
+                  }
                 />
               )
             },
