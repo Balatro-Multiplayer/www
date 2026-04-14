@@ -85,6 +85,13 @@
       "when": 1774185000000,
       "tag": "0011_brisk_ravenous_ursa",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1776179515486,
+      "tag": "0012_good_may_parker",
+      "breakpoints": true
     }
   ]
 }

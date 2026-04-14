@@ -53,7 +53,7 @@ export const authConfig = {
         return {
           id: profile.id,
           name: profile.global_name ?? profile.username,
-          email: profile.email,
+          email: profile.email ?? null,
           image: profile.image_url,
           discord_id: profile.id.toString(),
         }
