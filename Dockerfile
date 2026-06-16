@@ -35,7 +35,14 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# DB migrations: drizzle folder + standalone runner, applied before the server boots.
+# Next's standalone tracing may omit the migrator, so copy the full drizzle-orm/postgres packages.
+COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/scripts/migrate.ts ./scripts/migrate.ts
+COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+COPY --from=deps /app/node_modules/postgres ./node_modules/postgres
+
 EXPOSE 3000
 ENV PORT 3000
 
-CMD ["node", "--expose-gc", "server.js"]
+CMD ["sh", "-c", "bun run scripts/migrate.ts && node --expose-gc server.js"]
