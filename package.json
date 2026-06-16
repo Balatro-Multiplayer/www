@@ -24,6 +24,7 @@
     "migrate:season": "bun run  scripts/migrate-add-season-column.ts",
     "preview": "next build && next start",
     "start": "next start",
+    "test": "bun test",
     "typecheck": "tsc --noEmit",
     "verify:season-management": "bun run scripts/verify-season-management.ts"
   },

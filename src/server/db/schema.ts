@@ -136,6 +136,69 @@ export const bannedUserIds = pgTable(
   ]
 )
 
+// Staff-managed categories for grouping policy entries (e.g. "Content",
+// "Game speed", "Top-card / misprint"). Editable from the admin UI.
+export const modPolicyCategories = pgTable(
+  'mod_policy_categories',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    name: text('name').notNull(),
+    nameLower: text('name_lower').notNull(),
+    description: text('description'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    uniqueIndex('mod_policy_categories_name_lower_unique').on(t.nameLower),
+  ]
+)
+
+// Ranked mod policy: each row is one mod, banned or approved. `versions` null/empty
+// means the rule applies to all versions; otherwise it's the specific versions the
+// rule applies to. Served as a normalized record array by the public
+// /api/mod-policy route, which the game server polls.
+export const modPolicyEntries = pgTable(
+  'mod_policy_entries',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    modId: text('mod_id').notNull(),
+    modIdLower: text('mod_id_lower').notNull(),
+    status: text('status').notNull().$type<'banned' | 'approved'>(),
+    versions: json('versions').$type<string[] | null>(),
+    name: text('name').notNull(),
+    url: text('url'),
+    note: text('note'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    uniqueIndex('mod_policy_entries_mod_id_lower_unique').on(t.modIdLower),
+  ]
+)
+
+// Many-to-many: a mod can be in multiple categories.
+export const modPolicyEntryCategories = pgTable(
+  'mod_policy_entry_categories',
+  {
+    entryId: integer('entry_id')
+      .notNull()
+      .references(() => modPolicyEntries.id, { onDelete: 'cascade' }),
+    categoryId: integer('category_id')
+      .notNull()
+      .references(() => modPolicyCategories.id, { onDelete: 'cascade' }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.entryId, t.categoryId] }),
+    index('mod_policy_entry_categories_category_idx').on(t.categoryId),
+  ]
+)
+
 export const accounts = pgTable(
   'account',
   (d) => ({

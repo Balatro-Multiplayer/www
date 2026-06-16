@@ -99,6 +99,13 @@
       "when": 1781600000000,
       "tag": "0013_add_banned_user_ban_type",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1781632368544,
+      "tag": "0014_mod_policy",
+      "breakpoints": true
     }
   ]
 }
