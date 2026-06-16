@@ -1,0 +1,1 @@
+ALTER TABLE "banned_users" ADD COLUMN "ban_type" text DEFAULT 'soft' NOT NULL;

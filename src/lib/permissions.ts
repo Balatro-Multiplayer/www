@@ -2,6 +2,7 @@ export const PERMISSION_KEYS = [
   'permissions.manage',
   'seasons.manage',
   'banned_users.manage',
+  'banned_users.hard_ban',
   'moderation.view',
   'moderation.strikes.manage',
   'moderation.bans.manage',
@@ -63,6 +64,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
     'permissions.manage',
     'seasons.manage',
     'banned_users.manage',
+    'banned_users.hard_ban',
     'moderation.view',
     'moderation.strikes.manage',
     'moderation.bans.manage',
@@ -114,6 +116,12 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: 'banned_users.manage',
         label: 'Manage banned users',
         description: 'Open the banned users page and edit aliases and ids.',
+      },
+      {
+        key: 'banned_users.hard_ban',
+        label: 'Issue hard (connection) bans',
+        description:
+          'Mark a banned user as a HARD ban, which blocks them from connecting to the multiplayer server entirely. Without this, bans are soft (notify-only).',
       },
     ],
   },

@@ -88,6 +88,9 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const bannedUsers = pgTable('banned_users', {
   id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
   label: text('label').notNull(),
+  // 'soft' = notify only (mp-ban-watcher Discord warning); 'hard' = the relay
+  // disconnects the player from the server entirely. Soft is the default.
+  banType: text('ban_type').notNull().default('soft'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at')
     .notNull()
