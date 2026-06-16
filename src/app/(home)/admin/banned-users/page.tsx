@@ -20,6 +20,8 @@ export default async function BannedUsersPage() {
     redirect('/')
   }
 
+  const canHardBan = hasPermission(session?.user, 'banned_users.hard_ban')
+
   await api.bannedUsers.list.prefetch({
     page: 1,
     pageSize: 50,
@@ -32,7 +34,7 @@ export default async function BannedUsersPage() {
       <HydrateClient>
         <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-4 pt-8'>
           <h1 className='font-bold text-3xl'>Banned Users</h1>
-          <BannedUsersClient />
+          <BannedUsersClient canHardBan={canHardBan} />
         </div>
       </HydrateClient>
     </Suspense>

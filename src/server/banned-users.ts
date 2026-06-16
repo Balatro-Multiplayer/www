@@ -6,13 +6,21 @@ import {
   bannedUsers,
 } from '@/server/db/schema'
 
+export type BanType = 'soft' | 'hard'
+
 export type BannedUserRegistryEntry = {
   id: number
   label: string
+  banType: BanType
   aliases: string[]
   ids: string[]
   createdAt: Date
   updatedAt: Date
+}
+
+/** Coerce the DB's text column into the BanType union (defaulting to soft). */
+export function asBanType(value: string): BanType {
+  return value === 'hard' ? 'hard' : 'soft'
 }
 
 export type BannedUserMatch = {
@@ -77,6 +85,7 @@ export async function listBannedUserRegistryEntries(
     .select({
       id: bannedUsers.id,
       label: bannedUsers.label,
+      banType: bannedUsers.banType,
       createdAt: bannedUsers.createdAt,
       updatedAt: bannedUsers.updatedAt,
     })
@@ -122,6 +131,7 @@ export async function listBannedUserRegistryEntries(
 
   const hydratedEntries = entries.map((entry) => ({
     ...entry,
+    banType: asBanType(entry.banType),
     aliases: uniqueCaseInsensitive(aliasesByUserId.get(entry.id) ?? []),
     ids: uniqueCaseInsensitive(idsByUserId.get(entry.id) ?? []),
   }))
@@ -176,6 +186,7 @@ export async function getBannedUserRegistryEntry(entryId: number) {
     .select({
       id: bannedUsers.id,
       label: bannedUsers.label,
+      banType: bannedUsers.banType,
       createdAt: bannedUsers.createdAt,
       updatedAt: bannedUsers.updatedAt,
     })
@@ -199,6 +210,7 @@ export async function getBannedUserRegistryEntry(entryId: number) {
 
   return {
     ...entry,
+    banType: asBanType(entry.banType),
     aliases: uniqueCaseInsensitive(aliases.map((alias) => alias.value)),
     ids: uniqueCaseInsensitive(ids.map((row) => row.value)),
   }

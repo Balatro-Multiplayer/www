@@ -8,6 +8,16 @@ import { useDebounceCallback } from 'usehooks-ts'
 import { PaginationControls } from '@/app/_components/pagination-controls'
 import { SortableHeader } from '@/app/_components/sortable-header'
 import { TableShell } from '@/app/_components/table-shell'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,6 +30,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Table,
   TableBody,
@@ -31,9 +42,12 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/trpc/react'
 
+type BanType = 'soft' | 'hard'
+
 type BannedUserEntry = {
   id: number
   label: string
+  banType: BanType
   aliases: string[]
   ids: string[]
   createdAt: Date
@@ -41,6 +55,14 @@ type BannedUserEntry = {
 }
 
 type SortBy = 'label' | 'updatedAt' | 'createdAt'
+
+function BanTypeBadge({ banType }: { banType: BanType }) {
+  return banType === 'hard' ? (
+    <Badge variant='destructive'>Hard ban</Badge>
+  ) : (
+    <Badge variant='secondary'>Soft ban</Badge>
+  )
+}
 
 function parseListInput(value: string) {
   const seen = new Set<string>()
@@ -84,7 +106,7 @@ function renderValueBadges(values: string[], emptyLabel: string) {
   )
 }
 
-export function BannedUsersClient() {
+export function BannedUsersClient({ canHardBan }: { canHardBan: boolean }) {
   const utils = api.useUtils()
   const pageSize = 50
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -92,6 +114,8 @@ export function BannedUsersClient() {
     null
   )
   const [label, setLabel] = useState('')
+  const [banType, setBanType] = useState<BanType>('soft')
+  const [hardConfirmOpen, setHardConfirmOpen] = useState(false)
   const [aliasesInput, setAliasesInput] = useState('')
   const [idsInput, setIdsInput] = useState('')
   const [queryParams, setQueryParams] = useQueryStates(
@@ -141,6 +165,7 @@ export function BannedUsersClient() {
 
     setSelectedEntry(refreshedEntry)
     setLabel(refreshedEntry.label)
+    setBanType(refreshedEntry.banType)
     setAliasesInput(refreshedEntry.aliases.join('\n'))
     setIdsInput(refreshedEntry.ids.join('\n'))
   }, [rows, selectedEntry])
@@ -149,6 +174,7 @@ export function BannedUsersClient() {
     setIsDialogOpen(false)
     setSelectedEntry(null)
     setLabel('')
+    setBanType('soft')
     setAliasesInput('')
     setIdsInput('')
   }, [])
@@ -190,13 +216,23 @@ export function BannedUsersClient() {
   )
   const idCount = useMemo(() => parseListInput(idsInput).length, [idsInput])
 
-  const handleSubmit = () => {
+  const doSave = () => {
     saveMutation.mutate({
       id: selectedEntry?.id,
       label,
+      banType,
       aliases: parseListInput(aliasesInput),
       ids: parseListInput(idsInput),
     })
+  }
+
+  const handleSubmit = () => {
+    // Hard bans cut off server access entirely — make the admin confirm.
+    if (banType === 'hard') {
+      setHardConfirmOpen(true)
+      return
+    }
+    doSave()
   }
 
   const handleDelete = (entry: BannedUserEntry) => {
@@ -232,6 +268,7 @@ export function BannedUsersClient() {
               setIsDialogOpen(true)
               setSelectedEntry(null)
               setLabel('')
+              setBanType('soft')
               setAliasesInput('')
               setIdsInput('')
             }}
@@ -284,7 +321,10 @@ export function BannedUsersClient() {
                   <TableRow key={entry.id}>
                     <TableCell>
                       <div className='flex flex-col gap-1'>
-                        <span className='font-medium'>{entry.label}</span>
+                        <div className='flex items-center gap-2'>
+                          <span className='font-medium'>{entry.label}</span>
+                          <BanTypeBadge banType={entry.banType} />
+                        </div>
                         <span className='text-muted-foreground text-xs'>
                           #{entry.id}
                         </span>
@@ -306,6 +346,7 @@ export function BannedUsersClient() {
                             setIsDialogOpen(true)
                             setSelectedEntry(entry)
                             setLabel(entry.label)
+                            setBanType(entry.banType)
                             setAliasesInput(entry.aliases.join('\n'))
                             setIdsInput(entry.ids.join('\n'))
                           }}
@@ -373,6 +414,54 @@ export function BannedUsersClient() {
             </div>
 
             <div className='grid gap-2'>
+              <Label>Ban type</Label>
+              <RadioGroup
+                value={banType}
+                onValueChange={(value) => setBanType(value as BanType)}
+                className='gap-3'
+              >
+                <div className='flex items-start gap-2'>
+                  <RadioGroupItem
+                    value='soft'
+                    id='ban-type-soft'
+                    className='mt-1'
+                  />
+                  <Label
+                    htmlFor='ban-type-soft'
+                    className='flex flex-col gap-0.5 font-normal'
+                  >
+                    <span className='font-medium'>Soft ban (default)</span>
+                    <span className='text-muted-foreground text-xs'>
+                      Notify only — we get a heads-up when they play, but they
+                      are NOT disconnected, so they don't know they're flagged.
+                    </span>
+                  </Label>
+                </div>
+                <div className='flex items-start gap-2'>
+                  <RadioGroupItem
+                    value='hard'
+                    id='ban-type-hard'
+                    className='mt-1'
+                    disabled={!canHardBan}
+                  />
+                  <Label
+                    htmlFor='ban-type-hard'
+                    className='flex flex-col gap-0.5 font-normal'
+                  >
+                    <span className='font-medium text-destructive'>
+                      Hard ban — blocks server access entirely
+                    </span>
+                    <span className='text-muted-foreground text-xs'>
+                      {canHardBan
+                        ? 'The relay disconnects this player from multiplayer completely. Use only to deny access outright.'
+                        : 'You do not have permission to issue hard bans.'}
+                    </span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className='grid gap-2'>
               <div className='flex items-center justify-between gap-2'>
                 <Label htmlFor='banned-user-aliases'>Aliases</Label>
                 <span className='text-muted-foreground text-xs'>
@@ -413,12 +502,44 @@ export function BannedUsersClient() {
             >
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={saveMutation.isPending}>
+            <Button
+              onClick={handleSubmit}
+              disabled={
+                saveMutation.isPending || (banType === 'hard' && !canHardBan)
+              }
+            >
               {saveMutation.isPending ? 'Saving...' : 'Save'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={hardConfirmOpen} onOpenChange={setHardConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Issue a hard (connection) ban?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This BLOCKS{' '}
+              <span className='font-medium'>{label || 'this user'}</span> from
+              connecting to the multiplayer server entirely — every alias and id
+              on this entry will be disconnected on sight. Only do this to deny
+              access outright.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className='bg-destructive text-white hover:bg-destructive/90'
+              onClick={() => {
+                setHardConfirmOpen(false)
+                doSave()
+              }}
+            >
+              Yes, hard ban
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

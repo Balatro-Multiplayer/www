@@ -1,5 +1,7 @@
+import { TRPCError } from '@trpc/server'
 import { asc, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { hasPermission } from '@/lib/permissions'
 import { createTRPCRouter, permissionProcedure } from '@/server/api/trpc'
 import {
   listBannedUserRegistryEntries,
@@ -18,6 +20,7 @@ const saveBannedUserSchema = z
   .object({
     id: z.number().int().positive().optional(),
     label: z.string().trim().min(1).max(120),
+    banType: z.enum(['soft', 'hard']).default('soft'),
     aliases: z.array(z.string()).default([]),
     ids: z.array(z.string()).default([]),
   })
@@ -124,7 +127,20 @@ export const bannedUsersRouter = createTRPCRouter({
 
   save: permissionProcedure('banned_users.manage')
     .input(saveBannedUserSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Hard bans block server access entirely and are gated behind a separate,
+      // deliberately scarce permission. Soft bans only need banned_users.manage.
+      if (
+        input.banType === 'hard' &&
+        !hasPermission(ctx.session.user, 'banned_users.hard_ban')
+      ) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message:
+            'You do not have permission to issue hard (connection) bans.',
+        })
+      }
+
       const aliases = normalizeBannedUserValues(input.aliases)
       const ids = normalizeBannedUserValues(input.ids)
 
@@ -143,7 +159,7 @@ export const bannedUsersRouter = createTRPCRouter({
 
           await tx
             .update(bannedUsers)
-            .set({ label, updatedAt: new Date() })
+            .set({ label, banType: input.banType, updatedAt: new Date() })
             .where(eq(bannedUsers.id, input.id))
 
           await tx
@@ -178,7 +194,7 @@ export const bannedUsersRouter = createTRPCRouter({
 
         const [created] = await tx
           .insert(bannedUsers)
-          .values({ label })
+          .values({ label, banType: input.banType })
           .returning({ id: bannedUsers.id })
 
         if (!created) {

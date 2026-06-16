@@ -92,6 +92,13 @@
       "when": 1776179515486,
       "tag": "0012_good_may_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1781600000000,
+      "tag": "0013_add_banned_user_ban_type",
+      "breakpoints": true
     }
   ]
 }
