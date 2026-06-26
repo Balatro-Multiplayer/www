@@ -2,7 +2,7 @@
 
 import { Pencil, Trash2 } from 'lucide-react'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { useDebounceCallback } from 'usehooks-ts'
@@ -323,6 +323,54 @@ export function ReleasesClient() {
     const nextOrder = sortBy === column && sortOrder === 'asc' ? 'desc' : 'asc'
     setQueryParams({ sortBy: column, sortOrder: nextOrder, page: 1 })
   }
+
+  // A second horizontal scrollbar pinned to the bottom of the viewport, so the
+  // wide table can be scrolled sideways without first scrolling all the way
+  // down to its native scrollbar. It mirrors the table's scroll width and stays
+  // in sync with the real scroll container in both directions.
+  const tableScrollRef = useRef<HTMLDivElement>(null)
+  const stickyScrollbarRef = useRef<HTMLDivElement>(null)
+  const isSyncingScroll = useRef(false)
+  const [tableScrollWidth, setTableScrollWidth] = useState(0)
+  const [tableClientWidth, setTableClientWidth] = useState(0)
+
+  useEffect(() => {
+    const el = tableScrollRef.current
+    if (!el) return
+    const measure = () => {
+      setTableScrollWidth(el.scrollWidth)
+      setTableClientWidth(el.clientWidth)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  const handleTableScroll = () => {
+    if (isSyncingScroll.current) {
+      isSyncingScroll.current = false
+      return
+    }
+    const el = tableScrollRef.current
+    const bar = stickyScrollbarRef.current
+    if (!(el && bar)) return
+    isSyncingScroll.current = true
+    bar.scrollLeft = el.scrollLeft
+  }
+
+  const handleStickyScrollbarScroll = () => {
+    if (isSyncingScroll.current) {
+      isSyncingScroll.current = false
+      return
+    }
+    const el = tableScrollRef.current
+    const bar = stickyScrollbarRef.current
+    if (!(el && bar)) return
+    isSyncingScroll.current = true
+    el.scrollLeft = bar.scrollLeft
+  }
+
   return (
     <div className='space-y-8'>
       <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
@@ -337,7 +385,11 @@ export function ReleasesClient() {
       </div>
 
       <TableShell className='overflow-hidden shadow-sm'>
-        <div className='overflow-x-auto'>
+        <div
+          className='overflow-x-auto'
+          ref={tableScrollRef}
+          onScroll={handleTableScroll}
+        >
           <Table className='w-full table-auto'>
             <TableHeader className='sticky top-0 z-10 bg-background'>
               <TableRow className='bg-muted/50'>
@@ -448,6 +500,19 @@ export function ReleasesClient() {
           className='rounded-none border-0 border-t bg-background'
         />
       </TableShell>
+
+      {/* Horizontal scrollbar pinned just above the bottom of the page, synced
+          with the table so it can be scrolled sideways from anywhere. */}
+      {tableScrollWidth > tableClientWidth && (
+        <div
+          aria-hidden='true'
+          ref={stickyScrollbarRef}
+          onScroll={handleStickyScrollbarScroll}
+          className='sticky bottom-2 z-20 overflow-x-auto rounded-md border bg-background/90 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/70'
+        >
+          <div style={{ width: tableScrollWidth }} className='h-3' />
+        </div>
+      )}
 
       <div className='mt-8 overflow-hidden rounded-md border bg-card shadow-sm'>
         <div className='p-6'>
