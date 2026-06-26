@@ -372,7 +372,9 @@ export function ReleasesClient() {
                 </TableHead>
                 <TableHead>Steamodded Version</TableHead>
                 <TableHead>Lovely Injector Version</TableHead>
-                <TableHead className='text-right'>Actions</TableHead>
+                <TableHead className='sticky right-0 z-20 border-l bg-background text-right'>
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -409,7 +411,7 @@ export function ReleasesClient() {
                     <TableCell>{release.branchName || 'main'}</TableCell>
                     <TableCell>{release.smods_version || 'latest'}</TableCell>
                     <TableCell>{release.lovely_version || 'latest'}</TableCell>
-                    <TableCell className='space-x-2 text-right'>
+                    <TableCell className='sticky right-0 z-10 space-x-2 border-l bg-background text-right'>
                       <Button
                         variant='outline'
                         size='sm'
