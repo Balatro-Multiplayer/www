@@ -566,18 +566,21 @@ async function parseAndSaveGames(
       cheatFlags.map((flag) => flag.gameIndex)
     )
       .then((contextByGameIndex) =>
-        botlatro_service.sendWarning({
-          title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
-          lines: sanitizeWarningLines([
-            `Log: ${logUrl}`,
-            ...formatGroupedCheatWarningLines(
-              cheatFlags,
-              logUrl,
-              parsedGames,
-              contextByGameIndex
-            ),
-          ]),
-        })
+
+        // botlatro_service.sendWarning({
+        //   title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
+        //   lines: sanitizeWarningLines([
+        //     `Log: ${logUrl}`,
+        //     ...formatGroupedCheatWarningLines(
+        //       cheatFlags,
+        //       logUrl,
+        //       parsedGames,
+        //       contextByGameIndex
+        //     ),
+        //   ]),
+        // })
+
+        null
       )
       .catch((error) => {
         console.error(
