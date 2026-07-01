@@ -29,26 +29,26 @@ export const EDITION_THRESHOLD = {
 }
 
 export const ENHANCEMENT_THRESHOLD = {
-  STEEL: 230,
-  GOLD: 320,
-  LUCKY: 460,
-  GLASS: 620,
+  STEEL: 530,
+  GOLD: 620,
+  LUCKY: 760,
+  GLASS: 920,
 }
 
 export const SMALLWORLD_THRESHOLD = {
   PEBBLE: 0,
-  FERRITE: 225,
-  PYRITE: 325,
-  JADE: 425,
-  CRYSTAL: 550,
+  FERRITE: 525,
+  PYRITE: 625,
+  JADE: 725,
+  CRYSTAL: 850,
 }
 
 export const LEGACY_THRESHOLD = {
   MILK: 0,
-  STRAWBERRY: 225,
-  CHOCOLATE: 325,
-  MINT: 425,
-  BUBBLEGUM: 550,
+  STRAWBERRY: 525,
+  CHOCOLATE: 625,
+  MINT: 725,
+  BUBBLEGUM: 850,
 }
 
 export const getRankData = (mmr: number, queueType?: string) => {
