@@ -479,7 +479,7 @@ export function DeckPopularityChart({
                               {desc && (
                                 <span className='mt-1 block text-muted-foreground'>
                                   {desc.split('\n').map((line, i) => (
-                                    <span key={i}>
+                                    <span key={line}>
                                       {i > 0 && <br />}
                                       {line}
                                     </span>
@@ -548,7 +548,7 @@ export function DeckPopularityChart({
                               {desc && (
                                 <span className='mt-1 block text-muted-foreground'>
                                   {desc.split('\n').map((line, i) => (
-                                    <span key={i}>
+                                    <span key={line}>
                                       {i > 0 && <br />}
                                       {line}
                                     </span>

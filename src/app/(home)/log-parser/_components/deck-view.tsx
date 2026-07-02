@@ -326,10 +326,10 @@ function DeckDialog({
                     {section.label}
                   </p>
                   <div className='flex flex-wrap gap-x-3 gap-y-5'>
-                    {section.cards.map(({ card, count }, index) => {
+                    {section.cards.map(({ card, count }) => {
                       return (
                         <DeckCardVisual
-                          key={`${label}-${section.key}-${card.code}-${index}`}
+                          key={`${label}-${section.key}-${card.code}`}
                           card={card}
                           count={count}
                         />
