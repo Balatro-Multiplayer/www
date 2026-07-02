@@ -137,7 +137,20 @@ const TAB_OPTIONS = [
 function UserInfoComponent() {
   const [activeTab, setActiveTab] = useState('matches')
   const [filter, setFilter] = useState('all')
-  const [season, setSeason] = useState<Season>(DEFAULT_PLAYER_PROFILE_SEASON)
+  // Season options come from the DB registry (same source as the leaderboard
+  // page) so newly-created seasons appear automatically. Season 1 is a legacy
+  // placeholder with no profile data, so it stays hidden.
+  const [seasonRows] = api.seasons.list.useSuspenseQuery()
+  const seasonOptions = useMemo(
+    () =>
+      [...seasonRows].filter((row) => row.id >= 2).sort((a, b) => b.id - a.id),
+    [seasonRows]
+  )
+  const [season, setSeason] = useState<Season>(
+    () =>
+      (seasonOptions[0] && (`season${seasonOptions[0].id}` as Season)) ||
+      DEFAULT_PLAYER_PROFILE_SEASON
+  )
   const rankedChannelId = getChannelIdForSeason('ranked', season)
   const vanillaChannelId = getChannelIdForSeason('vanilla', season)
   const smallworldChannelId = getChannelIdForSeason('smallworld', season)
@@ -474,21 +487,11 @@ function UserInfoComponent() {
                 <SelectValue placeholder='Season' />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value='season6'>
-                  {getSeasonDisplayName('season6')}
-                </SelectItem>
-                <SelectItem value='season5'>
-                  {getSeasonDisplayName('season5')}
-                </SelectItem>
-                <SelectItem value='season4'>
-                  {getSeasonDisplayName('season4')}
-                </SelectItem>
-                <SelectItem value='season3'>
-                  {getSeasonDisplayName('season3')}
-                </SelectItem>
-                <SelectItem value='season2'>
-                  {getSeasonDisplayName('season2')}
-                </SelectItem>
+                {seasonOptions.map((row) => (
+                  <SelectItem key={row.id} value={`season${row.id}`}>
+                    {getSeasonDisplayName(`season${row.id}`)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -510,7 +513,9 @@ function UserInfoComponent() {
                 : null
             }
             rankIcon={
-              hasRanked ? getRankData(rankedUserRank?.mmr, 'ranked') : null
+              hasRanked
+                ? getRankData(rankedUserRank?.mmr, 'ranked', season)
+                : null
             }
             lastGame={lastRankedGame ?? null}
             mostPlayed={mostPlayedRanked}
@@ -527,7 +532,9 @@ function UserInfoComponent() {
                   : null
               }
               rankIcon={
-                hasLegacy ? getRankData(legacyUserRank?.mmr, 'legacy') : null
+                hasLegacy
+                  ? getRankData(legacyUserRank?.mmr, 'legacy', season)
+                  : null
               }
               lastGame={lastLegacyGame ?? null}
               mostPlayed={mostPlayedLegacy}
@@ -547,7 +554,7 @@ function UserInfoComponent() {
               }
               rankIcon={
                 hasSmallworld
-                  ? getRankData(smallWorldUserRank?.mmr, 'smallworld')
+                  ? getRankData(smallWorldUserRank?.mmr, 'smallworld', season)
                   : null
               }
               lastGame={lastSmallworldGame ?? null}
@@ -566,7 +573,9 @@ function UserInfoComponent() {
                   : null
               }
               rankIcon={
-                hasVanilla ? getRankData(vanillaUserRank?.mmr, 'vanilla') : null
+                hasVanilla
+                  ? getRankData(vanillaUserRank?.mmr, 'vanilla', season)
+                  : null
               }
               lastGame={lastVanillaGame ?? null}
               mostPlayed={mostPlayedVanilla}

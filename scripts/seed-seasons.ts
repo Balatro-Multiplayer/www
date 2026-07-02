@@ -9,6 +9,7 @@ import {
   SEASON_4_START_DATE,
   SEASON_5_START_DATE,
   SEASON_6_START_DATE,
+  SEASON_7_START_DATE,
 } from '@/shared/seasons'
 
 async function seedSeasons() {
@@ -54,6 +55,13 @@ async function seedSeasons() {
       id: 6,
       name: 'Season 6',
       startDate: SEASON_6_START_DATE,
+      endDate: SEASON_7_START_DATE,
+      isActive: false,
+    },
+    {
+      id: 7,
+      name: 'Season 7',
+      startDate: SEASON_7_START_DATE,
       endDate: null,
       isActive: true,
     },
@@ -82,9 +90,9 @@ async function seedSeasons() {
     )
   `)
 
-  await redis.set('config:active_season', '6')
+  await redis.set('config:active_season', '7')
 
-  console.log('✓ Seeded seasons 1-6')
+  console.log('✓ Seeded seasons 1-7')
 }
 
 if (require.main === module) {

@@ -28,30 +28,89 @@ export const EDITION_THRESHOLD = {
   ANTIMATTER: 1,
 }
 
-export const ENHANCEMENT_THRESHOLD = {
-  STEEL: 530,
-  GOLD: 620,
-  LUCKY: 760,
-  GLASS: 920,
+type ThresholdSet = {
+  enhancement: { STEEL: number; GOLD: number; LUCKY: number; GLASS: number }
+  smallworld: {
+    PEBBLE: number
+    FERRITE: number
+    PYRITE: number
+    JADE: number
+    CRYSTAL: number
+  }
+  legacy: {
+    MILK: number
+    STRAWBERRY: number
+    CHOCOLATE: number
+    MINT: number
+    BUBBLEGUM: number
+  }
 }
 
-export const SMALLWORLD_THRESHOLD = {
-  PEBBLE: 0,
-  FERRITE: 525,
-  PYRITE: 625,
-  JADE: 725,
-  CRYSTAL: 850,
+// Thresholds used for seasons 1-6 (before the +300 rank bump).
+const OLD_THRESHOLDS: ThresholdSet = {
+  enhancement: { STEEL: 230, GOLD: 320, LUCKY: 460, GLASS: 620 },
+  smallworld: { PEBBLE: 0, FERRITE: 225, PYRITE: 325, JADE: 425, CRYSTAL: 550 },
+  legacy: {
+    MILK: 0,
+    STRAWBERRY: 225,
+    CHOCOLATE: 325,
+    MINT: 425,
+    BUBBLEGUM: 550,
+  },
 }
 
-export const LEGACY_THRESHOLD = {
-  MILK: 0,
-  STRAWBERRY: 525,
-  CHOCOLATE: 625,
-  MINT: 725,
-  BUBBLEGUM: 850,
+// Current thresholds (season 7 onward, +300 bump). Used as the default for any
+// season not explicitly mapped below — including future seasons.
+const NEW_THRESHOLDS: ThresholdSet = {
+  enhancement: { STEEL: 530, GOLD: 620, LUCKY: 760, GLASS: 920 },
+  smallworld: { PEBBLE: 0, FERRITE: 525, PYRITE: 625, JADE: 725, CRYSTAL: 850 },
+  legacy: {
+    MILK: 0,
+    STRAWBERRY: 525,
+    CHOCOLATE: 625,
+    MINT: 725,
+    BUBBLEGUM: 850,
+  },
 }
 
-export const getRankData = (mmr: number, queueType?: string) => {
+const DEFAULT_THRESHOLDS = NEW_THRESHOLDS
+
+// Season number -> threshold set. Any season not listed (undefined season, or a
+// newer season than we've mapped) falls back to DEFAULT_THRESHOLDS.
+const SEASON_THRESHOLDS: Record<number, ThresholdSet> = {
+  1: OLD_THRESHOLDS,
+  2: OLD_THRESHOLDS,
+  3: OLD_THRESHOLDS,
+  4: OLD_THRESHOLDS,
+  5: OLD_THRESHOLDS,
+  6: OLD_THRESHOLDS,
+}
+
+function resolveSeasonNumber(season?: string | number): number | undefined {
+  if (season === undefined || season === null) return undefined
+  if (typeof season === 'number') {
+    return Number.isInteger(season) ? season : undefined
+  }
+  const match = /^season(\d+)$/.exec(season)
+  return match ? Number(match[1]) : undefined
+}
+
+export function getThresholdsForSeason(season?: string | number): ThresholdSet {
+  const seasonNumber = resolveSeasonNumber(season)
+  if (seasonNumber === undefined) return DEFAULT_THRESHOLDS
+  return SEASON_THRESHOLDS[seasonNumber] ?? DEFAULT_THRESHOLDS
+}
+
+export const getRankData = (
+  mmr: number,
+  queueType?: string,
+  season?: string | number
+) => {
+  const thresholds = getThresholdsForSeason(season)
+  const ENHANCEMENT_THRESHOLD = thresholds.enhancement
+  const SMALLWORLD_THRESHOLD = thresholds.smallworld
+  const LEGACY_THRESHOLD = thresholds.legacy
+
   if (queueType === 'vanilla') {
     return null
   }

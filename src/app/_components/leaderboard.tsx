@@ -71,8 +71,13 @@ type LeaderboardSortBy =
   | 'peak_mmr'
   | 'peak_streak'
 
-const getMedal = (rank: number, mmr: number, queueType?: string) => {
-  const rankData = getRankData(mmr, queueType)
+const getMedal = (
+  rank: number,
+  mmr: number,
+  queueType?: string,
+  season?: string
+) => {
+  const rankData = getRankData(mmr, queueType, season)
   if (!rankData) {
     return null
   }
@@ -539,6 +544,7 @@ export function LeaderboardPage({
                           key={entry.id}
                           entry={entry}
                           queueType={leaderboardType}
+                          season={season}
                         />
                       ))
                     ) : (
@@ -554,6 +560,7 @@ export function LeaderboardPage({
                       <LeaderboardTable
                         leaderboard={currentLeaderboard}
                         queueType={leaderboardType}
+                        season={season}
                         sortColumn={sortColumn as LeaderboardSortBy}
                         sortDirection={sortDirection}
                         onSort={handleSort}
@@ -586,9 +593,11 @@ export function LeaderboardPage({
 function LeaderboardCard({
   entry,
   queueType,
+  season,
 }: {
   entry: LeaderboardRow
   queueType: string
+  season?: string
 }) {
   const winrate = entry.winrate * 100
 
@@ -604,7 +613,7 @@ function LeaderboardCard({
             <span className='w-6 text-right font-medium text-muted-foreground text-sm tabular-nums'>
               {entry.rank}
             </span>
-            {getMedal(entry.rank, entry.mmr, queueType)}
+            {getMedal(entry.rank, entry.mmr, queueType, season)}
           </div>
           <span className='truncate font-medium group-hover:underline'>
             {entry.name}
@@ -668,9 +677,15 @@ interface LeaderboardTableProps {
   leaderboard: LeaderboardRow[]
   sortColumn: LeaderboardSortBy
   queueType: string
+  season?: string
   sortDirection: 'asc' | 'desc'
   onSort: (column: string) => void
-  getMedal: (rank: number, mmr: number, queueType?: string) => React.ReactNode
+  getMedal: (
+    rank: number,
+    mmr: number,
+    queueType?: string,
+    season?: string
+  ) => React.ReactNode
 }
 
 type LeaderboardRow = {
@@ -690,6 +705,7 @@ type LeaderboardRow = {
 function RawLeaderboardTable({
   leaderboard,
   queueType,
+  season,
   sortColumn,
   sortDirection,
   onSort,
@@ -818,7 +834,7 @@ function RawLeaderboardTable({
                     <span className={cn(entry.rank < 10 && 'ml-[1ch]')}>
                       {entry.rank}
                     </span>
-                    {getMedal(entry.rank, entry.mmr, queueType)}
+                    {getMedal(entry.rank, entry.mmr, queueType, season)}
                   </div>
                 </TableCell>
                 <TableCell>

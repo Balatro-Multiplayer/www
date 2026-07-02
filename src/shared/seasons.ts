@@ -6,6 +6,11 @@ export const SEASON_3_START_DATE = new Date('2025-06-02T13:00:00.000Z')
 export const SEASON_4_START_DATE = new Date('2025-09-01T05:00:00.000Z')
 export const SEASON_5_START_DATE = new Date('2025-11-30T18:08:00.000Z')
 export const SEASON_6_START_DATE = new Date('2026-02-27T18:00:00.000Z')
+// Season 7 rollover: a clean time in the ~16:17–18:21 UTC changeover gap on
+// 2026-07-01 (derived from the bot's last S6 / first S7 match timestamps),
+// following the existing convention of a tidy instant just before the season's
+// first game. Only affects date-based stats/history/charts, not the leaderboard.
+export const SEASON_7_START_DATE = new Date('2026-07-01T17:00:00.000Z')
 
 // Season type for selection
 export const SeasonSchema = z.string().regex(/^season\d+$/)
