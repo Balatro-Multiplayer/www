@@ -11,8 +11,8 @@ import {
   extractLogOwnerConnectionIds,
 } from '@/lib/log-file-players'
 import { type ParsedLogGame, parseLogSource } from '@/lib/log-source-parser'
-import { auth } from '@/server/auth'
 import { fetchCocktailDecks } from '@/server/api/routers/logs'
+import { auth } from '@/server/auth'
 import {
   type BannedUserMatch,
   listBannedUserRegistryEntries,
@@ -228,7 +228,7 @@ function formatCheatFlagDetails(
   ]
 }
 
-function formatGroupedCheatWarningLines(
+function _formatGroupedCheatWarningLines(
   flags: ReturnType<typeof detectCheatFlags>,
   logUrl: string,
   parsedGames: unknown,
@@ -294,7 +294,7 @@ function formatGroupedCheatWarningLines(
   return lines
 }
 
-function sanitizeWarningLines(lines: string[]) {
+function _sanitizeWarningLines(lines: string[]) {
   return lines.flatMap((line) => {
     const normalized = line.trimEnd()
     return normalized.length > 0 ? [normalized] : []
@@ -559,28 +559,28 @@ async function parseAndSaveGames(
   })
 
   if (isFirstParse && cheatFlags.length > 0) {
-    const logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
+    const _logUrl = `${getSiteBaseUrl()}/log-parser?logId=${logFileId}`
 
     void buildWarningContextByGameIndex(
       parsedGames,
       cheatFlags.map((flag) => flag.gameIndex)
     )
-      .then((contextByGameIndex) =>
+      .then(
+        (_contextByGameIndex) =>
+          // botlatro_service.sendWarning({
+          //   title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
+          //   lines: sanitizeWarningLines([
+          //     `Log: ${logUrl}`,
+          //     ...formatGroupedCheatWarningLines(
+          //       cheatFlags,
+          //       logUrl,
+          //       parsedGames,
+          //       contextByGameIndex
+          //     ),
+          //   ]),
+          // })
 
-        // botlatro_service.sendWarning({
-        //   title: `Warning: suspicious early economy detected in uploaded log #${logFileId}`,
-        //   lines: sanitizeWarningLines([
-        //     `Log: ${logUrl}`,
-        //     ...formatGroupedCheatWarningLines(
-        //       cheatFlags,
-        //       logUrl,
-        //       parsedGames,
-        //       contextByGameIndex
-        //     ),
-        //   ]),
-        // })
-
-        null
+          null
       )
       .catch((error) => {
         console.error(

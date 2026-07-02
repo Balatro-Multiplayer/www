@@ -56,8 +56,7 @@ export function DeckImage({
   height?: number
   className?: string
 }) {
-  const src =
-    (deck ? getDeckImage(deck) : null) ?? DECK_IMAGES.unknown ?? ''
+  const src = (deck ? getDeckImage(deck) : null) ?? DECK_IMAGES.unknown ?? ''
   return (
     <Image
       src={src}
@@ -292,7 +291,7 @@ function StackedStatsChart({
                   <span className='inline-block max-w-48'>
                     {name} · {total} total
                     {desc && (
-                      <span className='block text-muted-foreground font-normal text-xs'>
+                      <span className='block font-normal text-muted-foreground text-xs'>
                         {desc}
                       </span>
                     )}

@@ -68,7 +68,7 @@ export const blogRouter = createTRPCRouter({
         },
       })
 
-      if (!post || !post.published) {
+      if (!post?.published) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Blog post not found',
