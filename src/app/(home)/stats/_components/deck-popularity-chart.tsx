@@ -16,12 +16,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import {
-  DECK_IMAGES,
-  getDeckDescription,
-  getDeckDisplayName,
-  getDeckImage,
-} from '@/shared/decks'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -52,6 +46,11 @@ import {
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
+import {
+  getDeckDescription,
+  getDeckDisplayName,
+  getDeckImage,
+} from '@/shared/decks'
 import { getSeasonDisplayName, type Season } from '@/shared/seasons'
 import { api } from '@/trpc/react'
 import {
@@ -255,7 +254,7 @@ export function DeckPopularityChart({
     }
 
     return filtered
-  }, [rawData, combineSpecialtyCocktails])
+  }, [combineSpecialtyCocktails, normalizedData.reduce, normalizedData])
 
   const totalGames = data.reduce((sum, d) => sum + d.games, 0)
   const onPieEnter = useCallback(
@@ -480,7 +479,7 @@ export function DeckPopularityChart({
                               {desc && (
                                 <span className='mt-1 block text-muted-foreground'>
                                   {desc.split('\n').map((line, i) => (
-                                    <span key={i}>
+                                    <span key={line}>
                                       {i > 0 && <br />}
                                       {line}
                                     </span>
@@ -549,7 +548,7 @@ export function DeckPopularityChart({
                               {desc && (
                                 <span className='mt-1 block text-muted-foreground'>
                                   {desc.split('\n').map((line, i) => (
-                                    <span key={i}>
+                                    <span key={line}>
                                       {i > 0 && <br />}
                                       {line}
                                     </span>

@@ -180,13 +180,13 @@ const Accepted = DropzoneAccepted
 const Rejected = DropzoneRejected
 
 export {
-  Root,
-  Input,
-  Zone,
-  Trigger,
-  DragAccepted,
-  DragRejected,
-  DragDefault,
   Accepted,
+  DragAccepted,
+  DragDefault,
+  DragRejected,
+  Input,
   Rejected,
+  Root,
+  Trigger,
+  Zone,
 }

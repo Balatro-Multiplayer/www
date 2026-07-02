@@ -15,6 +15,7 @@ import {
   SEASON_4_START_DATE,
   SEASON_5_START_DATE,
   SEASON_6_START_DATE,
+  SEASON_7_START_DATE,
   type Season,
 } from '@/shared/seasons'
 import { api } from '@/trpc/react'
@@ -36,7 +37,9 @@ function getSeasonDates(season: Season): string {
     case 'season5':
       return `${fmt(SEASON_5_START_DATE)} – ${fmt(SEASON_6_START_DATE)}`
     case 'season6':
-      return `${fmt(SEASON_6_START_DATE)} – Present`
+      return `${fmt(SEASON_6_START_DATE)} – ${fmt(SEASON_7_START_DATE)}`
+    case 'season7':
+      return `${fmt(SEASON_7_START_DATE)} – Present`
   }
 
   return getSeasonDisplayName(season)

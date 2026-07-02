@@ -13,6 +13,7 @@ import {
   SEASON_4_START_DATE,
   SEASON_5_START_DATE,
   SEASON_6_START_DATE,
+  SEASON_7_START_DATE,
   type Season,
 } from '@/shared/seasons'
 
@@ -60,7 +61,9 @@ export function getSeasonDateRange(season: Season): { start: Date; end: Date } {
     case 'season5':
       return { start: SEASON_5_START_DATE, end: SEASON_6_START_DATE }
     case 'season6':
-      return { start: SEASON_6_START_DATE, end: new Date('2099-01-01') }
+      return { start: SEASON_6_START_DATE, end: SEASON_7_START_DATE }
+    case 'season7':
+      return { start: SEASON_7_START_DATE, end: new Date('2099-01-01') }
   }
 
   throw new Error(`Unknown season: ${season}`)
