@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/server/db'
 import { seasons } from '@/server/db/schema'
 import { redis } from '@/server/redis'
+import { SEASONS_CACHE_KEY } from '@/server/seasons'
 import {
   SEASON_1_START_DATE,
   SEASON_2_START_DATE,
@@ -90,6 +91,9 @@ async function seedSeasons() {
     )
   `)
 
+  // Invalidate the cached season list so the newly seeded seasons are picked up
+  // instead of a stale list (which would hide the latest season site-wide).
+  await redis.del(SEASONS_CACHE_KEY)
   await redis.set('config:active_season', '7')
 
   console.log('✓ Seeded seasons 1-7')

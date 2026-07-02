@@ -16,7 +16,6 @@ import {
 } from '@/server/services/match-fetcher'
 import {
   SEASON_5_START_DATE,
-  SEASON_6_START_DATE,
   type Season,
   SeasonSchema,
 } from '@/shared/seasons'
@@ -100,24 +99,23 @@ async function shouldUseDbSeason(season: Season): Promise<boolean> {
   return Boolean(config?.endDate && config.endDate <= SEASON_5_START_DATE)
 }
 
-function getApiSeasonsForDateRange(
+async function getApiSeasonsForDateRange(
   startDate?: Date,
   endExclusive?: Date
-): Season[] {
-  const seasons: Season[] = []
-
-  if (
-    (!endExclusive || endExclusive > SEASON_5_START_DATE) &&
-    (!startDate || startDate < SEASON_6_START_DATE)
-  ) {
-    seasons.push('season5')
-  }
-
-  if (!endExclusive || endExclusive > SEASON_6_START_DATE) {
-    seasons.push('season6')
-  }
-
-  return seasons
+): Promise<Season[]> {
+  // API-backed seasons are 5+ (endDate after the season-5 boundary, or still
+  // active). Derived from the season registry so new seasons are included
+  // automatically instead of needing a per-season branch here.
+  const allSeasons = await getSeasons()
+  return allSeasons
+    .filter((season) => !season.endDate || season.endDate > SEASON_5_START_DATE)
+    .filter((season) => {
+      if (endExclusive && season.startDate >= endExclusive) return false
+      if (startDate && season.endDate && season.endDate <= startDate)
+        return false
+      return true
+    })
+    .map((season) => getSeasonKey(season.id))
 }
 
 async function fetchApiMatchesForDateRange(
@@ -125,7 +123,7 @@ async function fetchApiMatchesForDateRange(
   startDate?: Date,
   endExclusive?: Date
 ) {
-  const seasons = getApiSeasonsForDateRange(startDate, endExclusive)
+  const seasons = await getApiSeasonsForDateRange(startDate, endExclusive)
   if (seasons.length === 0) return []
 
   const matches = (

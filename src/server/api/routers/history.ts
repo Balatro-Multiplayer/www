@@ -7,7 +7,7 @@ import {
 } from '@/server/api/trpc'
 import { player_games } from '@/server/db/schema'
 import type { SelectGames } from '@/server/db/types'
-import { getSeasonForDate } from '@/server/seasons'
+import { getSeasonForDate, getSeasonKey, getSeasons } from '@/server/seasons'
 import {
   botlatro_service,
   type PlayerMatch,
@@ -21,7 +21,11 @@ import {
   SMALLWORLD_QUEUE_ID,
   VANILLA_QUEUE_ID,
 } from '@/shared/constants'
-import { SEASON_5_START_DATE, SeasonSchema } from '@/shared/seasons'
+import {
+  SEASON_5_START_DATE,
+  type Season,
+  SeasonSchema,
+} from '@/shared/seasons'
 
 function formatTimeKey(date: Date, groupBy: string): string {
   switch (groupBy) {
@@ -39,6 +43,17 @@ function formatTimeKey(date: Date, groupBy: string): string {
     default:
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`
   }
+}
+
+// Seasons 1-4 are stored in the local `player_games` table; season 5 onward
+// live in the Botlatro API. Keyed off the season number so new seasons route to
+// the API automatically instead of falling through to an empty DB query.
+const LAST_DB_SEASON = 4
+
+function isDbSeason(season: Season): boolean {
+  const match = /^season(\d+)$/.exec(season)
+  const num = match ? Number(match[1]) : null
+  return num !== null && num <= LAST_DB_SEASON
 }
 
 export const history_router = createTRPCRouter({
@@ -116,11 +131,15 @@ export const history_router = createTRPCRouter({
 
       // Season 5+ data from Botlatro API
       if (needsApi) {
+        const apiSeasons = (await getSeasons())
+          .filter((s) => !s.endDate || s.endDate > SEASON_5_START_DATE)
+          .map((s) => getSeasonKey(s.id))
         const allMatches = (
-          await Promise.all([
-            ...QUEUE_IDS.map((q) => fetchMatches(q, 'season5')),
-            ...QUEUE_IDS.map((q) => fetchMatches(q, 'season6')),
-          ])
+          await Promise.all(
+            apiSeasons.flatMap((season) =>
+              QUEUE_IDS.map((q) => fetchMatches(q, season))
+            )
+          )
         ).flat()
 
         const apiStart =
@@ -214,7 +233,7 @@ export const history_router = createTRPCRouter({
       const pageSize = input.pageSize
       const offset = (page - 1) * pageSize
 
-      if (input.season !== 'season6' && input.season !== 'season5') {
+      if (isDbSeason(input.season)) {
         const dir = input.sortOrder === 'asc' ? asc : desc
         const sortCol =
           input.sortBy === 'gameId'
@@ -365,7 +384,7 @@ export const history_router = createTRPCRouter({
       const pageSize = input.pageSize
       const offset = (page - 1) * pageSize
 
-      if (input.season !== 'season6' && input.season !== 'season5') {
+      if (isDbSeason(input.season)) {
         const where = and(
           eq(player_games.playerId, input.user_id),
           eq(player_games.season, input.season),
