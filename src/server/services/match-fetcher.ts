@@ -73,9 +73,11 @@ export async function fetchMatches(
   queueId: string,
   season: Season
 ): Promise<OverallMatch[]> {
-  const cacheKey = `stats:matches:v2:${queueId}:${season}`
+  const cacheKey = `stats:matches:v3:${queueId}:${season}`
   const cached = await redis.get(cacheKey)
   if (cached) return JSON.parse(cached)
+
+  const { start, end } = getSeasonDateRange(season)
 
   let params: URLSearchParams
   const seasonNumber = getSeasonNumber(season)
@@ -85,7 +87,6 @@ export async function fetchMatches(
       season: seasonNumber.toString(),
     })
   } else {
-    const { start, end } = getSeasonDateRange(season)
     params = new URLSearchParams({
       limit: '200000',
       start_date: start.toISOString(),
@@ -99,6 +100,15 @@ export async function fetchMatches(
   if (!res.ok) throw new Error(`Botlatro API error: ${res.status}`)
   const data = (await res.json()) as { matches: OverallMatch[] }
 
-  await redis.set(cacheKey, JSON.stringify(data.matches), { EX: 7200 })
-  return data.matches
+  // The API's `season` filter is not a strict window (it can return games from
+  // other seasons), so always constrain to the season's date range. This keeps
+  // season-scoped consumers (deck/stake popularity, season overview) from
+  // counting games that belong to a different season.
+  const matches = data.matches.filter((match) => {
+    const createdAt = new Date(match.created_at)
+    return createdAt >= start && createdAt < end
+  })
+
+  await redis.set(cacheKey, JSON.stringify(matches), { EX: 7200 })
+  return matches
 }
