@@ -21,9 +21,83 @@ import {
   brackets,
   seasons,
 } from '@/server/db/schema'
+import { redis } from '@/server/redis'
 import { botlatro_service } from '@/server/services/botlatro.service'
 
 type DbClient = typeof import('@/server/db').db
+
+// Champions only change when an admin edits a bracket, so the full map
+// (one entry per published bracket with a linked winner) lives in Redis and
+// every mutation below invalidates it. The TTL is just a safety net.
+const CHAMPIONS_CACHE_KEY = 'brackets:champions'
+const CHAMPIONS_CACHE_TTL_SECONDS = 24 * 60 * 60
+
+type ChampionEntry = { playerId: string; bracketId: number; label: string }
+
+async function computeChampions(db: DbClient): Promise<ChampionEntry[]> {
+  const publishedBrackets = await db
+    .select({
+      id: brackets.id,
+      name: brackets.name,
+      size: brackets.size,
+      hasThirdPlace: brackets.hasThirdPlace,
+      seasonName: seasons.name,
+    })
+    .from(brackets)
+    .leftJoin(seasons, eq(brackets.seasonId, seasons.id))
+    .where(eq(brackets.isPublished, true))
+
+  const entries: ChampionEntry[] = []
+
+  for (const bracket of publishedBrackets) {
+    if (!isBracketSize(bracket.size)) continue
+
+    const [seeds, results] = await Promise.all([
+      loadSeedArray(db, bracket.id, bracket.size),
+      loadResults(db, bracket.id),
+    ])
+    const champion = championOf(
+      computeBracket(
+        bracket.size,
+        bracket.hasThirdPlace,
+        seedNames(seeds),
+        results
+      )
+    )
+    if (!champion) continue
+
+    const championSeed = seeds.find((seed) => seed?.name === champion)
+    if (championSeed?.playerId) {
+      entries.push({
+        playerId: championSeed.playerId,
+        bracketId: bracket.id,
+        label: bracket.seasonName
+          ? `${bracket.seasonName} Playoff Champion`
+          : `${bracket.name} Champion`,
+      })
+    }
+  }
+
+  return entries
+}
+
+async function getChampions(db: DbClient): Promise<ChampionEntry[]> {
+  const cached = await redis.get(CHAMPIONS_CACHE_KEY)
+  if (cached) {
+    return JSON.parse(cached) as ChampionEntry[]
+  }
+  const entries = await computeChampions(db)
+  await redis.setEx(
+    CHAMPIONS_CACHE_KEY,
+    CHAMPIONS_CACHE_TTL_SECONDS,
+    JSON.stringify(entries)
+  )
+  return entries
+}
+
+async function invalidateChampionsCache() {
+  await redis.del(CHAMPIONS_CACHE_KEY)
+}
 
 const sizeSchema = z
   .number()
@@ -256,6 +330,7 @@ export const bracketsRouter = createTRPCRouter({
         await replaceSeeds(ctx.db, bracket.id, input.seeds)
       }
 
+      await invalidateChampionsCache()
       return { success: true }
     }),
 
@@ -297,6 +372,7 @@ export const bracketsRouter = createTRPCRouter({
               eq(bracketResults.slot, input.slot)
             )
           )
+        await invalidateChampionsCache()
         return { success: true }
       }
 
@@ -322,6 +398,7 @@ export const bracketsRouter = createTRPCRouter({
           },
         })
 
+      await invalidateChampionsCache()
       return { success: true }
     }),
 
@@ -330,6 +407,7 @@ export const bracketsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await getBracketOrThrow(ctx.db, input.id)
       await ctx.db.delete(brackets).where(eq(brackets.id, input.id))
+      await invalidateChampionsCache()
       return { success: true }
     }),
 
@@ -383,60 +461,15 @@ export const bracketsRouter = createTRPCRouter({
   /**
    * Playoff titles won by a player (matched via seed player links) across
    * published brackets — powers the profile "Season X Playoff Champion" badge.
+   * Served from the cached champions map; champions only change when an
+   * admin edits a bracket, which invalidates the cache.
    */
   championsForPlayer: publicProcedure
     .input(z.object({ playerId: z.string().trim().min(1).max(64) }))
     .query(async ({ ctx, input }) => {
-      // Index-driven: start from the player's seed rows, so profiles of
-      // players who never made playoffs cost a single lookup.
-      const entries = await ctx.db
-        .select({
-          bracketId: brackets.id,
-          bracketName: brackets.name,
-          size: brackets.size,
-          hasThirdPlace: brackets.hasThirdPlace,
-          seasonName: seasons.name,
-          seedName: bracketSeeds.name,
-        })
-        .from(bracketSeeds)
-        .innerJoin(
-          brackets,
-          and(
-            eq(bracketSeeds.bracketId, brackets.id),
-            eq(brackets.isPublished, true)
-          )
-        )
-        .leftJoin(seasons, eq(brackets.seasonId, seasons.id))
-        .where(eq(bracketSeeds.playerId, input.playerId))
-
-      const titles: { bracketId: number; label: string }[] = []
-
-      for (const entry of entries) {
-        if (!isBracketSize(entry.size)) continue
-
-        const [seeds, results] = await Promise.all([
-          loadSeedArray(ctx.db, entry.bracketId, entry.size),
-          loadResults(ctx.db, entry.bracketId),
-        ])
-        const champion = championOf(
-          computeBracket(
-            entry.size,
-            entry.hasThirdPlace,
-            seedNames(seeds),
-            results
-          )
-        )
-
-        if (champion !== null && champion === entry.seedName) {
-          titles.push({
-            bracketId: entry.bracketId,
-            label: entry.seasonName
-              ? `${entry.seasonName} Playoff Champion`
-              : `${entry.bracketName} Champion`,
-          })
-        }
-      }
-
-      return titles
+      const champions = await getChampions(ctx.db)
+      return champions
+        .filter((entry) => entry.playerId === input.playerId)
+        .map((entry) => ({ bracketId: entry.bracketId, label: entry.label }))
     }),
 })
