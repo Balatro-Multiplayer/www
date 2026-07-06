@@ -31,7 +31,8 @@ import {
 } from '@/lib/bracket'
 import { api } from '@/trpc/react'
 import type { SeasonOption } from '../brackets-client'
-import { formatSeedLines, parseSeedLines } from '../seed-lines'
+import { PlayerSearch } from '../player-search'
+import { addSeedLine, formatSeedLines, parseSeedLines } from '../seed-lines'
 
 export type BracketDetail = {
   id: number
@@ -248,6 +249,17 @@ export function BracketDetailClient({
           <Label htmlFor='bracket-seeds'>
             Players (one per line, seed order)
           </Label>
+          <PlayerSearch
+            onPick={(player) =>
+              setSeedsText((text) =>
+                addSeedLine(
+                  text,
+                  { name: player.name, playerId: player.discordId },
+                  bracket.size
+                )
+              )
+            }
+          />
           <Textarea
             id='bracket-seeds'
             value={seedsText}

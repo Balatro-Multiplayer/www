@@ -20,6 +20,7 @@ import {
   brackets,
   seasons,
 } from '@/server/db/schema'
+import { botlatro_service } from '@/server/services/botlatro.service'
 
 type DbClient = typeof import('@/server/db').db
 
@@ -329,6 +330,22 @@ export const bracketsRouter = createTRPCRouter({
       await getBracketOrThrow(ctx.db, input.id)
       await ctx.db.delete(brackets).where(eq(brackets.id, input.id))
       return { success: true }
+    }),
+
+  /**
+   * Discord guild member search (via the bot) so seeds can be picked from
+   * real players instead of hand-typing ids.
+   */
+  searchPlayers: permissionProcedure('brackets.manage')
+    .input(z.object({ q: z.string().trim().min(2).max(100) }))
+    .query(async ({ input }) => {
+      const members = await botlatro_service.searchGuildMembers(input.q)
+      return members.slice(0, 10).map((member) => ({
+        discordId: member.discord_id,
+        name: member.display_name || member.username,
+        username: member.username,
+        avatarUrl: member.avatar_url,
+      }))
     }),
 
   // ---- Public reads ------------------------------------------------------

@@ -47,7 +47,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { BRACKET_SIZES } from '@/lib/bracket'
 import { formatDate } from '@/lib/utils'
 import { api } from '@/trpc/react'
-import { parseSeedLines } from './seed-lines'
+import { PlayerSearch } from './player-search'
+import { addSeedLine, parseSeedLines } from './seed-lines'
 
 export type BracketListRow = {
   id: number
@@ -284,6 +285,17 @@ export function BracketsClient({
               <Label htmlFor='bracket-seeds'>
                 Players (one per line, in seed order)
               </Label>
+              <PlayerSearch
+                onPick={(player) =>
+                  setSeedsText((text) =>
+                    addSeedLine(
+                      text,
+                      { name: player.name, playerId: player.discordId },
+                      Number.parseInt(size, 10)
+                    )
+                  )
+                }
+              />
               <Textarea
                 id='bracket-seeds'
                 value={seedsText}
