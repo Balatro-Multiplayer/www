@@ -533,3 +533,131 @@ export const memoryLogs = pgTable('memory_logs', {
   externalMb: real('external_mb').notNull(),
   metadata: json('metadata'),
 })
+
+export const polls = pgTable(
+  'polls',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    uuid: varchar('uuid', { length: 255 })
+      .notNull()
+      .$defaultFn(() => crypto.randomUUID()),
+    title: text('title').notNull(),
+    description: text('description'),
+    // 'open' | 'closed' — text + zod enum at the API boundary (no pgEnum in this codebase)
+    status: varchar('status', { length: 255 }).notNull().default('open'),
+    closedAt: timestamp('closed_at'),
+    // scheduled auto-close time; null = no auto-close. Effective-closed also
+    // considers this passing (see src/lib/poll-status.ts).
+    closesAt: timestamp('closes_at'),
+    createdBy: varchar('created_by', { length: 255 }).references(() => users.id),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [uniqueIndex('polls_uuid_idx').on(t.uuid)]
+)
+
+export const pollOptions = pgTable(
+  'poll_options',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    pollId: integer('poll_id')
+      .references(() => polls.id, { onDelete: 'cascade' })
+      .notNull(),
+    label: text('label').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('poll_options_poll_id_idx').on(t.pollId)]
+)
+
+export const pollBallots = pgTable(
+  'poll_ballots',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    pollId: integer('poll_id')
+      .references(() => polls.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: varchar('user_id', { length: 255 })
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  // one ballot per user per poll
+  (t) => [uniqueIndex('poll_ballots_poll_user_idx').on(t.pollId, t.userId)]
+)
+
+export const pollBallotRankings = pgTable(
+  'poll_ballot_rankings',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    ballotId: integer('ballot_id')
+      .references(() => pollBallots.id, { onDelete: 'cascade' })
+      .notNull(),
+    optionId: integer('option_id')
+      .references(() => pollOptions.id, { onDelete: 'cascade' })
+      .notNull(),
+    // 1 = top choice; contiguous 1..k
+    rank: integer('rank').notNull(),
+  },
+  (t) => [
+    uniqueIndex('poll_ballot_rankings_ballot_option_idx').on(
+      t.ballotId,
+      t.optionId
+    ),
+    uniqueIndex('poll_ballot_rankings_ballot_rank_idx').on(t.ballotId, t.rank),
+    index('poll_ballot_rankings_ballot_idx').on(t.ballotId),
+  ]
+)
+
+export const pollsRelations = relations(polls, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [polls.createdBy],
+    references: [users.id],
+  }),
+  options: many(pollOptions),
+  ballots: many(pollBallots),
+}))
+
+export const pollOptionsRelations = relations(pollOptions, ({ one, many }) => ({
+  poll: one(polls, {
+    fields: [pollOptions.pollId],
+    references: [polls.id],
+  }),
+  rankings: many(pollBallotRankings),
+}))
+
+export const pollBallotsRelations = relations(
+  pollBallots,
+  ({ one, many }) => ({
+    poll: one(polls, {
+      fields: [pollBallots.pollId],
+      references: [polls.id],
+    }),
+    user: one(users, {
+      fields: [pollBallots.userId],
+      references: [users.id],
+    }),
+    rankings: many(pollBallotRankings),
+  })
+)
+
+export const pollBallotRankingsRelations = relations(
+  pollBallotRankings,
+  ({ one }) => ({
+    ballot: one(pollBallots, {
+      fields: [pollBallotRankings.ballotId],
+      references: [pollBallots.id],
+    }),
+    option: one(pollOptions, {
+      fields: [pollBallotRankings.optionId],
+      references: [pollOptions.id],
+    }),
+  })
+)

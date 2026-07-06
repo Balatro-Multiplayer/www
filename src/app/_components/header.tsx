@@ -181,6 +181,14 @@ export function Header({
                   </p>
                 </NavbarMenuLink>
               ) : null}
+              {hasPermission(session?.user, 'polls.manage') ? (
+                <NavbarMenuLink href='/admin/polls'>
+                  <p className='-mb-1 font-medium text-sm'>Polls</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Create ranked-choice polls
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
             </NavbarMenuContent>
           </NavbarMenu>
         )}

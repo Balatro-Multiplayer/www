@@ -16,6 +16,7 @@ export const PERMISSION_KEYS = [
   'transcripts.search',
   'leaderboard.snapshots.view',
   'queues.manage',
+  'polls.manage',
 ] as const
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
@@ -34,6 +35,7 @@ export const ADMIN_NAV_PERMISSIONS = [
   'obs_control.manage',
   'transcripts.search',
   'queues.manage',
+  'polls.manage',
 ] as const satisfies readonly PermissionKey[]
 
 export const LEGACY_ROLE_PERMISSIONS = {
@@ -59,6 +61,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
     'transcripts.search',
     'leaderboard.snapshots.view',
     'queues.manage',
+    'polls.manage',
   ],
   owner: [
     'permissions.manage',
@@ -78,6 +81,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
     'transcripts.search',
     'leaderboard.snapshots.view',
     'queues.manage',
+    'polls.manage',
   ],
 } as const satisfies Record<string, readonly PermissionKey[]>
 
@@ -213,6 +217,16 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: 'obs_control.manage',
         label: 'Manage OBS controls',
         description: 'Open the OBS control panel.',
+      },
+    ],
+  },
+  {
+    title: 'Polls',
+    permissions: [
+      {
+        key: 'polls.manage',
+        label: 'Manage polls',
+        description: 'Create and manage ranked-choice polls.',
       },
     ],
   },

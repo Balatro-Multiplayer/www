@@ -336,6 +336,15 @@ export function MobileMenu({
                     OBS Control Panel
                   </MobileMenuLink>
                 ) : null}
+                {hasPermission(session?.user, 'polls.manage') ? (
+                  <MobileMenuLink
+                    href='/admin/polls'
+                    icon={<BarChart3 className='size-4' />}
+                    onClick={close}
+                  >
+                    Polls
+                  </MobileMenuLink>
+                ) : null}
               </div>
             </>
           )}

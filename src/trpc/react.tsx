@@ -88,8 +88,12 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
 }
 
 function getBaseUrl() {
-  if (env.NODE_ENV === 'production') return 'https://balatromp.com'
+  // In the browser, always call the same origin the page was served from. In
+  // real production that is https://balatromp.com (identical to before); on
+  // preview/self-hosted deployments this keeps client tRPC calls on-instance
+  // instead of hitting the production API.
   if (typeof window !== 'undefined') return window.location.origin
+  if (env.NODE_ENV === 'production') return 'https://balatromp.com'
   if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`
 
   return `http://localhost:${env.PORT ?? 3000}`
