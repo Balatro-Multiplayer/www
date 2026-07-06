@@ -693,6 +693,8 @@ export const bracketSeeds = pgTable(
   },
   (t) => [
     index('bracket_seeds_bracket_id_idx').on(t.bracketId),
+    // Profile champion badges look brackets up by player.
+    index('bracket_seeds_player_id_idx').on(t.playerId),
     uniqueIndex('bracket_seeds_bracket_position_idx').on(
       t.bracketId,
       t.position

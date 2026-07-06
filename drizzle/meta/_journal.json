@@ -120,6 +120,13 @@
       "when": 1783365073739,
       "tag": "0016_chunky_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783371325903,
+      "tag": "0017_military_catseye",
+      "breakpoints": true
     }
   ]
 }

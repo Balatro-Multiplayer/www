@@ -8,6 +8,7 @@ import {
   computeBracket,
   isBracketSize,
   isValidMatchAddress,
+  seedNames,
 } from '@/lib/bracket'
 import {
   createTRPCRouter,
@@ -386,62 +387,52 @@ export const bracketsRouter = createTRPCRouter({
   championsForPlayer: publicProcedure
     .input(z.object({ playerId: z.string().trim().min(1).max(64) }))
     .query(async ({ ctx, input }) => {
-      const publishedBrackets = await ctx.db
+      // Index-driven: start from the player's seed rows, so profiles of
+      // players who never made playoffs cost a single lookup.
+      const entries = await ctx.db
         .select({
-          id: brackets.id,
-          name: brackets.name,
+          bracketId: brackets.id,
+          bracketName: brackets.name,
           size: brackets.size,
           hasThirdPlace: brackets.hasThirdPlace,
           seasonName: seasons.name,
+          seedName: bracketSeeds.name,
         })
-        .from(brackets)
+        .from(bracketSeeds)
+        .innerJoin(
+          brackets,
+          and(
+            eq(bracketSeeds.bracketId, brackets.id),
+            eq(brackets.isPublished, true)
+          )
+        )
         .leftJoin(seasons, eq(brackets.seasonId, seasons.id))
-        .where(eq(brackets.isPublished, true))
+        .where(eq(bracketSeeds.playerId, input.playerId))
 
       const titles: { bracketId: number; label: string }[] = []
 
-      for (const bracket of publishedBrackets) {
-        if (!isBracketSize(bracket.size)) continue
+      for (const entry of entries) {
+        if (!isBracketSize(entry.size)) continue
 
-        const seedRows = await ctx.db
-          .select()
-          .from(bracketSeeds)
-          .where(eq(bracketSeeds.bracketId, bracket.id))
-          .orderBy(asc(bracketSeeds.position))
-
-        const hasPlayer = seedRows.some(
-          (seed) => seed.playerId === input.playerId
-        )
-        if (!hasPlayer) continue
-
-        const seedNames: (string | null)[] = Array.from(
-          { length: bracket.size },
-          () => null
-        )
-        for (const seed of seedRows) {
-          if (seed.position >= 0 && seed.position < bracket.size) {
-            seedNames[seed.position] = seed.name
-          }
-        }
-
-        const results = await loadResults(ctx.db, bracket.id)
+        const [seeds, results] = await Promise.all([
+          loadSeedArray(ctx.db, entry.bracketId, entry.size),
+          loadResults(ctx.db, entry.bracketId),
+        ])
         const champion = championOf(
           computeBracket(
-            bracket.size,
-            bracket.hasThirdPlace,
-            seedNames,
+            entry.size,
+            entry.hasThirdPlace,
+            seedNames(seeds),
             results
           )
         )
-        if (!champion) continue
 
-        const championSeed = seedRows.find((seed) => seed.name === champion)
-        if (championSeed?.playerId === input.playerId) {
+        if (champion !== null && champion === entry.seedName) {
           titles.push({
-            bracketId: bracket.id,
-            label: bracket.seasonName
-              ? `${bracket.seasonName} Playoff Champion`
-              : `${bracket.name} Champion`,
+            bracketId: entry.bracketId,
+            label: entry.seasonName
+              ? `${entry.seasonName} Playoff Champion`
+              : `${entry.bracketName} Champion`,
           })
         }
       }

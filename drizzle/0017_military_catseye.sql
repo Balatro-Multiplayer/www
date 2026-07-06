@@ -1,0 +1,1 @@
+CREATE INDEX "bracket_seeds_player_id_idx" ON "bracket_seeds" USING btree ("player_id");
