@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Plus, X } from 'lucide-react'
+import { Crown, GripVertical, Plus, X } from 'lucide-react'
 import { signIn } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -405,26 +405,54 @@ export function PollVoteClient({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className='flex flex-col gap-2'>
-                  {results.data.ranking.map((row) => (
-                    <div
-                      key={row.optionId}
-                      className='flex items-center gap-3 rounded-md border p-2'
-                    >
-                      <span className='flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary text-sm'>
-                        {row.position}
-                      </span>
-                      <span className='flex-1 font-medium text-sm'>
-                        {row.label}
-                      </span>
-                      <span className='text-muted-foreground text-xs'>
-                        {row.ballotsRanking} ranked
-                        {row.averageRank !== null
-                          ? ` · avg ${row.averageRank.toFixed(1)}`
-                          : ''}
-                      </span>
-                      <Badge variant='secondary'>{row.points} pts</Badge>
-                    </div>
-                  ))}
+                  {results.data.ranking.map((row) => {
+                    // Gold-highlight the leader(s): everyone tied at the top
+                    // points (only when at least one vote gives points).
+                    const topPoints = results.data.ranking[0]?.points ?? 0
+                    const isWinner = topPoints > 0 && row.points === topPoints
+                    return (
+                      <div
+                        key={row.optionId}
+                        className={`flex items-center gap-3 rounded-md border p-2 ${
+                          isWinner
+                            ? 'border-amber-400 bg-amber-400/10 dark:border-amber-500/60'
+                            : ''
+                        }`}
+                      >
+                        <span
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-semibold text-sm ${
+                            isWinner
+                              ? 'bg-amber-400/20 text-amber-600 dark:text-amber-400'
+                              : 'bg-primary/10 text-primary'
+                          }`}
+                        >
+                          {row.position}
+                        </span>
+                        <span className='flex flex-1 items-center gap-1.5 font-medium text-sm'>
+                          {row.label}
+                          {isWinner ? (
+                            <Crown className='h-4 w-4 text-amber-500' />
+                          ) : null}
+                        </span>
+                        <span className='text-muted-foreground text-xs'>
+                          {row.ballotsRanking} ranked
+                          {row.averageRank !== null
+                            ? ` · avg ${row.averageRank.toFixed(1)}`
+                            : ''}
+                        </span>
+                        <Badge
+                          variant='secondary'
+                          className={
+                            isWinner
+                              ? 'bg-amber-500 text-white hover:bg-amber-500'
+                              : ''
+                          }
+                        >
+                          {row.points} pts
+                        </Badge>
+                      </div>
+                    )
+                  })}
                 </CardContent>
               </Card>
 
