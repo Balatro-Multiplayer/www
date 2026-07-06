@@ -47,22 +47,36 @@ import { Textarea } from '@/components/ui/textarea'
 import { BRACKET_SIZES } from '@/lib/bracket'
 import { formatDate } from '@/lib/utils'
 import { api } from '@/trpc/react'
+import { parseSeedLines } from './seed-lines'
 
 export type BracketListRow = {
   id: number
   name: string
+  seasonId: number | null
   size: number
   isPublished: boolean
   seedCount: number
   createdAt: string
 }
 
-export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
+export type SeasonOption = {
+  id: number
+  name: string
+}
+
+export function BracketsClient({
+  brackets,
+  seasons,
+}: {
+  brackets: BracketListRow[]
+  seasons: SeasonOption[]
+}) {
   const router = useRouter()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [name, setName] = useState('')
   const [size, setSize] = useState('16')
   const [hasThirdPlace, setHasThirdPlace] = useState(true)
+  const [seasonId, setSeasonId] = useState('none')
   const [seedsText, setSeedsText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<BracketListRow | null>(
@@ -92,6 +106,7 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
     setName('')
     setSize('16')
     setHasThirdPlace(true)
+    setSeasonId('none')
     setSeedsText('')
     setError(null)
   }
@@ -104,10 +119,10 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const sizeNumber = Number.parseInt(size, 10)
-    const seeds = seedsText
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
+    const seeds = parseSeedLines(seedsText)
+    while (seeds.length > 0 && !seeds[seeds.length - 1]?.name) {
+      seeds.pop()
+    }
 
     if (!name.trim()) {
       setError('Name is required')
@@ -115,7 +130,7 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
     }
     if (seeds.length > sizeNumber) {
       setError(
-        `Too many players: ${seeds.length} listed for a ${sizeNumber}-player bracket`
+        `Too many players: ${seeds.length} lines for a ${sizeNumber}-player bracket`
       )
       return
     }
@@ -125,6 +140,7 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
       name: name.trim(),
       size: sizeNumber,
       hasThirdPlace,
+      seasonId: seasonId === 'none' ? null : Number.parseInt(seasonId, 10),
       seeds: seeds.length > 0 ? seeds : undefined,
     })
   }
@@ -140,6 +156,7 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Season</TableHead>
               <TableHead>Size</TableHead>
               <TableHead>Players</TableHead>
               <TableHead>Status</TableHead>
@@ -151,7 +168,7 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
             {brackets.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className='py-10 text-center text-muted-foreground'
                 >
                   No brackets yet. Create one to get started.
@@ -167,6 +184,10 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
                     >
                       {bracket.name}
                     </Link>
+                  </TableCell>
+                  <TableCell className='text-muted-foreground'>
+                    {seasons.find((season) => season.id === bracket.seasonId)
+                      ?.name ?? '—'}
                   </TableCell>
                   <TableCell>{bracket.size}</TableCell>
                   <TableCell>
@@ -216,7 +237,7 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
                 placeholder='Season 7 Playoffs'
               />
             </div>
-            <div className='flex items-end gap-4'>
+            <div className='flex flex-wrap items-end gap-4'>
               <div className='flex flex-col gap-2'>
                 <Label>Players</Label>
                 <Select value={size} onValueChange={setSize}>
@@ -227,6 +248,22 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
                     {BRACKET_SIZES.map((option) => (
                       <SelectItem key={option} value={String(option)}>
                         {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className='flex flex-col gap-2'>
+                <Label>Season</Label>
+                <Select value={seasonId} onValueChange={setSeasonId}>
+                  <SelectTrigger className='w-40'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='none'>No season</SelectItem>
+                    {seasons.map((season) => (
+                      <SelectItem key={season.id} value={String(season.id)}>
+                        {season.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -256,7 +293,8 @@ export function BracketsClient({ brackets }: { brackets: BracketListRow[] }) {
               />
               <p className='text-muted-foreground text-xs'>
                 Lines 1–2 play each other in the first round, then 3–4, and so
-                on. Leave empty to fill in later.
+                on. Optionally link a player profile with a pipe:{' '}
+                <code>Name | discord id</code>. Leave empty to fill in later.
               </p>
             </div>
             {error ? <p className='text-destructive text-sm'>{error}</p> : null}

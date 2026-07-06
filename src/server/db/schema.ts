@@ -664,6 +664,8 @@ export const pollBallotRankingsRelations = relations(
 export const brackets = pgTable('brackets', {
   id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
   name: text('name').notNull(),
+  // Optional link to the site's season registry (badges, grouping).
+  seasonId: integer('season_id').references(() => seasons.id),
   // Player count; power of two (4–32), enforced at the API boundary.
   size: integer('size').notNull().default(16),
   hasThirdPlace: boolean('has_third_place').notNull().default(true),
@@ -686,6 +688,8 @@ export const bracketSeeds = pgTable(
     // Seed position 0..size-1; missing positions render as TBD.
     position: integer('position').notNull(),
     name: text('name').notNull(),
+    // Optional Discord id linking this seed to a site player profile.
+    playerId: varchar('player_id', { length: 64 }),
   },
   (t) => [
     index('bracket_seeds_bracket_id_idx').on(t.bracketId),
@@ -728,6 +732,10 @@ export const bracketsRelations = relations(brackets, ({ one, many }) => ({
   creator: one(users, {
     fields: [brackets.createdBy],
     references: [users.id],
+  }),
+  season: one(seasons, {
+    fields: [brackets.seasonId],
+    references: [seasons.id],
   }),
   seeds: many(bracketSeeds),
   results: many(bracketResults),

@@ -9,6 +9,13 @@ import { BracketView } from '@/app/_components/bracket-view'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -18,16 +25,22 @@ import {
   computeBracket,
   matchLabel,
   roundCount,
+  type SeedEntry,
+  seedNames,
+  seedPlayerLinks,
 } from '@/lib/bracket'
 import { api } from '@/trpc/react'
+import type { SeasonOption } from '../brackets-client'
+import { formatSeedLines, parseSeedLines } from '../seed-lines'
 
 export type BracketDetail = {
   id: number
   name: string
+  seasonId: number | null
   size: BracketSize
   hasThirdPlace: boolean
   isPublished: boolean
-  seeds: (string | null)[]
+  seeds: (SeedEntry | null)[]
   results: BracketResult[]
 }
 
@@ -56,12 +69,16 @@ function parseScore(value: string): number | null | undefined {
   return parsed
 }
 
-export function BracketDetailClient({ bracket }: { bracket: BracketDetail }) {
+export function BracketDetailClient({
+  bracket,
+  seasons,
+}: {
+  bracket: BracketDetail
+  seasons: SeasonOption[]
+}) {
   const router = useRouter()
   const [name, setName] = useState(bracket.name)
-  const [seedsText, setSeedsText] = useState(
-    bracket.seeds.map((seed) => seed ?? '').join('\n')
-  )
+  const [seedsText, setSeedsText] = useState(formatSeedLines(bracket.seeds))
   const [drafts, setDrafts] = useState<Record<string, ScoreDraft>>(() =>
     initialDrafts(bracket.results)
   )
@@ -81,10 +98,11 @@ export function BracketDetailClient({ bracket }: { bracket: BracketDetail }) {
     onError: (err) => toast.error(err.message),
   })
 
+  const names = seedNames(bracket.seeds)
   const rounds = computeBracket(
     bracket.size,
     bracket.hasThirdPlace,
-    bracket.seeds,
+    names,
     bracket.results
   )
   const totalRounds = roundCount(bracket.size)
@@ -128,15 +146,15 @@ export function BracketDetailClient({ bracket }: { bracket: BracketDetail }) {
   }
 
   function saveSeeds() {
-    const seeds = seedsText.split('\n').map((line) => line.trim())
-    if (seeds.filter(Boolean).length > bracket.size) {
+    const seeds = parseSeedLines(seedsText)
+    if (seeds.filter((seed) => seed.name).length > bracket.size) {
       toast.error(`Too many players for a ${bracket.size}-player bracket`)
       return
     }
     // Pad/truncate to the bracket size so positions stay aligned to lines.
     const padded = Array.from(
       { length: bracket.size },
-      (_, i) => seeds[i] ?? ''
+      (_, i) => seeds[i] ?? { name: '', playerId: null }
     )
     updateBracket.mutate({ id: bracket.id, seeds: padded })
   }
@@ -183,6 +201,34 @@ export function BracketDetailClient({ bracket }: { bracket: BracketDetail }) {
           >
             Rename
           </Button>
+          <div className='flex flex-col gap-2'>
+            <Label>Season</Label>
+            <Select
+              value={
+                bracket.seasonId === null ? 'none' : String(bracket.seasonId)
+              }
+              onValueChange={(value) =>
+                updateBracket.mutate({
+                  id: bracket.id,
+                  seasonId:
+                    value === 'none' ? null : Number.parseInt(value, 10),
+                })
+              }
+              disabled={updateBracket.isPending}
+            >
+              <SelectTrigger className='w-40'>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='none'>No season</SelectItem>
+                {seasons.map((season) => (
+                  <SelectItem key={season.id} value={String(season.id)}>
+                    {season.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className='flex items-center gap-2 pb-2'>
             <Switch
               id='bracket-published'
@@ -217,8 +263,10 @@ export function BracketDetailClient({ bracket }: { bracket: BracketDetail }) {
             Save Players
           </Button>
           <p className='text-muted-foreground text-xs'>
-            Line number = seed position. Keep a line blank for TBD. Changing
-            players does not clear entered scores.
+            Line number = seed position. Keep a line blank for TBD. Optionally
+            link a player profile with a pipe: <code>Name | discord id</code>{' '}
+            (powers profile champion badges). Changing players does not clear
+            entered scores.
           </p>
         </div>
 
@@ -294,9 +342,10 @@ export function BracketDetailClient({ bracket }: { bracket: BracketDetail }) {
           bracket={{
             size: bracket.size,
             hasThirdPlace: bracket.hasThirdPlace,
-            seeds: bracket.seeds,
+            seeds: names,
             results: bracket.results,
           }}
+          playerLinks={seedPlayerLinks(bracket.seeds)}
         />
       </div>
     </div>

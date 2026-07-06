@@ -30,9 +30,10 @@ export default async function AdminBracketDetailPage({
     notFound()
   }
 
-  const bracket = await api.brackets
-    .getForAdmin({ id: numericId })
-    .catch(() => null)
+  const [bracket, seasons] = await Promise.all([
+    api.brackets.getForAdmin({ id: numericId }).catch(() => null),
+    api.seasons.list(),
+  ])
   if (!bracket || !isBracketSize(bracket.size)) {
     notFound()
   }
@@ -43,12 +44,17 @@ export default async function AdminBracketDetailPage({
         bracket={{
           id: bracket.id,
           name: bracket.name,
+          seasonId: bracket.seasonId,
           size: bracket.size,
           hasThirdPlace: bracket.hasThirdPlace,
           isPublished: bracket.isPublished,
           seeds: bracket.seeds,
           results: bracket.results,
         }}
+        seasons={seasons.map((season) => ({
+          id: season.id,
+          name: season.name,
+        }))}
       />
     </div>
   )

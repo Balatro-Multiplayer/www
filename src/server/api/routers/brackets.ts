@@ -4,6 +4,8 @@ import { z } from 'zod'
 import {
   BRACKET_SIZES,
   type BracketSize,
+  championOf,
+  computeBracket,
   isBracketSize,
   isValidMatchAddress,
 } from '@/lib/bracket'
@@ -12,7 +14,12 @@ import {
   permissionProcedure,
   publicProcedure,
 } from '@/server/api/trpc'
-import { bracketResults, bracketSeeds, brackets } from '@/server/db/schema'
+import {
+  bracketResults,
+  bracketSeeds,
+  brackets,
+  seasons,
+} from '@/server/db/schema'
 
 type DbClient = typeof import('@/server/db').db
 
@@ -23,8 +30,16 @@ const sizeSchema = z
     message: `Size must be one of ${BRACKET_SIZES.join(', ')}`,
   })
 
-// Full-length seed list; blank entries mean TBD.
-const seedsSchema = z.array(z.string().trim().max(100))
+// Full-length seed list; blank names mean TBD. playerId optionally links the
+// seed to a site player profile (Discord id).
+const seedsSchema = z.array(
+  z.object({
+    name: z.string().trim().max(100),
+    playerId: z.string().trim().max(64).nullable().optional(),
+  })
+)
+
+const seasonIdSchema = z.number().int().positive().nullable()
 
 async function getBracketOrThrow(db: DbClient, id: number) {
   const bracket = await db
@@ -49,10 +64,11 @@ async function loadSeedArray(db: DbClient, bracketId: number, size: number) {
     .where(eq(bracketSeeds.bracketId, bracketId))
     .orderBy(asc(bracketSeeds.position))
 
-  const seeds: (string | null)[] = Array.from({ length: size }, () => null)
+  const seeds: ({ name: string; playerId: string | null } | null)[] =
+    Array.from({ length: size }, () => null)
   for (const row of rows) {
     if (row.position >= 0 && row.position < size) {
-      seeds[row.position] = row.name
+      seeds[row.position] = { name: row.name, playerId: row.playerId }
     }
   }
   return seeds
@@ -70,11 +86,20 @@ function loadResults(db: DbClient, bracketId: number) {
     .where(eq(bracketResults.bracketId, bracketId))
 }
 
-async function replaceSeeds(db: DbClient, bracketId: number, seeds: string[]) {
+async function replaceSeeds(
+  db: DbClient,
+  bracketId: number,
+  seeds: z.infer<typeof seedsSchema>
+) {
   await db.transaction(async (tx) => {
     await tx.delete(bracketSeeds).where(eq(bracketSeeds.bracketId, bracketId))
     const values = seeds
-      .map((name, position) => ({ bracketId, position, name: name.trim() }))
+      .map((seed, position) => ({
+        bracketId,
+        position,
+        name: seed.name.trim(),
+        playerId: seed.playerId?.trim() || null,
+      }))
       .filter((seed) => seed.name.length > 0)
     if (values.length > 0) {
       await tx.insert(bracketSeeds).values(values)
@@ -84,12 +109,13 @@ async function replaceSeeds(db: DbClient, bracketId: number, seeds: string[]) {
 
 function toBracketPayload(
   bracket: typeof brackets.$inferSelect,
-  seeds: (string | null)[],
+  seeds: Awaited<ReturnType<typeof loadSeedArray>>,
   results: Awaited<ReturnType<typeof loadResults>>
 ) {
   return {
     id: bracket.id,
     name: bracket.name,
+    seasonId: bracket.seasonId,
     // The column is a plain integer; it only ever holds validated sizes.
     size: bracket.size as BracketSize,
     hasThirdPlace: bracket.hasThirdPlace,
@@ -110,6 +136,7 @@ export const bracketsRouter = createTRPCRouter({
         name: z.string().trim().min(1).max(255),
         size: sizeSchema.default(16),
         hasThirdPlace: z.boolean().default(true),
+        seasonId: seasonIdSchema.optional(),
         seeds: seedsSchema.optional(),
       })
     )
@@ -127,6 +154,7 @@ export const bracketsRouter = createTRPCRouter({
           name: input.name,
           size: input.size,
           hasThirdPlace: input.hasThirdPlace,
+          seasonId: input.seasonId ?? null,
           createdBy: ctx.session.user.id,
         })
         .returning()
@@ -138,7 +166,7 @@ export const bracketsRouter = createTRPCRouter({
         })
       }
 
-      if (input.seeds?.some((seed) => seed.trim().length > 0)) {
+      if (input.seeds?.some((seed) => seed.name.trim().length > 0)) {
         await replaceSeeds(ctx.db, created.id, input.seeds)
       }
 
@@ -184,6 +212,7 @@ export const bracketsRouter = createTRPCRouter({
         name: z.string().trim().min(1).max(255).optional(),
         isPublished: z.boolean().optional(),
         hasThirdPlace: z.boolean().optional(),
+        seasonId: seasonIdSchema.optional(),
         // Full replacement, indexed by seed position; omitted = unchanged.
         seeds: seedsSchema.optional(),
       })
@@ -201,7 +230,8 @@ export const bracketsRouter = createTRPCRouter({
       if (
         input.name !== undefined ||
         input.isPublished !== undefined ||
-        input.hasThirdPlace !== undefined
+        input.hasThirdPlace !== undefined ||
+        input.seasonId !== undefined
       ) {
         await ctx.db
           .update(brackets)
@@ -212,6 +242,9 @@ export const bracketsRouter = createTRPCRouter({
               : {}),
             ...(input.hasThirdPlace !== undefined
               ? { hasThirdPlace: input.hasThirdPlace }
+              : {}),
+            ...(input.seasonId !== undefined
+              ? { seasonId: input.seasonId }
               : {}),
           })
           .where(eq(brackets.id, bracket.id))
@@ -305,6 +338,7 @@ export const bracketsRouter = createTRPCRouter({
       .select({
         id: brackets.id,
         name: brackets.name,
+        seasonId: brackets.seasonId,
         size: brackets.size,
         createdAt: brackets.createdAt,
       })
@@ -326,5 +360,75 @@ export const bracketsRouter = createTRPCRouter({
         loadResults(ctx.db, bracket.id),
       ])
       return toBracketPayload(bracket, seeds, results)
+    }),
+
+  /**
+   * Playoff titles won by a player (matched via seed player links) across
+   * published brackets — powers the profile "Season X Playoff Champion" badge.
+   */
+  championsForPlayer: publicProcedure
+    .input(z.object({ playerId: z.string().trim().min(1).max(64) }))
+    .query(async ({ ctx, input }) => {
+      const publishedBrackets = await ctx.db
+        .select({
+          id: brackets.id,
+          name: brackets.name,
+          size: brackets.size,
+          hasThirdPlace: brackets.hasThirdPlace,
+          seasonName: seasons.name,
+        })
+        .from(brackets)
+        .leftJoin(seasons, eq(brackets.seasonId, seasons.id))
+        .where(eq(brackets.isPublished, true))
+
+      const titles: { bracketId: number; label: string }[] = []
+
+      for (const bracket of publishedBrackets) {
+        if (!isBracketSize(bracket.size)) continue
+
+        const seedRows = await ctx.db
+          .select()
+          .from(bracketSeeds)
+          .where(eq(bracketSeeds.bracketId, bracket.id))
+          .orderBy(asc(bracketSeeds.position))
+
+        const hasPlayer = seedRows.some(
+          (seed) => seed.playerId === input.playerId
+        )
+        if (!hasPlayer) continue
+
+        const seedNames: (string | null)[] = Array.from(
+          { length: bracket.size },
+          () => null
+        )
+        for (const seed of seedRows) {
+          if (seed.position >= 0 && seed.position < bracket.size) {
+            seedNames[seed.position] = seed.name
+          }
+        }
+
+        const results = await loadResults(ctx.db, bracket.id)
+        const champion = championOf(
+          computeBracket(
+            bracket.size,
+            bracket.hasThirdPlace,
+            seedNames,
+            results
+          )
+        )
+        if (!champion) continue
+
+        const championSeed = seedRows.find((seed) => seed.name === champion)
+        if (championSeed?.playerId === input.playerId) {
+          titles.push({
+            bracketId: bracket.id,
+            label: bracket.seasonName
+              ? `${bracket.seasonName} Playoff Champion`
+              : `${bracket.name} Champion`,
+          })
+        }
+      }
+
+      return titles
     }),
 })

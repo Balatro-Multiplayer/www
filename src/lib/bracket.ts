@@ -191,3 +191,26 @@ export function championOf(rounds: readonly ComputedRound[]): string | null {
   const grandFinal = finalRound?.matches.find((m) => !m.isThirdPlace)
   return grandFinal ? winnerName(grandFinal) : null
 }
+
+/** A stored seed: display name plus an optional player-profile link. */
+export type SeedEntry = { name: string; playerId: string | null }
+
+/** Positional name array for computeBracket from stored seed entries. */
+export function seedNames(
+  seeds: readonly (SeedEntry | null)[]
+): (string | null)[] {
+  return seeds.map((seed) => seed?.name ?? null)
+}
+
+/** Name → Discord id map for seeds linked to a player profile. */
+export function seedPlayerLinks(
+  seeds: readonly (SeedEntry | null)[]
+): Record<string, string> {
+  const links: Record<string, string> = {}
+  for (const seed of seeds) {
+    if (seed?.playerId) {
+      links[seed.name] = seed.playerId
+    }
+  }
+  return links
+}

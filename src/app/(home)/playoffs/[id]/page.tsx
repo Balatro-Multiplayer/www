@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import { BracketView } from '@/app/_components/bracket-view'
+import { seedNames, seedPlayerLinks } from '@/lib/bracket'
 import { api } from '@/trpc/server'
 import { createMetadata } from '../../../../../lib/metadata'
+import { BracketPicker } from '../_components/bracket-picker'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +37,8 @@ export default async function PlayoffBracketPage({
     notFound()
   }
 
+  const published = await api.brackets.listPublic()
+
   return (
     <div className='mx-auto flex w-[calc(100%-1rem)] max-w-[1600px] flex-col gap-6 pt-8 pb-16'>
       <div className='flex flex-col gap-2'>
@@ -43,7 +47,11 @@ export default async function PlayoffBracketPage({
           Follow the playoff bracket as results come in.
         </p>
       </div>
-      <BracketView bracket={bracket} />
+      <BracketPicker brackets={published} activeId={bracket.id} />
+      <BracketView
+        bracket={{ ...bracket, seeds: seedNames(bracket.seeds) }}
+        playerLinks={seedPlayerLinks(bracket.seeds)}
+      />
     </div>
   )
 }

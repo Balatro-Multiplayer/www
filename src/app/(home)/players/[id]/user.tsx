@@ -6,6 +6,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  Crown,
   ListFilter,
   Swords,
 } from 'lucide-react'
@@ -159,6 +160,10 @@ function UserInfoComponent() {
   const [leaderboardFilter, setLeaderboardFilter] = useState('all')
   const { id } = useParams<{ id: string }>()
 
+  const playoffTitles = api.brackets.championsForPlayer.useQuery(
+    { playerId: id },
+    { staleTime: 5 * 60_000 }
+  )
   const gamesQuery = api.history.user_games.useSuspenseQuery({ user_id: id })
   const games = gamesQuery[0] || []
   const [discord_user] = api.players.get_user_by_id.useSuspenseQuery({
@@ -449,6 +454,16 @@ function UserInfoComponent() {
                           ` · ${Math.round(historicRankedData.data.mmr)}`}
                       </Badge>
                     )}
+                  {(playoffTitles.data ?? []).map((title) => (
+                    <Badge
+                      key={title.bracketId}
+                      variant='outline'
+                      className='ml-1 border-yellow-300/70 bg-yellow-50/60 text-xs text-yellow-700 dark:border-yellow-700/50 dark:bg-yellow-950/40 dark:text-yellow-400'
+                    >
+                      <Crown className='mr-1 size-3' />
+                      {title.label}
+                    </Badge>
+                  ))}
                 </div>
 
                 {discord_user.active_ban && (

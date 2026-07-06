@@ -19,7 +19,10 @@ export default async function AdminBracketsPage() {
     redirect('/')
   }
 
-  const brackets = await api.brackets.adminList()
+  const [brackets, seasons] = await Promise.all([
+    api.brackets.adminList(),
+    api.seasons.list(),
+  ])
 
   return (
     <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-6 pt-8'>
@@ -35,10 +38,15 @@ export default async function AdminBracketsPage() {
         brackets={brackets.map((bracket) => ({
           id: bracket.id,
           name: bracket.name,
+          seasonId: bracket.seasonId,
           size: bracket.size,
           isPublished: bracket.isPublished,
           seedCount: bracket.seedCount,
           createdAt: bracket.createdAt.toISOString(),
+        }))}
+        seasons={seasons.map((season) => ({
+          id: season.id,
+          name: season.name,
         }))}
       />
     </div>

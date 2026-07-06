@@ -1,7 +1,8 @@
-import Link from 'next/link'
 import { BracketView } from '@/app/_components/bracket-view'
+import { seedNames, seedPlayerLinks } from '@/lib/bracket'
 import { api } from '@/trpc/server'
 import { createMetadata } from '../../../../lib/metadata'
+import { BracketPicker } from './_components/bracket-picker'
 
 export const metadata = createMetadata({
   title: 'Playoffs',
@@ -28,30 +29,19 @@ export default async function PlayoffsPage() {
       </div>
 
       {bracket ? (
-        <BracketView bracket={bracket} />
+        <BracketPicker brackets={published} activeId={bracket.id} />
+      ) : null}
+
+      {bracket ? (
+        <BracketView
+          bracket={{ ...bracket, seeds: seedNames(bracket.seeds) }}
+          playerLinks={seedPlayerLinks(bracket.seeds)}
+        />
       ) : (
         <div className='rounded-lg border border-dashed px-6 py-16 text-center text-muted-foreground'>
           No playoff bracket is live right now. Check back soon!
         </div>
       )}
-
-      {published.length > 1 ? (
-        <div className='flex flex-col gap-2'>
-          <h2 className='font-semibold text-lg'>Past brackets</h2>
-          <ul className='flex flex-col gap-1'>
-            {published.slice(1).map((item) => (
-              <li key={item.id}>
-                <Link
-                  href={`/playoffs/${item.id}`}
-                  className='text-primary text-sm underline-offset-4 hover:underline'
-                >
-                  {item.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </div>
   )
 }
