@@ -9,6 +9,7 @@ declare module 'bun:test' {
     toBe(expected: unknown): void
     toBeNull(): void
     toHaveLength(expected: number): void
+    toMatchObject(expected: unknown): void
   }
 
   export const describe: BunLifecycleFn

@@ -189,6 +189,14 @@ export function Header({
                   </p>
                 </NavbarMenuLink>
               ) : null}
+              {hasPermission(session?.user, 'brackets.manage') ? (
+                <NavbarMenuLink href='/admin/brackets'>
+                  <p className='-mb-1 font-medium text-sm'>Brackets</p>
+                  <p className='text-[13px] text-fd-muted-foreground'>
+                    Manage playoff brackets
+                  </p>
+                </NavbarMenuLink>
+              ) : null}
             </NavbarMenuContent>
           </NavbarMenu>
         )}

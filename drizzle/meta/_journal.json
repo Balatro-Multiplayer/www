@@ -106,6 +106,13 @@
       "when": 1783355979344,
       "tag": "0014_demonic_namor",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1783362975413,
+      "tag": "0015_workable_alex_power",
+      "breakpoints": true
     }
   ]
 }

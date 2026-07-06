@@ -222,8 +222,9 @@ export function PollVoteClient({
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const oldIndex = ranking.findIndex((id) => id === active.id)
-    const newIndex = ranking.findIndex((id) => id === over.id)
+    const oldIndex =
+      typeof active.id === 'number' ? ranking.indexOf(active.id) : -1
+    const newIndex = typeof over.id === 'number' ? ranking.indexOf(over.id) : -1
     if (oldIndex === -1 || newIndex === -1) return
     setRanking((prev) => arrayMove(prev, oldIndex, newIndex))
   }

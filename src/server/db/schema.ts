@@ -660,3 +660,89 @@ export const pollBallotRankingsRelations = relations(
     }),
   })
 )
+
+export const brackets = pgTable('brackets', {
+  id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+  name: text('name').notNull(),
+  // Player count; power of two (4–32), enforced at the API boundary.
+  size: integer('size').notNull().default(16),
+  hasThirdPlace: boolean('has_third_place').notNull().default(true),
+  isPublished: boolean('is_published').notNull().default(false),
+  createdBy: varchar('created_by', { length: 255 }).references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at')
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+})
+
+export const bracketSeeds = pgTable(
+  'bracket_seeds',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    bracketId: integer('bracket_id')
+      .references(() => brackets.id, { onDelete: 'cascade' })
+      .notNull(),
+    // Seed position 0..size-1; missing positions render as TBD.
+    position: integer('position').notNull(),
+    name: text('name').notNull(),
+  },
+  (t) => [
+    index('bracket_seeds_bracket_id_idx').on(t.bracketId),
+    uniqueIndex('bracket_seeds_bracket_position_idx').on(
+      t.bracketId,
+      t.position
+    ),
+  ]
+)
+
+// Only scores are stored; pairings, winners, and advancement are derived
+// from the seeds + scores in src/lib/bracket.ts so they can't disagree.
+export const bracketResults = pgTable(
+  'bracket_results',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    bracketId: integer('bracket_id')
+      .references(() => brackets.id, { onDelete: 'cascade' })
+      .notNull(),
+    round: integer('round').notNull(),
+    slot: integer('slot').notNull(),
+    score1: integer('score1'),
+    score2: integer('score2'),
+    updatedAt: timestamp('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index('bracket_results_bracket_id_idx').on(t.bracketId),
+    uniqueIndex('bracket_results_bracket_round_slot_idx').on(
+      t.bracketId,
+      t.round,
+      t.slot
+    ),
+  ]
+)
+
+export const bracketsRelations = relations(brackets, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [brackets.createdBy],
+    references: [users.id],
+  }),
+  seeds: many(bracketSeeds),
+  results: many(bracketResults),
+}))
+
+export const bracketSeedsRelations = relations(bracketSeeds, ({ one }) => ({
+  bracket: one(brackets, {
+    fields: [bracketSeeds.bracketId],
+    references: [brackets.id],
+  }),
+}))
+
+export const bracketResultsRelations = relations(bracketResults, ({ one }) => ({
+  bracket: one(brackets, {
+    fields: [bracketResults.bracketId],
+    references: [brackets.id],
+  }),
+}))
