@@ -180,11 +180,10 @@ export function PollVoteClient({
 
   // Seed the ranking from the saved ballot once it loads.
   useEffect(() => {
-    if (myBallot.data) {
-      setRanking(myBallot.data.rankedOptionIds.filter((id) => optionById.has(id)))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myBallot.data])
+    if (!myBallot.data) return
+    const validIds = new Set(poll.options.map((o) => o.id))
+    setRanking(myBallot.data.rankedOptionIds.filter((id) => validIds.has(id)))
+  }, [myBallot.data, poll.options])
 
   const results = api.polls.getResults.useQuery(
     { uuid: poll.uuid },

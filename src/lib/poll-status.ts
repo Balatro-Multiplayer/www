@@ -9,7 +9,10 @@ export type PollCloseState = {
   closesAt: Date | string | null
 }
 
-export function isPollClosed(poll: PollCloseState, now: number = Date.now()): boolean {
+export function isPollClosed(
+  poll: PollCloseState,
+  now: number = Date.now()
+): boolean {
   if (poll.status === 'closed') return true
   if (poll.closesAt == null) return false
   const closes =

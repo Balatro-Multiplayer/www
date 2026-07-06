@@ -549,7 +549,9 @@ export const polls = pgTable(
     // scheduled auto-close time; null = no auto-close. Effective-closed also
     // considers this passing (see src/lib/poll-status.ts).
     closesAt: timestamp('closes_at'),
-    createdBy: varchar('created_by', { length: 255 }).references(() => users.id),
+    createdBy: varchar('created_by', { length: 255 }).references(
+      () => users.id
+    ),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at')
       .notNull()
@@ -633,20 +635,17 @@ export const pollOptionsRelations = relations(pollOptions, ({ one, many }) => ({
   rankings: many(pollBallotRankings),
 }))
 
-export const pollBallotsRelations = relations(
-  pollBallots,
-  ({ one, many }) => ({
-    poll: one(polls, {
-      fields: [pollBallots.pollId],
-      references: [polls.id],
-    }),
-    user: one(users, {
-      fields: [pollBallots.userId],
-      references: [users.id],
-    }),
-    rankings: many(pollBallotRankings),
-  })
-)
+export const pollBallotsRelations = relations(pollBallots, ({ one, many }) => ({
+  poll: one(polls, {
+    fields: [pollBallots.pollId],
+    references: [polls.id],
+  }),
+  user: one(users, {
+    fields: [pollBallots.userId],
+    references: [users.id],
+  }),
+  rankings: many(pollBallotRankings),
+}))
 
 export const pollBallotRankingsRelations = relations(
   pollBallotRankings,

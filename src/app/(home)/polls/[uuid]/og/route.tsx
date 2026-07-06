@@ -53,7 +53,14 @@ export async function GET(
 
   const accent = accentColorForUuid(uuid)
   const fonts = FONT
-    ? [{ name: 'm6x11', data: FONT, weight: 400 as const, style: 'normal' as const }]
+    ? [
+        {
+          name: 'm6x11',
+          data: FONT,
+          weight: 400 as const,
+          style: 'normal' as const,
+        },
+      ]
     : undefined
 
   if (!poll) {

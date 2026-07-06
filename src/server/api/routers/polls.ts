@@ -114,10 +114,7 @@ export const pollsRouter = createTRPCRouter({
     }),
 
   adminList: permissionProcedure('polls.manage').query(async ({ ctx }) => {
-    const rows = await ctx.db
-      .select()
-      .from(polls)
-      .orderBy(asc(polls.id))
+    const rows = await ctx.db.select().from(polls).orderBy(asc(polls.id))
 
     const [optionRows, ballotRows] = await Promise.all([
       ctx.db.select({ pollId: pollOptions.pollId }).from(pollOptions),

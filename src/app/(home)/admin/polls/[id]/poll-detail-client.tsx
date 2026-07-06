@@ -191,7 +191,9 @@ export function PollDetailClient({ poll }: { poll: Poll }) {
       { id: poll.id, closesAt: next },
       {
         onSuccess: () =>
-          toast.success(next ? 'Auto-close time updated' : 'Auto-close disabled'),
+          toast.success(
+            next ? 'Auto-close time updated' : 'Auto-close disabled'
+          ),
       }
     )
   }
@@ -277,8 +279,7 @@ export function PollDetailClient({ poll }: { poll: Poll }) {
     setPollStatus.mutate(
       { id: poll.id, status: nextStatus },
       {
-        onSuccess: () =>
-          toast.success(open ? 'Poll opened' : 'Poll closed'),
+        onSuccess: () => toast.success(open ? 'Poll opened' : 'Poll closed'),
         onError: () => setStatus(status),
       }
     )
@@ -323,7 +324,9 @@ export function PollDetailClient({ poll }: { poll: Poll }) {
       <Card>
         <CardHeader>
           <CardTitle>Details</CardTitle>
-          <CardDescription>Title and description shown to voters.</CardDescription>
+          <CardDescription>
+            Title and description shown to voters.
+          </CardDescription>
         </CardHeader>
         <CardContent className='flex flex-col gap-4'>
           <div className='grid gap-2'>
@@ -365,7 +368,9 @@ export function PollDetailClient({ poll }: { poll: Poll }) {
                 type='datetime-local'
                 className='w-auto'
                 // Empty until hydrated so SSR and client match (local-time based).
-                value={isHydrated && closesAt ? toDatetimeLocalValue(closesAt) : ''}
+                value={
+                  isHydrated && closesAt ? toDatetimeLocalValue(closesAt) : ''
+                }
                 // Prevent picking a time in the past (which would close instantly).
                 min={isHydrated ? toDatetimeLocalValue(new Date()) : undefined}
                 onChange={(event) => {

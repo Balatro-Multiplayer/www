@@ -250,8 +250,8 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
                 disabled={createPoll.isPending}
               />
               <p className='text-muted-foreground text-xs'>
-                Voting closes automatically after this many hours. You can change
-                or clear this later.
+                Voting closes automatically after this many hours. You can
+                change or clear this later.
               </p>
             </div>
 
