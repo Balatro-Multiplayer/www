@@ -1,0 +1,98 @@
+/* Balatro-style bracket board: felt table, elbow connectors between rounds. */
+
+.panel {
+  background: radial-gradient(
+    120% 90% at 50% 8%,
+    #245244 0%,
+    #1c4136 48%,
+    #132d25 100%
+  );
+  border: 2px solid #0f231d;
+  border-radius: 14px;
+  box-shadow: inset 0 0 48px rgba(0, 0, 0, 0.38);
+}
+
+.slot {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  min-height: 0;
+}
+
+/* Elbow out of a match toward the next round: the top feeder bends down,
+   the bottom feeder bends up, meeting at the receiving match's center. */
+.outTop::after,
+.outBottom::after {
+  content: "";
+  position: absolute;
+  right: -1.25rem;
+  width: 1.25rem;
+  pointer-events: none;
+}
+
+.outTop::after {
+  top: 50%;
+  height: 50%;
+  border-top: 2px solid rgba(244, 238, 224, 0.3);
+  border-right: 2px solid rgba(244, 238, 224, 0.3);
+  border-top-right-radius: 6px;
+}
+
+.outBottom::after {
+  bottom: 50%;
+  height: 50%;
+  border-bottom: 2px solid rgba(244, 238, 224, 0.3);
+  border-right: 2px solid rgba(244, 238, 224, 0.3);
+  border-bottom-right-radius: 6px;
+}
+
+/* Stub into a match from the previous round's elbow pair. */
+.in::before {
+  content: "";
+  position: absolute;
+  left: -1.25rem;
+  width: 1.25rem;
+  top: 50%;
+  border-top: 2px solid rgba(244, 238, 224, 0.3);
+  pointer-events: none;
+}
+
+.card {
+  background: #191b22;
+  border: 2px solid #0c0d12;
+  border-radius: 10px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
+}
+
+.winnerName {
+  color: #f5c452;
+  text-shadow: 0 0 10px rgba(245, 196, 82, 0.45);
+}
+
+.chip {
+  background: #2f9bff;
+  border-bottom: 3px solid #1668b3;
+  color: #fff;
+}
+
+.chipEmpty {
+  background: #303542;
+  border-bottom: 3px solid #21252f;
+  color: #8b93a7;
+}
+
+.championCard {
+  background: #191b22;
+  border: 2px solid #f5c452;
+  border-radius: 10px;
+  box-shadow:
+    0 4px 0 rgba(0, 0, 0, 0.45),
+    0 0 24px rgba(245, 196, 82, 0.25);
+}
+
+.chipWin {
+  background: #f5c452;
+  border-bottom: 3px solid #b8862f;
+  color: #3a2b06;
+}
