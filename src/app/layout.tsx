@@ -10,6 +10,7 @@ import PlausibleProvider from 'next-plausible'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import CustomSearchDialog from '@/app/_components/custom-search-dialog'
 import { Toaster } from '@/components/ui/sonner'
+import { env } from '@/env'
 import { TRPCReactProvider } from '@/trpc/react'
 import { siteConfig } from '../../lib/metadata'
 export const metadata: Metadata = {
@@ -18,7 +19,9 @@ export const metadata: Metadata = {
     default: siteConfig.name,
   },
   description: siteConfig.description,
-  metadataBase: new URL(siteConfig.url),
+  // Absolute base for OG/canonical URLs. Override via SITE_URL for
+  // preview/self-hosted deploys (e.g. the demo tunnel); defaults to prod.
+  metadataBase: new URL(env.SITE_URL ?? siteConfig.url),
   openGraph: {
     title: siteConfig.name,
     description: siteConfig.description,

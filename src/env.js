@@ -31,6 +31,9 @@ export const env = createEnv({
     VERCEL_URL: z.string().optional(),
     PORT: z.string().optional(),
     IS_PREVIEW: z.string().optional(),
+    // Canonical public origin for absolute metadata URLs (OG image, canonical).
+    // Defaults to siteConfig.url when unset; override for preview/self-hosted.
+    SITE_URL: z.string().url().optional(),
   },
 
   /**
@@ -79,6 +82,7 @@ export const env = createEnv({
     VERCEL_URL: process.env.VERCEL_URL,
     PORT: process.env.PORT,
     IS_PREVIEW: process.env.IS_PREVIEW,
+    SITE_URL: process.env.SITE_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

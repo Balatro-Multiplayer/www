@@ -6,6 +6,9 @@ declare module 'bun:test' {
 
   type ExpectMatcher = {
     toEqual(expected: unknown): void
+    toBe(expected: unknown): void
+    toBeNull(): void
+    toHaveLength(expected: number): void
   }
 
   export const describe: BunLifecycleFn
