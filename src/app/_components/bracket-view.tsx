@@ -6,6 +6,7 @@ import {
   championOf,
   computeBracket,
   roundCount,
+  roundLabel,
 } from '@/lib/bracket'
 import { cn } from '@/lib/utils'
 import styles from './bracket-view.module.css'
@@ -17,7 +18,7 @@ export type BracketViewData = {
   results: BracketResult[]
 }
 
-/** Vertical space reserved per first-round match, in px. */
+/** Vertical space reserved per first-round match in a wing, in px. */
 const SLOT_HEIGHT = 96
 
 function PlayerRow({
@@ -25,16 +26,19 @@ function PlayerRow({
   score,
   isWinner,
   isLoser,
+  mirrored,
 }: {
   name: string | null
   score: number | null
   isWinner: boolean
   isLoser: boolean
+  mirrored: boolean
 }) {
   return (
     <div
       className={cn(
         'flex items-center justify-between gap-2 px-3 py-1.5',
+        mirrored && 'flex-row-reverse',
         isLoser && 'opacity-45'
       )}
     >
@@ -44,6 +48,7 @@ function PlayerRow({
           !name && 'text-[#8b93a7]',
           isWinner && styles.winnerName
         )}
+        title={name ?? undefined}
       >
         {name ?? 'TBD'}
       </span>
@@ -65,9 +70,11 @@ function PlayerRow({
 
 function MatchCard({
   match,
+  mirrored = false,
   className,
 }: {
   match: ComputedMatch
+  mirrored?: boolean
   className?: string
 }) {
   return (
@@ -79,21 +86,78 @@ function MatchCard({
         score={match.score1}
         isWinner={match.winner === 1}
         isLoser={match.winner === 2}
+        mirrored={mirrored}
       />
       <PlayerRow
         name={match.player2}
         score={match.score2}
         isWinner={match.winner === 2}
         isLoser={match.winner === 1}
+        mirrored={mirrored}
       />
     </div>
   )
 }
 
+function ColumnHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <p className='mb-2 text-center font-m6x11 text-[#f4eee0]/80 text-lg'>
+      {children}
+    </p>
+  )
+}
+
+function Wing({
+  columns,
+  totalRounds,
+  columnHeight,
+  mirrored,
+}: {
+  columns: ComputedMatch[][]
+  totalRounds: number
+  columnHeight: number
+  mirrored: boolean
+}) {
+  const lastColumn = columns.length - 1
+  return (
+    <div className={cn('flex gap-10', mirrored && 'flex-row-reverse')}>
+      {columns.map((matches, columnIndex) => {
+        const round = columnIndex + 1
+        return (
+          <div key={round} className='flex w-40 flex-col'>
+            <ColumnHeader>{roundLabel(round, totalRounds)}</ColumnHeader>
+            <div className='flex flex-col' style={{ height: columnHeight }}>
+              {matches.map((match, index) => (
+                <div
+                  key={`${match.round}:${match.slot}`}
+                  className={cn(
+                    styles.slot,
+                    columnIndex < lastColumn &&
+                      (index % 2 === 0
+                        ? mirrored
+                          ? styles.outTopMirror
+                          : styles.outTop
+                        : mirrored
+                          ? styles.outBottomMirror
+                          : styles.outBottom),
+                    columnIndex > 0 && (mirrored ? styles.inMirror : styles.in)
+                  )}
+                >
+                  <MatchCard match={match} mirrored={mirrored} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /**
- * Balatro-styled single-elimination bracket: felt board, one column per
- * round joined by elbow connectors, third-place match set below the board.
- * Scrolls horizontally on narrow screens.
+ * Balatro-styled single-elimination bracket laid out like a playoff sheet:
+ * two mirrored wings converging on a center column with the champion,
+ * grand finals, and third-place match. Scrolls horizontally when narrow.
  */
 export function BracketView({ bracket }: { bracket: BracketViewData }) {
   const rounds = computeBracket(
@@ -104,63 +168,83 @@ export function BracketView({ bracket }: { bracket: BracketViewData }) {
   )
   const totalRounds = roundCount(bracket.size)
   const champion = championOf(rounds)
-  const thirdPlace = rounds[rounds.length - 1]?.matches.find(
-    (m) => m.isThirdPlace
+  const mainRounds = rounds.map((round) =>
+    round.matches.filter((match) => !match.isThirdPlace)
   )
-  const columnHeight = (bracket.size / 2) * SLOT_HEIGHT
+  const grandFinal = mainRounds[totalRounds - 1]?.[0]
+  const thirdPlace = rounds[totalRounds - 1]?.matches.find(
+    (match) => match.isThirdPlace
+  )
+
+  // Wings hold every round but the final; the first half of each round's
+  // matches feeds the left wing, the second half the right wing.
+  const wingRounds = mainRounds.slice(0, totalRounds - 1)
+  const leftColumns = wingRounds.map((matches) =>
+    matches.slice(0, matches.length / 2)
+  )
+  const rightColumns = wingRounds.map((matches) =>
+    matches.slice(matches.length / 2)
+  )
+  const columnHeight = Math.max(1, bracket.size / 4) * SLOT_HEIGHT
 
   return (
     <div className={cn('overflow-x-auto p-4 sm:p-6', styles.panel)}>
-      <div className='flex min-w-max flex-col items-center gap-5'>
-        {champion ? (
-          <div
-            className={cn(
-              'flex items-center gap-2.5 px-5 py-2.5',
-              styles.championCard
-            )}
-          >
-            <Crown className='size-5 text-[#f5c452]' />
-            <span className='pt-0.5 font-m6x11 text-[#f5c452] text-xl'>
-              Champion: {champion}
-            </span>
-          </div>
-        ) : null}
+      <div className='mx-auto flex min-w-max items-start gap-10'>
+        <Wing
+          columns={leftColumns}
+          totalRounds={totalRounds}
+          columnHeight={columnHeight}
+          mirrored={false}
+        />
 
-        <div className='flex gap-10'>
-          {rounds.map((round) => (
-            <div key={round.round} className='flex w-48 flex-col'>
-              <p className='mb-2 text-center font-m6x11 text-[#f4eee0]/80 text-lg'>
-                {round.round === totalRounds ? 'Grand Finals' : round.label}
-              </p>
-              <div className='flex flex-col' style={{ height: columnHeight }}>
-                {round.matches
-                  .filter((match) => !match.isThirdPlace)
-                  .map((match, index) => (
-                    <div
-                      key={`${match.round}:${match.slot}`}
-                      className={cn(
-                        styles.slot,
-                        round.round < totalRounds &&
-                          (index % 2 === 0 ? styles.outTop : styles.outBottom),
-                        round.round > 1 && styles.in
-                      )}
-                    >
-                      <MatchCard match={match} />
-                    </div>
-                  ))}
-              </div>
+        <div
+          className='flex w-52 flex-col justify-center gap-8'
+          style={{ minHeight: columnHeight + 32 }}
+        >
+          <div className='flex flex-col'>
+            <ColumnHeader>Champion</ColumnHeader>
+            <div
+              className={cn(
+                'flex min-h-12 items-center justify-center gap-2 px-3 py-2',
+                champion ? styles.championCard : styles.card
+              )}
+            >
+              {champion ? (
+                <>
+                  <Crown className='size-5 shrink-0 text-[#f5c452]' />
+                  <span className='truncate pt-0.5 font-m6x11 text-[#f5c452] text-xl'>
+                    {champion}
+                  </span>
+                </>
+              ) : (
+                <span className='font-m6x11 text-[#8b93a7] text-lg'>TBD</span>
+              )}
             </div>
-          ))}
+          </div>
+
+          {grandFinal ? (
+            <div className='flex flex-col'>
+              <ColumnHeader>Grand Finals</ColumnHeader>
+              <MatchCard match={grandFinal} />
+            </div>
+          ) : null}
+
+          {thirdPlace ? (
+            <div className='flex flex-col'>
+              <p className='mb-2 text-center font-m6x11 text-[#fe5f55] text-lg'>
+                Third Place Match
+              </p>
+              <MatchCard match={thirdPlace} />
+            </div>
+          ) : null}
         </div>
 
-        {thirdPlace ? (
-          <div className='flex w-48 flex-col'>
-            <p className='mb-2 text-center font-m6x11 text-[#fe5f55] text-lg'>
-              Third Place Match
-            </p>
-            <MatchCard match={thirdPlace} />
-          </div>
-        ) : null}
+        <Wing
+          columns={rightColumns}
+          totalRounds={totalRounds}
+          columnHeight={columnHeight}
+          mirrored={true}
+        />
       </div>
     </div>
   )

@@ -96,3 +96,39 @@
   border-bottom: 3px solid #b8862f;
   color: #3a2b06;
 }
+
+/* Mirrored variants for the right wing (rounds flow right-to-left). */
+.outTopMirror::after,
+.outBottomMirror::after {
+  content: "";
+  position: absolute;
+  left: -1.25rem;
+  width: 1.25rem;
+  pointer-events: none;
+}
+
+.outTopMirror::after {
+  top: 50%;
+  height: 50%;
+  border-top: 2px solid rgba(244, 238, 224, 0.3);
+  border-left: 2px solid rgba(244, 238, 224, 0.3);
+  border-top-left-radius: 6px;
+}
+
+.outBottomMirror::after {
+  bottom: 50%;
+  height: 50%;
+  border-bottom: 2px solid rgba(244, 238, 224, 0.3);
+  border-left: 2px solid rgba(244, 238, 224, 0.3);
+  border-bottom-left-radius: 6px;
+}
+
+.inMirror::before {
+  content: "";
+  position: absolute;
+  right: -1.25rem;
+  width: 1.25rem;
+  top: 50%;
+  border-top: 2px solid rgba(244, 238, 224, 0.3);
+  pointer-events: none;
+}

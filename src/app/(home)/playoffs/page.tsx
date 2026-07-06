@@ -19,7 +19,7 @@ export default async function PlayoffsPage() {
     : null
 
   return (
-    <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-col gap-6 pt-8 pb-16'>
+    <div className='mx-auto flex w-[calc(100%-1rem)] max-w-[1600px] flex-col gap-6 pt-8 pb-16'>
       <div className='flex flex-col gap-2'>
         <h1 className='font-bold text-3xl'>{bracket?.name ?? 'Playoffs'}</h1>
         <p className='text-muted-foreground text-sm'>
