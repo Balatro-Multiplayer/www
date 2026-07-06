@@ -421,7 +421,8 @@ export const pollsRouter = createTRPCRouter({
               rank: r.rank,
             })),
         }))
-        .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+        // Most recently voted first, oldest last.
+        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 
       return {
         method: TALLY_METHOD,
