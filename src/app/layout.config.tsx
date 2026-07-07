@@ -3,6 +3,7 @@ import {
   BarChart3,
   BookOpen,
   CircleDollarSign,
+  Swords,
   Trophy,
   Upload,
   Wrench,
@@ -20,6 +21,11 @@ const links = [
     text: 'Leaderboards',
     url: '/leaderboards',
     icon: <Trophy />,
+  },
+  {
+    text: 'Playoffs',
+    url: '/playoffs',
+    icon: <Swords />,
   },
   {
     text: 'Support Us',
