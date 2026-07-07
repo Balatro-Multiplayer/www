@@ -12,6 +12,7 @@ import {
   Menu as MenuIcon,
   Settings,
   Shield,
+  Swords,
   Trophy,
   Tv,
   Upload,
@@ -148,6 +149,13 @@ export function MobileMenu({
               onClick={close}
             >
               Leaderboards
+            </MobileMenuLink>
+            <MobileMenuLink
+              href='/playoffs'
+              icon={<Swords className='size-4' />}
+              onClick={close}
+            >
+              Playoffs
             </MobileMenuLink>
             <MobileMenuLink
               href='/support-us'
@@ -343,6 +351,15 @@ export function MobileMenu({
                     onClick={close}
                   >
                     Polls
+                  </MobileMenuLink>
+                ) : null}
+                {hasPermission(session?.user, 'brackets.manage') ? (
+                  <MobileMenuLink
+                    href='/admin/brackets'
+                    icon={<Swords className='size-4' />}
+                    onClick={close}
+                  >
+                    Brackets
                   </MobileMenuLink>
                 ) : null}
               </div>
