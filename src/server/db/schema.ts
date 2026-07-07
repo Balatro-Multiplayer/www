@@ -660,3 +660,112 @@ export const pollBallotRankingsRelations = relations(
     }),
   })
 )
+
+// Playoffs are season-driven: exactly one bracket per season, and display
+// names ("Season 5 Playoffs") derive from the season registry.
+export const brackets = pgTable(
+  'brackets',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    seasonId: integer('season_id')
+      .references(() => seasons.id)
+      .notNull(),
+    // Player count; power of two (4–32), enforced at the API boundary.
+    size: integer('size').notNull().default(16),
+    hasThirdPlace: boolean('has_third_place').notNull().default(true),
+    // Series formats: winners need the majority of bestOf games. The grand
+    // final can run longer (null = same as bestOf).
+    bestOf: integer('best_of').notNull().default(3),
+    finalsBestOf: integer('finals_best_of'),
+    isPublished: boolean('is_published').notNull().default(false),
+    createdBy: varchar('created_by', { length: 255 }).references(
+      () => users.id
+    ),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [uniqueIndex('brackets_season_id_idx').on(t.seasonId)]
+)
+
+export const bracketSeeds = pgTable(
+  'bracket_seeds',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    bracketId: integer('bracket_id')
+      .references(() => brackets.id, { onDelete: 'cascade' })
+      .notNull(),
+    // Seed position 0..size-1, or null while the player sits in the
+    // bracket's pool waiting to be assigned a matchup.
+    position: integer('position'),
+    name: text('name').notNull(),
+    // Optional Discord id linking this seed to a site player profile.
+    playerId: varchar('player_id', { length: 64 }),
+  },
+  (t) => [
+    index('bracket_seeds_bracket_id_idx').on(t.bracketId),
+    // Profile champion badges look brackets up by player.
+    index('bracket_seeds_player_id_idx').on(t.playerId),
+    uniqueIndex('bracket_seeds_bracket_position_idx').on(
+      t.bracketId,
+      t.position
+    ),
+  ]
+)
+
+// Only scores are stored; pairings, winners, and advancement are derived
+// from the seeds + scores in src/lib/bracket.ts so they can't disagree.
+export const bracketResults = pgTable(
+  'bracket_results',
+  {
+    id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
+    bracketId: integer('bracket_id')
+      .references(() => brackets.id, { onDelete: 'cascade' })
+      .notNull(),
+    round: integer('round').notNull(),
+    slot: integer('slot').notNull(),
+    score1: integer('score1'),
+    score2: integer('score2'),
+    updatedAt: timestamp('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index('bracket_results_bracket_id_idx').on(t.bracketId),
+    uniqueIndex('bracket_results_bracket_round_slot_idx').on(
+      t.bracketId,
+      t.round,
+      t.slot
+    ),
+  ]
+)
+
+export const bracketsRelations = relations(brackets, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [brackets.createdBy],
+    references: [users.id],
+  }),
+  season: one(seasons, {
+    fields: [brackets.seasonId],
+    references: [seasons.id],
+  }),
+  seeds: many(bracketSeeds),
+  results: many(bracketResults),
+}))
+
+export const bracketSeedsRelations = relations(bracketSeeds, ({ one }) => ({
+  bracket: one(brackets, {
+    fields: [bracketSeeds.bracketId],
+    references: [brackets.id],
+  }),
+}))
+
+export const bracketResultsRelations = relations(bracketResults, ({ one }) => ({
+  bracket: one(brackets, {
+    fields: [bracketResults.bracketId],
+    references: [brackets.id],
+  }),
+}))

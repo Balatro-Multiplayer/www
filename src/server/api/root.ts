@@ -1,6 +1,7 @@
 import { bannedUsersRouter } from '@/server/api/routers/banned-users'
 import { blogRouter } from '@/server/api/routers/blog'
 import { bountiesRouter } from '@/server/api/routers/bounties'
+import { bracketsRouter } from '@/server/api/routers/brackets'
 import { branchesRouter } from '@/server/api/routers/branches'
 import { history_router } from '@/server/api/routers/history'
 import { leaderboard_router } from '@/server/api/routers/leaderboard'
@@ -26,6 +27,7 @@ export const appRouter = createTRPCRouter({
   bannedUsers: bannedUsersRouter,
   blog: blogRouter,
   bounties: bountiesRouter,
+  brackets: bracketsRouter,
   branches: branchesRouter,
   history: history_router,
   players: playersRouter,

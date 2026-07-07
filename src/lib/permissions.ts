@@ -17,6 +17,7 @@ export const PERMISSION_KEYS = [
   'leaderboard.snapshots.view',
   'queues.manage',
   'polls.manage',
+  'brackets.manage',
 ] as const
 
 export type PermissionKey = (typeof PERMISSION_KEYS)[number]
@@ -36,6 +37,7 @@ export const ADMIN_NAV_PERMISSIONS = [
   'transcripts.search',
   'queues.manage',
   'polls.manage',
+  'brackets.manage',
 ] as const satisfies readonly PermissionKey[]
 
 export const LEGACY_ROLE_PERMISSIONS = {
@@ -62,6 +64,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
     'leaderboard.snapshots.view',
     'queues.manage',
     'polls.manage',
+    'brackets.manage',
   ],
   owner: [
     'permissions.manage',
@@ -82,6 +85,7 @@ export const LEGACY_ROLE_PERMISSIONS = {
     'leaderboard.snapshots.view',
     'queues.manage',
     'polls.manage',
+    'brackets.manage',
   ],
 } as const satisfies Record<string, readonly PermissionKey[]>
 
@@ -227,6 +231,16 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         key: 'polls.manage',
         label: 'Manage polls',
         description: 'Create and manage ranked-choice polls.',
+      },
+    ],
+  },
+  {
+    title: 'Playoffs',
+    permissions: [
+      {
+        key: 'brackets.manage',
+        label: 'Manage brackets',
+        description: 'Create playoff brackets, enter results, and publish.',
       },
     ],
   },
