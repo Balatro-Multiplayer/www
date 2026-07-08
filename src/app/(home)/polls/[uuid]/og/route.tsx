@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { ImageResponse } from 'next/og'
 import { accentColorForUuid, formatCloseLabel } from '@/lib/poll-embed'
+import { pollMethodLabel } from '@/lib/poll-method'
 import { api } from '@/trpc/server'
 
 export const runtime = 'nodejs'
@@ -84,10 +85,13 @@ export async function GET(
   }
 
   const closeLabel = formatCloseLabel(poll)
+  const methodLabel = pollMethodLabel(poll.method)
   const title = truncate(poll.title, 90)
   const description = poll.description
     ? truncate(poll.description, 160)
-    : 'Rank the options — vote and see live results.'
+    : poll.method === 'approval'
+      ? 'Pick any options. Vote and see live results.'
+      : 'Rank the options. Vote and see live results.'
 
   return new ImageResponse(
     <div
@@ -115,7 +119,7 @@ export async function GET(
           <span style={{ fontSize: 40, fontWeight: 700 }}>
             Balatro Multiplayer
           </span>
-          <span style={{ fontSize: 28, color: MUTED }}>Ranked-choice poll</span>
+          <span style={{ fontSize: 28, color: MUTED }}>{methodLabel} poll</span>
         </div>
       </div>
 

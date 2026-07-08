@@ -34,6 +34,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { type PollMethod, pollMethodLabel } from '@/lib/poll-method'
 import { api } from '@/trpc/react'
 
 type Option = { id: number; label: string }
@@ -51,6 +52,7 @@ type Poll = {
   uuid: string
   title: string
   description: string | null
+  method: PollMethod
   status: string
   closesAt: string | null
   ballotCount: number
@@ -299,6 +301,7 @@ export function PollDetailClient({ poll }: { poll: Poll }) {
       <div className='flex flex-col gap-2'>
         <div className='flex items-center gap-3'>
           <h1 className='font-bold text-3xl'>Manage Poll</h1>
+          <Badge variant='secondary'>{pollMethodLabel(poll.method)}</Badge>
           {status === 'open' ? (
             <Badge>Open</Badge>
           ) : (

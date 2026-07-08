@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { hasPermission } from '@/lib/permissions'
+import { toPollMethod } from '@/lib/poll-method'
 import { auth } from '@/server/auth'
 import { api } from '@/trpc/server'
 import { createMetadata } from '../../../../../../lib/metadata'
@@ -7,7 +8,7 @@ import { PollDetailClient } from './poll-detail-client'
 
 export const metadata = createMetadata({
   title: 'Manage Poll',
-  description: 'Edit a ranked-choice poll.',
+  description: 'Edit a poll.',
   path: '/admin/polls',
   noIndex: true,
 })
@@ -41,6 +42,7 @@ export default async function AdminPollDetailPage({
           uuid: poll.uuid,
           title: poll.title,
           description: poll.description,
+          method: toPollMethod(poll.method),
           status: poll.status,
           closesAt: poll.closesAt ? poll.closesAt.toISOString() : null,
           ballotCount: poll.ballotCount,

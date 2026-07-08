@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import { type Ballot, tally, tallyBorda } from '@/lib/ranked-choice'
+import {
+  type Ballot,
+  tally,
+  tallyApproval,
+  tallyBorda,
+} from '@/lib/ranked-choice'
 
 /** Convenience: map results to `{ optionId: points }` for readable assertions. */
 function pointsByOption(results: ReturnType<typeof tallyBorda>) {
@@ -85,7 +90,7 @@ describe('tallyBorda', () => {
       ],
       optionIds
     )
-    // 3:4, 1:2, 2:0 — straightforward, verifies ordering
+    // 3:4, 1:2, 2:0, straightforward, verifies ordering
     expect(results.map((r) => r.optionId)).toEqual([3, 1, 2])
     // suppress unused
     void ballots
@@ -103,6 +108,114 @@ describe('tallyBorda', () => {
   })
 })
 
+/** Convenience: map results to `{ optionId: approvals }`. */
+function approvalsByOption(results: ReturnType<typeof tallyApproval>) {
+  return Object.fromEntries(results.map((r) => [r.optionId, r.ballotsRanking]))
+}
+
+/** Share of voters (0..1) that selected each option, given a ballot count. */
+function shareByOption(
+  results: ReturnType<typeof tallyApproval>,
+  totalBallots: number
+) {
+  return Object.fromEntries(
+    results.map((r) => [
+      r.optionId,
+      totalBallots === 0 ? 0 : r.ballotsRanking / totalBallots,
+    ])
+  )
+}
+
+describe('tallyApproval', () => {
+  test('one voter approving every option → all at 100%', () => {
+    const optionIds = [1, 2, 3, 4, 5, 6]
+    const ballots: Ballot[] = [{ userId: 'a', ranked: [1, 2, 3, 4, 5, 6] }]
+    const results = tallyApproval(ballots, optionIds)
+    expect(approvalsByOption(results)).toEqual({
+      1: 1,
+      2: 1,
+      3: 1,
+      4: 1,
+      5: 1,
+      6: 1,
+    })
+    // 1 ballot total, every option selected by it → 100% each.
+    const share = shareByOption(results, ballots.length)
+    expect(Object.values(share).every((s) => s === 1)).toBe(true)
+  })
+
+  test('second voter picking one option → 100% for it, 50% for the rest', () => {
+    const optionIds = [1, 2, 3, 4, 5, 6]
+    const ballots: Ballot[] = [
+      { userId: 'a', ranked: [1, 2, 3, 4, 5, 6] },
+      { userId: 'b', ranked: [1] },
+    ]
+    const results = tallyApproval(ballots, optionIds)
+    // option 1: both voters (2/2 = 100%); the other five: one voter (1/2 = 50%).
+    expect(approvalsByOption(results)).toEqual({
+      1: 2,
+      2: 1,
+      3: 1,
+      4: 1,
+      5: 1,
+      6: 1,
+    })
+    const share = shareByOption(results, ballots.length)
+    expect(share[1]).toBe(1)
+    expect(share[2]).toBe(0.5)
+    expect(share[6]).toBe(0.5)
+    // winner is option 1
+    expect(results[0]?.optionId).toBe(1)
+    expect(results[0]?.position).toBe(1)
+  })
+
+  test('empty ballots count as voters but approve nothing', () => {
+    const optionIds = [1, 2, 3]
+    const ballots: Ballot[] = [
+      { userId: 'a', ranked: [1] },
+      { userId: 'b', ranked: [] }, // abstained, still a voter
+      { userId: 'c', ranked: [] },
+    ]
+    const results = tallyApproval(ballots, optionIds)
+    expect(approvalsByOption(results)).toEqual({ 1: 1, 2: 0, 3: 0 })
+    // option 1 selected by 1 of 3 voters → 33%.
+    const share = shareByOption(results, ballots.length)[1] ?? 0
+    expect(Math.round(share * 100)).toBe(33)
+  })
+
+  test('every option appears even when no ballots exist', () => {
+    const results = tallyApproval([], [10, 20, 30])
+    expect(results).toHaveLength(3)
+    expect(results.every((r) => r.ballotsRanking === 0)).toBe(true)
+    expect(results.every((r) => r.averageRank === null)).toBe(true)
+    // deterministic order by optionId when all tied
+    expect(results.map((r) => r.optionId)).toEqual([10, 20, 30])
+  })
+
+  test('order of selections is irrelevant; dupes and unknowns ignored', () => {
+    const optionIds = [1, 2, 3]
+    const a = tallyApproval([{ userId: 'x', ranked: [3, 1, 2] }], optionIds)
+    const b = tallyApproval([{ userId: 'x', ranked: [1, 2, 3] }], optionIds)
+    expect(approvalsByOption(a)).toEqual(approvalsByOption(b))
+    // dup 2 counted once, unknown 99 dropped
+    const c = tallyApproval([{ userId: 'y', ranked: [2, 2, 99] }], optionIds)
+    expect(approvalsByOption(c)).toEqual({ 1: 0, 2: 1, 3: 0 })
+  })
+
+  test('ties break by optionId ascending', () => {
+    const optionIds = [3, 1, 2]
+    const results = tallyApproval(
+      [
+        { userId: 'a', ranked: [1, 2, 3] },
+        { userId: 'b', ranked: [1, 2, 3] },
+      ],
+      optionIds
+    )
+    // all tied at 2 approvals → ascending optionId order
+    expect(results.map((r) => r.optionId)).toEqual([1, 2, 3])
+  })
+})
+
 describe('tally dispatcher', () => {
   test('borda method matches tallyBorda and is deterministic', () => {
     const optionIds = [1, 2, 3]
@@ -111,5 +224,13 @@ describe('tally dispatcher', () => {
     const b = tally('borda', ballots, optionIds)
     expect(a).toEqual(b)
     expect(a).toEqual(tallyBorda(ballots, optionIds))
+  })
+
+  test('approval method matches tallyApproval', () => {
+    const optionIds = [1, 2, 3]
+    const ballots: Ballot[] = [{ userId: 'a', ranked: [3, 1] }]
+    expect(tally('approval', ballots, optionIds)).toEqual(
+      tallyApproval(ballots, optionIds)
+    )
   })
 })
