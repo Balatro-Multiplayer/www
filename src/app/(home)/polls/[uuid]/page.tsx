@@ -1,6 +1,7 @@
 import type { Viewport } from 'next'
 import { notFound } from 'next/navigation'
 import { accentColorForUuid, formatCloseLabel } from '@/lib/poll-embed'
+import { pollMethodBlurb } from '@/lib/poll-method'
 import { auth } from '@/server/auth'
 import { api } from '@/trpc/server'
 import { createMetadata } from '../../../../../lib/metadata'
@@ -17,7 +18,7 @@ export async function generateMetadata({
   const closeLabel = poll ? formatCloseLabel(poll) : null
   const baseDescription = poll?.description?.trim()
     ? poll.description.trim()
-    : 'Ranked-choice poll — vote and see live results.'
+    : pollMethodBlurb(poll?.method ?? 'ranked')
   const description = closeLabel
     ? `${baseDescription} · ${closeLabel}`
     : baseDescription
@@ -61,6 +62,7 @@ export default async function PublicPollPage({
           uuid: poll.uuid,
           title: poll.title,
           description: poll.description,
+          method: poll.method,
           status: poll.status,
           closesAt: poll.closesAt ? poll.closesAt.toISOString() : null,
           isClosed: poll.isClosed,

@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Table,
   TableBody,
@@ -37,6 +38,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { type PollMethod, pollMethodLabel } from '@/lib/poll-method'
 import { formatDate } from '@/lib/utils'
 import { api } from '@/trpc/react'
 
@@ -44,6 +46,7 @@ export type PollListRow = {
   id: number
   uuid: string
   title: string
+  method: PollMethod
   status: string
   optionCount: number
   ballotCount: number
@@ -60,6 +63,7 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [method, setMethod] = useState<PollMethod>('ranked')
   const [options, setOptions] = useState<string[]>(['', ''])
   const [durationHours, setDurationHours] = useState('24')
   const [error, setError] = useState<string | null>(null)
@@ -87,6 +91,7 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
   function resetForm() {
     setTitle('')
     setDescription('')
+    setMethod('ranked')
     setOptions(['', ''])
     setDurationHours('24')
     setError(null)
@@ -119,6 +124,7 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
     createPoll.mutate({
       title: title.trim(),
       description: description.trim() || undefined,
+      method,
       options: cleanedOptions,
       durationHours: hours,
     })
@@ -147,6 +153,7 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
           <TableHeader className='bg-muted/50'>
             <TableRow>
               <TableHead>Title</TableHead>
+              <TableHead>Method</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Options</TableHead>
               <TableHead>Votes</TableHead>
@@ -157,7 +164,7 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
           <TableBody>
             {polls.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className='text-muted-foreground'>
+                <TableCell colSpan={7} className='text-muted-foreground'>
                   No polls yet
                 </TableCell>
               </TableRow>
@@ -165,6 +172,11 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
               polls.map((poll) => (
                 <TableRow key={poll.id}>
                   <TableCell className='font-medium'>{poll.title}</TableCell>
+                  <TableCell>
+                    <Badge variant='outline'>
+                      {pollMethodLabel(poll.method)}
+                    </Badge>
+                  </TableCell>
                   <TableCell>
                     {poll.status === 'open' ? (
                       <Badge>Open</Badge>
@@ -223,7 +235,7 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
                 id='poll-title'
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder='Which map should we play next?'
+                placeholder='Should we remove idol'
                 disabled={createPoll.isPending}
               />
             </div>
@@ -237,6 +249,54 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
                 placeholder='Any context voters should read before ranking.'
                 disabled={createPoll.isPending}
               />
+            </div>
+
+            <div className='grid gap-2'>
+              <Label>Voting method</Label>
+              <RadioGroup
+                value={method}
+                onValueChange={(value) => setMethod(value as PollMethod)}
+                className='gap-2'
+              >
+                <label
+                  htmlFor='poll-method-ranked'
+                  className='flex cursor-pointer items-start gap-3 rounded-md border p-3'
+                >
+                  <RadioGroupItem
+                    id='poll-method-ranked'
+                    value='ranked'
+                    className='mt-0.5'
+                    disabled={createPoll.isPending}
+                  />
+                  <div className='grid gap-0.5'>
+                    <span className='font-medium text-sm'>Ranked choice</span>
+                    <span className='text-muted-foreground text-xs'>
+                      Voters order the options; results use a Borda count.
+                    </span>
+                  </div>
+                </label>
+                <label
+                  htmlFor='poll-method-approval'
+                  className='flex cursor-pointer items-start gap-3 rounded-md border p-3'
+                >
+                  <RadioGroupItem
+                    id='poll-method-approval'
+                    value='approval'
+                    className='mt-0.5'
+                    disabled={createPoll.isPending}
+                  />
+                  <div className='grid gap-0.5'>
+                    <span className='font-medium text-sm'>Multiple choice</span>
+                    <span className='text-muted-foreground text-xs'>
+                      Voters pick any subset; each option shows the % of voters
+                      who picked it.
+                    </span>
+                  </div>
+                </label>
+              </RadioGroup>
+              <p className='text-muted-foreground text-xs'>
+                This can't be changed after the poll is created.
+              </p>
             </div>
 
             <div className='grid gap-2'>

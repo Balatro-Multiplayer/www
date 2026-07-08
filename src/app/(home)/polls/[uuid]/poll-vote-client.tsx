@@ -31,7 +31,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { PollMethod } from '@/lib/poll-method'
 import { api } from '@/trpc/react'
 
 type Option = { id: number; label: string }
@@ -40,6 +43,7 @@ type Poll = {
   uuid: string
   title: string
   description: string | null
+  method: PollMethod
   status: string
   closesAt: string | null
   isClosed: boolean
@@ -146,6 +150,7 @@ export function PollVoteClient({
   const [ranking, setRanking] = useState<number[]>([])
   const [isHydrated, setIsHydrated] = useState(false)
 
+  const isApproval = poll.method === 'approval'
   const optionById = new Map(poll.options.map((o) => [o.id, o]))
   const utils = api.useUtils()
 
@@ -219,6 +224,12 @@ export function PollVoteClient({
   function removeOption(id: number) {
     setRanking((prev) => prev.filter((x) => x !== id))
   }
+  // Approval selection: order carries no meaning, so append/remove in place.
+  function toggleOption(id: number) {
+    setRanking((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -263,8 +274,9 @@ export function PollVoteClient({
             <Card>
               <CardContent className='flex flex-col items-start gap-4 pt-6'>
                 <p className='text-sm'>
-                  Sign in with Discord to cast your ranked ballot. You can edit
-                  it any time while the poll is open.
+                  Sign in with Discord to cast your{' '}
+                  {isApproval ? 'ballot' : 'ranked ballot'}. You can edit it any
+                  time while the poll is open.
                 </p>
                 <div className='flex gap-2'>
                   <Button onClick={() => signIn('discord')}>
@@ -278,114 +290,166 @@ export function PollVoteClient({
             </Card>
           ) : (
             <div className='flex flex-col gap-4'>
-              <p className='text-muted-foreground text-sm'>
-                Click options to add them to your ranking, then drag to order
-                them (1 = most preferred). You don't have to rank every option.
-              </p>
+              {isApproval ? (
+                <>
+                  <p className='text-muted-foreground text-sm'>
+                    Select every option you'd be happy with. Pick as many or as
+                    few as you like. Each option's share is the percentage of
+                    voters who picked it.
+                  </p>
 
-              <div className='grid gap-4 sm:grid-cols-2'>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className='text-base'>Options</CardTitle>
-                  </CardHeader>
-                  <CardContent className='flex flex-col gap-2'>
-                    {availableOptions.length === 0 ? (
-                      <p className='text-muted-foreground text-sm'>
-                        All options ranked.
-                      </p>
-                    ) : (
-                      availableOptions.map((option) => (
-                        <Button
-                          key={option.id}
-                          type='button'
-                          variant='outline'
-                          className='justify-start'
-                          onClick={() => addOption(option.id)}
-                        >
-                          <Plus className='mr-2 h-4 w-4' />
-                          {option.label}
-                        </Button>
-                      ))
-                    )}
-                  </CardContent>
-                </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className='text-base'>Options</CardTitle>
+                    </CardHeader>
+                    <CardContent className='flex flex-col gap-1'>
+                      {poll.options.map((option) => {
+                        const checked = ranking.includes(option.id)
+                        const checkboxId = `approval-option-${option.id}`
+                        return (
+                          <label
+                            key={option.id}
+                            htmlFor={checkboxId}
+                            className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 text-sm transition-colors ${
+                              checked ? 'border-primary bg-primary/5' : ''
+                            }`}
+                          >
+                            <Checkbox
+                              id={checkboxId}
+                              checked={checked}
+                              disabled={submitBallot.isPending}
+                              onCheckedChange={() => toggleOption(option.id)}
+                            />
+                            <span className='flex-1'>{option.label}</span>
+                          </label>
+                        )
+                      })}
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <>
+                  <p className='text-muted-foreground text-sm'>
+                    Click options to add them to your ranking, then drag to
+                    order them (1 = most preferred). You don't have to rank
+                    every option.
+                  </p>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className='text-base'>Your ranking</CardTitle>
-                  </CardHeader>
-                  <CardContent className='flex flex-col gap-2'>
-                    {rankedOptions.length === 0 ? (
-                      <p className='text-muted-foreground text-sm'>
-                        No options ranked yet.
-                      </p>
-                    ) : isHydrated ? (
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <SortableContext
-                          items={ranking}
-                          strategy={verticalListSortingStrategy}
-                        >
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className='text-base'>Options</CardTitle>
+                      </CardHeader>
+                      <CardContent className='flex flex-col gap-2'>
+                        {availableOptions.length === 0 ? (
+                          <p className='text-muted-foreground text-sm'>
+                            All options ranked.
+                          </p>
+                        ) : (
+                          availableOptions.map((option) => (
+                            <Button
+                              key={option.id}
+                              type='button'
+                              variant='outline'
+                              className='justify-start'
+                              onClick={() => addOption(option.id)}
+                            >
+                              <Plus className='mr-2 h-4 w-4' />
+                              {option.label}
+                            </Button>
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className='text-base'>
+                          Your ranking
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className='flex flex-col gap-2'>
+                        {rankedOptions.length === 0 ? (
+                          <p className='text-muted-foreground text-sm'>
+                            No options ranked yet.
+                          </p>
+                        ) : isHydrated ? (
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <SortableContext
+                              items={ranking}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              <div className='flex flex-col gap-2'>
+                                {rankedOptions.map((option, index) => (
+                                  <SortableRankRow
+                                    key={option.id}
+                                    option={option}
+                                    position={index + 1}
+                                    disabled={submitBallot.isPending}
+                                    onRemove={removeOption}
+                                  />
+                                ))}
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        ) : (
                           <div className='flex flex-col gap-2'>
                             {rankedOptions.map((option, index) => (
-                              <SortableRankRow
+                              <div
                                 key={option.id}
-                                option={option}
-                                position={index + 1}
-                                disabled={submitBallot.isPending}
-                                onRemove={removeOption}
-                              />
+                                className='rounded-md border bg-card p-2 text-sm'
+                              >
+                                {index + 1}. {option.label}
+                              </div>
                             ))}
                           </div>
-                        </SortableContext>
-                      </DndContext>
-                    ) : (
-                      <div className='flex flex-col gap-2'>
-                        {rankedOptions.map((option, index) => (
-                          <div
-                            key={option.id}
-                            className='rounded-md border bg-card p-2 text-sm'
-                          >
-                            {index + 1}. {option.label}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </>
+              )}
 
-              <div className='flex flex-wrap items-center gap-2'>
-                <Button
-                  onClick={() =>
-                    submitBallot.mutate({
-                      uuid: poll.uuid,
-                      rankedOptionIds: ranking,
-                    })
-                  }
-                  disabled={submitBallot.isPending}
-                >
-                  {submitBallot.isPending
-                    ? 'Saving...'
-                    : myBallot.data?.hasVoted
-                      ? 'Update my ballot'
-                      : 'Submit ballot'}
-                </Button>
-                {ranking.length > 0 ? (
+              <div className='flex flex-col gap-2'>
+                <div className='flex flex-wrap items-center gap-2'>
                   <Button
-                    variant='ghost'
-                    onClick={() => setRanking([])}
+                    onClick={() =>
+                      submitBallot.mutate({
+                        uuid: poll.uuid,
+                        rankedOptionIds: ranking,
+                      })
+                    }
                     disabled={submitBallot.isPending}
                   >
-                    Clear
+                    {submitBallot.isPending
+                      ? 'Saving...'
+                      : myBallot.data?.hasVoted
+                        ? `Update my vote (${ranking.length} selected)`
+                        : `Submit vote (${ranking.length} selected)`}
                   </Button>
+                  {ranking.length > 0 ? (
+                    <Button
+                      variant='ghost'
+                      onClick={() => setRanking([])}
+                      disabled={submitBallot.isPending}
+                    >
+                      Clear{isApproval ? ' selections' : ''}
+                    </Button>
+                  ) : null}
+                  <Button variant='outline' onClick={() => setTab('results')}>
+                    View results
+                  </Button>
+                </div>
+                {ranking.length === 0 ? (
+                  <p className='text-muted-foreground text-xs'>
+                    Nothing selected. Submitting still counts as a vote (it just
+                    adds to the total without backing any option).
+                  </p>
                 ) : null}
-                <Button variant='outline' onClick={() => setTab('results')}>
-                  View results
-                </Button>
               </div>
             </div>
           )}
@@ -398,61 +462,109 @@ export function PollVoteClient({
             <div className='flex flex-col gap-6'>
               <Card>
                 <CardHeader>
-                  <CardTitle className='text-base'>Ranking</CardTitle>
+                  <CardTitle className='text-base'>
+                    {isApproval ? 'Results' : 'Ranking'}
+                  </CardTitle>
                   <CardDescription>
                     {results.data.totalBallots} vote
                     {results.data.totalBallots === 1 ? '' : 's'}
+                    {isApproval ? ' · % of voters who picked each option' : ''}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className='flex flex-col gap-2'>
-                  {results.data.ranking.map((row) => {
-                    // Gold-highlight the leader(s): everyone tied at the top
-                    // points (only when at least one vote gives points).
-                    const topPoints = results.data.ranking[0]?.points ?? 0
-                    const isWinner = topPoints > 0 && row.points === topPoints
-                    return (
-                      <div
-                        key={row.optionId}
-                        className={`flex items-center gap-3 rounded-md border p-2 ${
-                          isWinner
-                            ? 'border-amber-400 bg-amber-400/10 dark:border-amber-500/60'
-                            : ''
-                        }`}
-                      >
-                        <span
-                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-semibold text-sm ${
-                            isWinner
-                              ? 'bg-amber-400/20 text-amber-600 dark:text-amber-400'
-                              : 'bg-primary/10 text-primary'
-                          }`}
-                        >
-                          {row.position}
-                        </span>
-                        <span className='flex flex-1 items-center gap-1.5 font-medium text-sm'>
-                          {row.label}
-                          {isWinner ? (
-                            <Crown className='h-4 w-4 text-amber-500' />
-                          ) : null}
-                        </span>
-                        <span className='text-muted-foreground text-xs'>
-                          {row.ballotsRanking} ranked
-                          {row.averageRank !== null
-                            ? ` · avg ${row.averageRank.toFixed(1)}`
-                            : ''}
-                        </span>
-                        <Badge
-                          variant='secondary'
-                          className={
-                            isWinner
-                              ? 'bg-amber-500 text-white hover:bg-amber-500'
-                              : ''
-                          }
-                        >
-                          {row.points} pts
-                        </Badge>
-                      </div>
-                    )
-                  })}
+                  {isApproval
+                    ? results.data.ranking.map((row) => {
+                        // Share = voters who picked this option / total voters.
+                        const total = results.data.totalBallots
+                        const approvals = row.ballotsRanking
+                        const pct = total > 0 ? (approvals / total) * 100 : 0
+                        const topApprovals =
+                          results.data.ranking[0]?.ballotsRanking ?? 0
+                        const isWinner =
+                          topApprovals > 0 && approvals === topApprovals
+                        return (
+                          <div
+                            key={row.optionId}
+                            className={`flex flex-col gap-1.5 rounded-md border p-3 ${
+                              isWinner
+                                ? 'border-amber-400 bg-amber-400/10 dark:border-amber-500/60'
+                                : ''
+                            }`}
+                          >
+                            <div className='flex items-center gap-2'>
+                              <span className='flex flex-1 items-center gap-1.5 font-medium text-sm'>
+                                {row.label}
+                                {isWinner ? (
+                                  <Crown className='h-4 w-4 text-amber-500' />
+                                ) : null}
+                              </span>
+                              <span className='text-muted-foreground text-xs'>
+                                {approvals} of {total}
+                              </span>
+                              <Badge
+                                variant='secondary'
+                                className={
+                                  isWinner
+                                    ? 'bg-amber-500 text-white hover:bg-amber-500'
+                                    : ''
+                                }
+                              >
+                                {pct.toFixed(0)}%
+                              </Badge>
+                            </div>
+                            <Progress value={pct} className='h-2' />
+                          </div>
+                        )
+                      })
+                    : results.data.ranking.map((row) => {
+                        // Gold-highlight the leader(s): everyone tied at the top
+                        // points (only when at least one vote gives points).
+                        const topPoints = results.data.ranking[0]?.points ?? 0
+                        const isWinner =
+                          topPoints > 0 && row.points === topPoints
+                        return (
+                          <div
+                            key={row.optionId}
+                            className={`flex items-center gap-3 rounded-md border p-2 ${
+                              isWinner
+                                ? 'border-amber-400 bg-amber-400/10 dark:border-amber-500/60'
+                                : ''
+                            }`}
+                          >
+                            <span
+                              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-semibold text-sm ${
+                                isWinner
+                                  ? 'bg-amber-400/20 text-amber-600 dark:text-amber-400'
+                                  : 'bg-primary/10 text-primary'
+                              }`}
+                            >
+                              {row.position}
+                            </span>
+                            <span className='flex flex-1 items-center gap-1.5 font-medium text-sm'>
+                              {row.label}
+                              {isWinner ? (
+                                <Crown className='h-4 w-4 text-amber-500' />
+                              ) : null}
+                            </span>
+                            <span className='text-muted-foreground text-xs'>
+                              {row.ballotsRanking} ranked
+                              {row.averageRank !== null
+                                ? ` · avg ${row.averageRank.toFixed(1)}`
+                                : ''}
+                            </span>
+                            <Badge
+                              variant='secondary'
+                              className={
+                                isWinner
+                                  ? 'bg-amber-500 text-white hover:bg-amber-500'
+                                  : ''
+                              }
+                            >
+                              {row.points} pts
+                            </Badge>
+                          </div>
+                        )
+                      })}
                 </CardContent>
               </Card>
 
@@ -501,7 +613,9 @@ export function PollVoteClient({
                                 variant='outline'
                                 className='font-normal'
                               >
-                                {choice.rank}. {choice.label}
+                                {isApproval
+                                  ? choice.label
+                                  : `${choice.rank}. ${choice.label}`}
                               </Badge>
                             ))
                           )}
