@@ -1,0 +1,1 @@
+ALTER TABLE "polls" ADD COLUMN "method" varchar(255) DEFAULT 'ranked' NOT NULL;
