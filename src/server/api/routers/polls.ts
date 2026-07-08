@@ -1,6 +1,11 @@
 import { TRPCError } from '@trpc/server'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
+import {
+  pollMethodSchema,
+  tallyMethodFor,
+  toPollMethod,
+} from '@/lib/poll-method'
 import { isPollClosed } from '@/lib/poll-status'
 import { type Ballot, tally } from '@/lib/ranked-choice'
 import {
@@ -18,8 +23,6 @@ import {
 } from '@/server/db/schema'
 
 type DbClient = typeof import('@/server/db').db
-
-const TALLY_METHOD = 'borda' as const
 
 async function getPollByUuidOrThrow(db: DbClient, uuid: string) {
   const poll = await db
@@ -70,6 +73,9 @@ async function countBallots(db: DbClient, pollId: number) {
 const createInputSchema = z.object({
   title: z.string().trim().min(1).max(255),
   description: z.string().trim().max(10_000).optional(),
+  // 'ranked' (order options) or 'approval' (pick any subset). Set at creation;
+  // switching later would silently re-interpret existing ballots.
+  method: pollMethodSchema.default('ranked'),
   options: z.array(z.string().trim().min(1).max(500)).min(2),
   // hours until the poll auto-closes; default 24. Max ~1 year.
   durationHours: z.number().int().min(1).max(8760).default(24),
@@ -87,6 +93,7 @@ export const pollsRouter = createTRPCRouter({
           .values({
             title: input.title,
             description: input.description ?? null,
+            method: input.method,
             createdBy: ctx.session.user.id,
             closesAt: new Date(Date.now() + input.durationHours * 3_600_000),
           })
@@ -337,6 +344,7 @@ export const pollsRouter = createTRPCRouter({
         uuid: poll.uuid,
         title: poll.title,
         description: poll.description,
+        method: toPollMethod(poll.method),
         status: poll.status,
         closedAt: poll.closedAt,
         closesAt: poll.closesAt,
@@ -401,10 +409,13 @@ export const pollsRouter = createTRPCRouter({
         return { userId: b.userId, ranked }
       })
 
-      const ranking = tally(TALLY_METHOD, ballots, optionIds).map((r) => ({
-        ...r,
-        label: labelById.get(r.optionId) ?? '',
-      }))
+      const method = toPollMethod(poll.method)
+      const ranking = tally(tallyMethodFor(method), ballots, optionIds).map(
+        (r) => ({
+          ...r,
+          label: labelById.get(r.optionId) ?? '',
+        })
+      )
 
       const perPerson = ballotRows
         .map((b) => ({
@@ -425,7 +436,7 @@ export const pollsRouter = createTRPCRouter({
         .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
 
       return {
-        method: TALLY_METHOD,
+        method,
         totalBallots: ballots.length,
         ranking,
         ballots: perPerson,
@@ -543,6 +554,11 @@ export const pollsRouter = createTRPCRouter({
           ballotId = created.id
         }
 
+        // Store the selected options at contiguous ranks 1..k. For ranked polls
+        // rank is the voter's ordering; for approval polls it is a meaningless
+        // positional index (the tally treats the set as unordered). An empty
+        // array inserts nothing: an intentional abstention that still counts as
+        // a ballot / voter.
         if (input.rankedOptionIds.length > 0) {
           await tx.insert(pollBallotRankings).values(
             input.rankedOptionIds.map((optionId, index) => ({

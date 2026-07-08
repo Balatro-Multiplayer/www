@@ -543,7 +543,10 @@ export const polls = pgTable(
       .$defaultFn(() => crypto.randomUUID()),
     title: text('title').notNull(),
     description: text('description'),
-    // 'open' | 'closed' — text + zod enum at the API boundary (no pgEnum in this codebase)
+    // 'ranked' | 'approval' voting method: text + zod enum at the API boundary
+    // (no pgEnum in this codebase). See src/lib/poll-method.ts.
+    method: varchar('method', { length: 255 }).notNull().default('ranked'),
+    // 'open' | 'closed': text + zod enum at the API boundary (no pgEnum in this codebase)
     status: varchar('status', { length: 255 }).notNull().default('open'),
     closedAt: timestamp('closed_at'),
     // scheduled auto-close time; null = no auto-close. Effective-closed also
