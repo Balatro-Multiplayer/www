@@ -1,6 +1,6 @@
 'use client'
 
-import { Copy, Trash2 } from 'lucide-react'
+import { Copy, ShieldX, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { startTransition, useState } from 'react'
@@ -38,9 +38,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { downloadJson } from '@/lib/download-json'
 import { type PollMethod, pollMethodLabel } from '@/lib/poll-method'
 import { formatDate } from '@/lib/utils'
-import { api } from '@/trpc/react'
+import { api, type RouterOutputs } from '@/trpc/react'
+
+type PurgePreview = RouterOutputs['polls']['previewIneligibleBallots']
 
 export type PollListRow = {
   id: number
@@ -68,6 +71,10 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
   const [durationHours, setDurationHours] = useState('24')
   const [error, setError] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<PollListRow | null>(null)
+  const [purgePreview, setPurgePreview] = useState<PurgePreview | null>(null)
+  const [isPreviewing, setIsPreviewing] = useState(false)
+
+  const utils = api.useUtils()
 
   const createPoll = api.polls.create.useMutation({
     onSuccess: ({ id }) => {
@@ -87,6 +94,36 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
     },
     onError: (err) => toast.error(err.message),
   })
+
+  const purgeBallots = api.polls.purgeIneligibleBallots.useMutation({
+    onSuccess: (archive) => {
+      setPurgePreview(null)
+      downloadJson(`poll-ballots-archive-${archive.generatedAt}.json`, archive)
+      toast.success(
+        `Purged ${archive.counts.ballots} ballot${
+          archive.counts.ballots === 1 ? '' : 's'
+        } — archive downloaded`
+      )
+      startTransition(() => router.refresh())
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  async function startPurge() {
+    setIsPreviewing(true)
+    try {
+      const preview = await utils.polls.previewIneligibleBallots.fetch()
+      setPurgePreview(preview)
+    } catch (err) {
+      // Fail-closed: if the ranked service can't be reached we can't safely
+      // decide what to purge, so surface the error and offer nothing.
+      toast.error(
+        err instanceof Error ? err.message : 'Could not check eligibility'
+      )
+    } finally {
+      setIsPreviewing(false)
+    }
+  }
 
   function resetForm() {
     setTitle('')
@@ -145,7 +182,17 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
         <p className='text-muted-foreground text-sm'>
           {polls.length} poll{polls.length === 1 ? '' : 's'}
         </p>
-        <Button onClick={() => setIsCreateOpen(true)}>New Poll</Button>
+        <div className='flex items-center gap-2'>
+          <Button
+            variant='outline'
+            onClick={startPurge}
+            disabled={isPreviewing || purgeBallots.isPending}
+          >
+            <ShieldX className='mr-2 h-4 w-4' />
+            {isPreviewing ? 'Checking...' : 'Purge ineligible ballots'}
+          </Button>
+          <Button onClick={() => setIsCreateOpen(true)}>New Poll</Button>
+        </div>
       </div>
 
       <TableShell className='overflow-hidden'>
@@ -404,6 +451,69 @@ export function PollsClient({ polls }: { polls: PollListRow[] }) {
             >
               {deletePoll.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={purgePreview !== null}
+        onOpenChange={(open) => !open && setPurgePreview(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Purge ineligible ballots?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              {purgePreview && purgePreview.invalidBallots > 0 ? (
+                <div className='space-y-2'>
+                  <p>
+                    <strong>{purgePreview.invalidBallots}</strong> ballot
+                    {purgePreview.invalidBallots === 1 ? '' : 's'} from{' '}
+                    <strong>{purgePreview.invalidUsers}</strong> user
+                    {purgePreview.invalidUsers === 1 ? '' : 's'} across{' '}
+                    <strong>{purgePreview.affectedPolls.length}</strong> poll
+                    {purgePreview.affectedPolls.length === 1 ? '' : 's'} will be
+                    archived and removed — cast by accounts that have not played
+                    standard ranked in season {purgePreview.seasonId}. A JSON
+                    backup downloads automatically. This cannot be undone from
+                    the UI.
+                  </p>
+                  <ul className='max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5 text-xs'>
+                    {purgePreview.affectedPolls.map((p) => (
+                      <li key={p.pollId}>
+                        {p.title} — {p.count} ballot{p.count === 1 ? '' : 's'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <span>
+                  No ineligible ballots found. Every existing ballot was cast by
+                  an eligible account.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={purgeBallots.isPending}>
+              {purgePreview && purgePreview.invalidBallots > 0
+                ? 'Cancel'
+                : 'Close'}
+            </AlertDialogCancel>
+            {purgePreview && purgePreview.invalidBallots > 0 ? (
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault()
+                  purgeBallots.mutate()
+                }}
+                disabled={purgeBallots.isPending}
+              >
+                {purgeBallots.isPending
+                  ? 'Purging...'
+                  : `Purge ${purgePreview.invalidBallots} ballot${
+                      purgePreview.invalidBallots === 1 ? '' : 's'
+                    }`}
+              </AlertDialogAction>
+            ) : null}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

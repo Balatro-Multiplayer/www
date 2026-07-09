@@ -16,11 +16,18 @@ import {
 } from '@/server/api/trpc'
 import {
   pollBallotRankings,
+  pollBallotRankingsArchive,
   pollBallots,
+  pollBallotsArchive,
   pollOptions,
   polls,
   users,
 } from '@/server/db/schema'
+import {
+  getEligibleVoterDiscordIds,
+  hasPlayedStandardRankedThisSeason,
+} from '@/server/poll-eligibility'
+import { getActiveSeasonNumber } from '@/server/seasons'
 
 type DbClient = typeof import('@/server/db').db
 
@@ -495,6 +502,28 @@ export const pollsRouter = createTRPCRouter({
         })
       }
 
+      // Only players who have competed in standard ranked this season may vote.
+      let eligible: boolean
+      try {
+        eligible = await hasPlayedStandardRankedThisSeason(
+          ctx.session.user.discord_id
+        )
+      } catch {
+        // Fail-closed: if eligibility can't be verified, do not let the vote through.
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message:
+            'Could not verify ranked eligibility right now. Please try again later.',
+        })
+      }
+      if (!eligible) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message:
+            'You must play at least one standard ranked game this season to vote.',
+        })
+      }
+
       // Validate: no duplicates, all ids belong to this poll.
       const unique = new Set(input.rankedOptionIds)
       if (unique.size !== input.rankedOptionIds.length) {
@@ -572,4 +601,148 @@ export const pollsRouter = createTRPCRouter({
 
       return { success: true }
     }),
+
+  // Dry run for the "purge ineligible ballots" admin action: reports how many
+  // ballots would be removed without writing anything. Throws (fail-closed) if
+  // the ranked eligibility service is unreachable, so no purge is ever offered
+  // against an unknown eligibility set.
+  previewIneligibleBallots: permissionProcedure('polls.manage').query(
+    async ({ ctx }) => {
+      const [eligible, seasonId] = await Promise.all([
+        getEligibleVoterDiscordIds(),
+        getActiveSeasonNumber(),
+      ])
+
+      const rows = await ctx.db
+        .select({
+          ballotId: pollBallots.id,
+          pollId: pollBallots.pollId,
+          userId: pollBallots.userId,
+          discordId: users.discord_id,
+          pollTitle: polls.title,
+        })
+        .from(pollBallots)
+        .innerJoin(users, eq(users.id, pollBallots.userId))
+        .leftJoin(polls, eq(polls.id, pollBallots.pollId))
+
+      const invalid = rows.filter(
+        (r) => !r.discordId || !eligible.has(r.discordId)
+      )
+
+      const perPoll = new Map<number, { title: string; count: number }>()
+      for (const r of invalid) {
+        const entry = perPoll.get(r.pollId) ?? {
+          title: r.pollTitle ?? `Poll #${r.pollId}`,
+          count: 0,
+        }
+        entry.count += 1
+        perPoll.set(r.pollId, entry)
+      }
+
+      return {
+        seasonId,
+        totalBallots: rows.length,
+        invalidBallots: invalid.length,
+        invalidUsers: new Set(invalid.map((r) => r.userId)).size,
+        affectedPolls: Array.from(perPoll.entries())
+          .map(([pollId, v]) => ({ pollId, title: v.title, count: v.count }))
+          .sort((a, b) => b.count - a.count),
+      }
+    }
+  ),
+
+  // Archives every ballot cast by a user who has not played standard ranked this
+  // season (and any user with no linked discord id), then deletes it. Rankings
+  // are archived first and cascade-deleted with the ballot. Returns the full
+  // archived payload so the client can download a JSON backup. Idempotent:
+  // re-running finds nothing left to purge.
+  purgeIneligibleBallots: permissionProcedure('polls.manage').mutation(
+    async ({ ctx }) => {
+      const reason = 'no_standard_ranked_current_season'
+      const [eligible, seasonId] = await Promise.all([
+        getEligibleVoterDiscordIds(),
+        getActiveSeasonNumber(),
+      ])
+
+      const ballotRows = await ctx.db
+        .select({
+          id: pollBallots.id,
+          pollId: pollBallots.pollId,
+          userId: pollBallots.userId,
+          createdAt: pollBallots.createdAt,
+          updatedAt: pollBallots.updatedAt,
+          discordId: users.discord_id,
+        })
+        .from(pollBallots)
+        .innerJoin(users, eq(users.id, pollBallots.userId))
+
+      const invalid = ballotRows.filter(
+        (r) => !r.discordId || !eligible.has(r.discordId)
+      )
+      const invalidIds = invalid.map((r) => r.id)
+
+      const generatedAt = new Date().toISOString()
+
+      if (invalidIds.length === 0) {
+        return {
+          generatedAt,
+          seasonId,
+          reason,
+          counts: { ballots: 0, rankings: 0 },
+          ballots: [],
+          rankings: [],
+        }
+      }
+
+      const rankings = await ctx.db
+        .select({
+          id: pollBallotRankings.id,
+          ballotId: pollBallotRankings.ballotId,
+          optionId: pollBallotRankings.optionId,
+          rank: pollBallotRankings.rank,
+        })
+        .from(pollBallotRankings)
+        .where(inArray(pollBallotRankings.ballotId, invalidIds))
+
+      await ctx.db.transaction(async (tx) => {
+        if (rankings.length > 0) {
+          await tx.insert(pollBallotRankingsArchive).values(
+            rankings.map((r) => ({
+              id: r.id,
+              ballotId: r.ballotId,
+              optionId: r.optionId,
+              rank: r.rank,
+            }))
+          )
+        }
+        await tx.insert(pollBallotsArchive).values(
+          invalid.map((b) => ({
+            id: b.id,
+            pollId: b.pollId,
+            userId: b.userId,
+            createdAt: b.createdAt,
+            updatedAt: b.updatedAt,
+            archiveReason: reason,
+          }))
+        )
+        // Deleting the ballots cascade-deletes their rankings (already archived).
+        await tx.delete(pollBallots).where(inArray(pollBallots.id, invalidIds))
+      })
+
+      return {
+        generatedAt,
+        seasonId,
+        reason,
+        counts: { ballots: invalid.length, rankings: rankings.length },
+        ballots: invalid.map((b) => ({
+          id: b.id,
+          pollId: b.pollId,
+          userId: b.userId,
+          createdAt: b.createdAt,
+          updatedAt: b.updatedAt,
+        })),
+        rankings,
+      }
+    }
+  ),
 })

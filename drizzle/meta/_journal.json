@@ -120,6 +120,13 @@
       "when": 1783544406211,
       "tag": "0016_past_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783600000000,
+      "tag": "0017_poll_ballots_archive",
+      "breakpoints": true
     }
   ]
 }

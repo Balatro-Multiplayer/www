@@ -664,6 +664,28 @@ export const pollBallotRankingsRelations = relations(
   })
 )
 
+// Archive tables for ballots removed by the "purge ineligible ballots" admin
+// action. Deliberately hold no foreign keys or unique constraints so archived
+// rows survive later deletion of the source poll/user/option and so re-purges
+// never collide. Rows are only ever written by that action, never auto-populated.
+export const pollBallotsArchive = pgTable('poll_ballots_archive', {
+  id: integer('id').notNull(),
+  pollId: integer('poll_id').notNull(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at'),
+  updatedAt: timestamp('updated_at'),
+  archiveReason: text('archive_reason'),
+  archivedAt: timestamp('archived_at').notNull().defaultNow(),
+})
+
+export const pollBallotRankingsArchive = pgTable('poll_ballot_rankings_archive', {
+  id: integer('id').notNull(),
+  ballotId: integer('ballot_id').notNull(),
+  optionId: integer('option_id').notNull(),
+  rank: integer('rank').notNull(),
+  archivedAt: timestamp('archived_at').notNull().defaultNow(),
+})
+
 // Playoffs are season-driven: exactly one bracket per season, and display
 // names ("Season 5 Playoffs") derive from the season registry.
 export const brackets = pgTable(
