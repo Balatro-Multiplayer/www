@@ -121,7 +121,7 @@ function SortableRankRow({
       >
         <GripVertical className='h-4 w-4' />
       </Button>
-      <span className='flex-1 text-sm'>{option.label}</span>
+      <span className='min-w-0 flex-1 break-words text-sm'>{option.label}</span>
       <Button
         type='button'
         variant='ghost'
@@ -320,7 +320,9 @@ export function PollVoteClient({
                               disabled={submitBallot.isPending}
                               onCheckedChange={() => toggleOption(option.id)}
                             />
-                            <span className='flex-1'>{option.label}</span>
+                            <span className='min-w-0 flex-1 break-words'>
+                              {option.label}
+                            </span>
                           </label>
                         )
                       })}
@@ -351,11 +353,13 @@ export function PollVoteClient({
                               key={option.id}
                               type='button'
                               variant='outline'
-                              className='justify-start'
+                              className='h-auto min-h-9 justify-start whitespace-normal py-2 text-left'
                               onClick={() => addOption(option.id)}
                             >
                               <Plus className='mr-2 h-4 w-4' />
-                              {option.label}
+                              <span className='min-w-0 break-words'>
+                                {option.label}
+                              </span>
                             </Button>
                           ))
                         )}
