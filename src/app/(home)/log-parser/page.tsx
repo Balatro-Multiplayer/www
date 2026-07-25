@@ -45,6 +45,7 @@ import { hasPermission } from '@/lib/permissions'
 import { jokers } from '@/shared/jokers'
 import { vouchers } from '@/shared/vouchers'
 import { DeckViewsCard } from './_components/deck-view'
+import { IdolHitCard } from './_components/idol-hit'
 import { PvpBlindsCard } from './_components/pvp-blinds'
 import { normalizeDeckCards } from './deck-utils'
 
@@ -375,6 +376,8 @@ function normalizeParsedGames(games: Game[]) {
       : null,
     logOwnerDeck: normalizeDeckCards(game.logOwnerDeck),
     opponentDeck: normalizeDeckCards(game.opponentDeck),
+    // Parses saved before idol hits existed have no `idolHits` key.
+    idolHits: Array.isArray(game.idolHits) ? game.idolHits : [],
   }))
 }
 
@@ -1242,6 +1245,10 @@ export default function LogParser() {
                             </div>
                           </CardContent>
                         </Card>
+
+                        {/* Idol Hits Card (only when the log recorded any) */}
+                        <IdolHitCard hits={game.idolHits} />
+
                         <Card>
                           <CardHeader>
                             <CardTitle className='text-lg'>Vouchers</CardTitle>
