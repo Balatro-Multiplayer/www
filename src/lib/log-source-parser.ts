@@ -928,6 +928,9 @@ function decodeIdolRoll(payload: string): IdolHit | null {
 export async function parseLogSource(content: string) {
   const logLines = content.split('\n')
   const games: ParsedLogGame[] = []
+  // Idol hits seen before/without any multiplayer game (practice or solo play).
+  const orphanIdolHits: IdolHit[] = []
+  let firstOrphanIdolTimestamp: Date | null = null
   let currentGame: ParsedLogGame | null = null
   let lastSeenLobbyOptions: GameOptions | null = null
   let pendingLobbyCode: string | null = null
@@ -957,13 +960,22 @@ export async function parseLogSource(content: string) {
         .slice(line.indexOf('IDOL_ROLL::') + 'IDOL_ROLL::'.length)
         .trim()
       const idolHit = decodeIdolRoll(token)
-      if (idolHit && currentGame) {
+      if (idolHit) {
         // Deliberately NOT correlated to a PvP blind number. The idol reroll
         // happens in the vanilla per-round reset (state_events.lua), so it
         // fires for skipped blinds too, while a PvP blind is only recorded
         // when play is actually entered — the two counts diverge on a skip.
         // Hits are kept in log order and rendered as "Hit N" instead.
-        currentGame.idolHits.push(idolHit)
+        if (currentGame) {
+          currentGame.idolHits.push(idolHit)
+        } else {
+          // Practice/solo logs have no multiplayer markers, so there is no game
+          // to attach to. Kept aside for the dev-only fallback below.
+          orphanIdolHits.push(idolHit)
+          if (firstOrphanIdolTimestamp === null) {
+            firstOrphanIdolTimestamp = timestamp
+          }
+        }
       }
       continue
     }
@@ -1538,6 +1550,25 @@ export async function parseLogSource(content: string) {
         (currentGame.endDate.getTime() - currentGame.startDate.getTime()) / 1000
       games.push(currentGame)
     }
+  }
+
+  // DEV ONLY. Practice mode still rolls the idol, but produces none of the
+  // multiplayer markers a game is built from, so those hits would be dropped
+  // and the log would read as empty. Locally that makes the feature painful to
+  // work on without a second player, so surface them as a stand-in game. Never
+  // in production: uploads there should keep meaning "a real multiplayer game".
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    games.length === 0 &&
+    orphanIdolHits.length > 0
+  ) {
+    const practiceGame = initGame(
+      gameCounter + 1,
+      firstOrphanIdolTimestamp ?? new Date()
+    )
+    practiceGame.logOwnerName = 'Practice (dev only)'
+    practiceGame.idolHits = orphanIdolHits
+    games.push(practiceGame)
   }
 
   return normalizeParsedGames(games)
