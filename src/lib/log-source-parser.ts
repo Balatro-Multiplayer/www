@@ -76,6 +76,14 @@ export type PvpBlind = {
   winner: 'logOwner' | 'opponent' | null
 }
 
+export type IdolHitEntry = { rank: string; suit: string; count: number }
+
+export type IdolHit = {
+  roll: number | null
+  winner: { rank: string; suit: string }
+  cards: IdolHitEntry[]
+}
+
 export type ParsedLogGame = {
   id: number
   host: string | null
@@ -114,6 +122,7 @@ export type ParsedLogGame = {
   winner: 'logOwner' | 'opponent' | null
   pvpBlinds: PvpBlind[]
   currentPvpBlind: number | null
+  idolHits: IdolHit[]
 }
 
 class LuaParser {
@@ -375,6 +384,7 @@ const initGame = (id: number, startDate: Date): ParsedLogGame => ({
   winner: null,
   pvpBlinds: [],
   currentPvpBlind: null,
+  idolHits: [],
 })
 
 function parseClientSentPayload(line: string): ParsedSentPayload | null {
@@ -808,12 +818,119 @@ function normalizeParsedGames(games: ParsedLogGame[]) {
       : null,
     logOwnerDeck: normalizeDeckCards(game.logOwnerDeck),
     opponentDeck: normalizeDeckCards(game.opponentDeck),
+    idolHits: game.idolHits ?? [],
   }))
+}
+
+/**
+ * Parses one `<rank><suit><count>` card token from the compact IDOL_ROLL:: line
+ * (e.g. `AS1`, `KS4`, `QD12`). Rank/suit codes are passed through as-is — unknown
+ * codes are kept, never mapped or invented. A token is only rejected when it's
+ * structurally malformed: missing rank/suit chars, or a missing/non-numeric count.
+ */
+function parseIdolCardToken(token: string): IdolHitEntry | null {
+  const rank = token[0]
+  const suit = token[1]
+  if (!rank || !suit) {
+    return null
+  }
+
+  // Count must be a plain positive integer: it is the segment's weight, so a
+  // zero, negative or junk value would silently distort the whole distribution.
+  const countStr = token.slice(2)
+  if (!/^\d+$/.test(countStr)) {
+    return null
+  }
+
+  const count = Number.parseInt(countStr, 10)
+  if (!Number.isSafeInteger(count) || count < 1) {
+    return null
+  }
+
+  return { rank, suit, count }
+}
+
+/** Parses the `<rank><suit>` winner token (e.g. `TC`, `AS`) — no count. */
+function parseIdolWinnerToken(
+  token: string
+): { rank: string; suit: string } | null {
+  const rank = token[0]
+  const suit = token[1]
+  if (!rank || !suit) {
+    return null
+  }
+
+  return { rank, suit }
+}
+
+/**
+ * Decodes an `IDOL_ROLL::` payload — base64 (the mod encodes with
+ * `love.data.encode("string","base64",...)` so the line is one opaque token)
+ * of simple JSON with cards as compact `<rank><suit><count>` tokens (T = 10):
+ *   `{"roll":0.62,"winner":"QH","cards":["KS4","QH3","AS1"]}`
+ * Fully defensive — never throws, returns null on any structural malformation
+ * (bad base64, bad JSON, missing/invalid winner, empty or all-invalid card
+ * list). An absent or unparseable `roll` degrades to `null` rather than
+ * dropping the whole roll, since the UI already falls back to a winner-only
+ * display in that case.
+ */
+function decodeIdolRoll(payload: string): IdolHit | null {
+  try {
+    const json = Buffer.from(payload, 'base64').toString('utf8')
+
+    const parsed: unknown = JSON.parse(json)
+    if (!isPlainObject(parsed)) {
+      return null
+    }
+
+    const rawWinner = parsed.winner
+    if (typeof rawWinner !== 'string') {
+      return null
+    }
+
+    const winner = parseIdolWinnerToken(rawWinner)
+    if (!winner) {
+      return null
+    }
+
+    if (!Array.isArray(parsed.cards) || parsed.cards.length === 0) {
+      return null
+    }
+
+    // Every token has to parse. Dropping just the bad ones would leave the rest
+    // weighted against a smaller total, so the odds — and the position the roll
+    // is drawn at — would be quietly wrong. Better to show nothing.
+    const cards: IdolHitEntry[] = []
+    for (const token of parsed.cards) {
+      const entry = typeof token === 'string' ? parseIdolCardToken(token) : null
+      if (!entry) {
+        return null
+      }
+      cards.push(entry)
+    }
+
+    // The winner has to be one of the cards, otherwise nothing would highlight
+    // and the "N-in-M" odds would read 0.
+    if (!cards.some((c) => c.rank === winner.rank && c.suit === winner.suit)) {
+      return null
+    }
+
+    const rawRoll = parsed.roll
+    const roll =
+      typeof rawRoll === 'number' && Number.isFinite(rawRoll) ? rawRoll : null
+
+    return { roll, winner, cards }
+  } catch {
+    return null
+  }
 }
 
 export async function parseLogSource(content: string) {
   const logLines = content.split('\n')
   const games: ParsedLogGame[] = []
+  // Idol hits seen before/without any multiplayer game (practice or solo play).
+  const orphanIdolHits: IdolHit[] = []
+  let firstOrphanIdolTimestamp: Date | null = null
   let currentGame: ParsedLogGame | null = null
   let lastSeenLobbyOptions: GameOptions | null = null
   let pendingLobbyCode: string | null = null
@@ -836,6 +953,31 @@ export async function parseLogSource(content: string) {
 
     if (lobbyCode) {
       pendingLobbyCode = lobbyCode
+    }
+
+    if (line.includes('IDOL_ROLL::')) {
+      const token = line
+        .slice(line.indexOf('IDOL_ROLL::') + 'IDOL_ROLL::'.length)
+        .trim()
+      const idolHit = decodeIdolRoll(token)
+      if (idolHit) {
+        // Deliberately NOT correlated to a PvP blind number. The idol reroll
+        // happens in the vanilla per-round reset (state_events.lua), so it
+        // fires for skipped blinds too, while a PvP blind is only recorded
+        // when play is actually entered — the two counts diverge on a skip.
+        // Hits are kept in log order and rendered as "Hit N" instead.
+        if (currentGame) {
+          currentGame.idolHits.push(idolHit)
+        } else {
+          // Practice/solo logs have no multiplayer markers, so there is no game
+          // to attach to. Kept aside for the dev-only fallback below.
+          orphanIdolHits.push(idolHit)
+          if (firstOrphanIdolTimestamp === null) {
+            firstOrphanIdolTimestamp = timestamp
+          }
+        }
+      }
+      continue
     }
 
     if (line.includes('Client got receiveEndGameJokers message')) {
@@ -1408,6 +1550,25 @@ export async function parseLogSource(content: string) {
         (currentGame.endDate.getTime() - currentGame.startDate.getTime()) / 1000
       games.push(currentGame)
     }
+  }
+
+  // DEV ONLY. Practice mode still rolls the idol, but produces none of the
+  // multiplayer markers a game is built from, so those hits would be dropped
+  // and the log would read as empty. Locally that makes the feature painful to
+  // work on without a second player, so surface them as a stand-in game. Never
+  // in production: uploads there should keep meaning "a real multiplayer game".
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    games.length === 0 &&
+    orphanIdolHits.length > 0
+  ) {
+    const practiceGame = initGame(
+      gameCounter + 1,
+      firstOrphanIdolTimestamp ?? new Date()
+    )
+    practiceGame.logOwnerName = 'Practice (dev only)'
+    practiceGame.idolHits = orphanIdolHits
+    games.push(practiceGame)
   }
 
   return normalizeParsedGames(games)
