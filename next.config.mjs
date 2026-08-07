@@ -80,6 +80,11 @@ const config = {
         destination: '/stats?tab=season-overview',
         permanent: true,
       },
+      {
+        source: '/notice',
+        destination: 'https://new.balatromp.com/notice',
+        permanent: true,
+      },
     ]
   },
   // Generate a unique build ID for each build if not provided by the environment
