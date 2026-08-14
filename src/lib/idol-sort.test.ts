@@ -94,13 +94,14 @@ describe('PR527 weight values', () => {
  * (plain), 2x 2♠ (plain), 1x 2♥ wild.
  *
  * Aggregates: distinctRanks=2 ('A','2'), totalCards=8, rawMeanByNumber=4.
- * facePool=5 (only 'A' present) / faceBaseline=round05(4*1)=4 /
- * faceScoreValue=max(0, 0.05*1.1*max(0,5-4))=0.055.
+ * facePool=0 — Ace is NOT a face rank (only J/Q/K are; see FACE_RANKS in
+ * shared/cards.ts) and no J/Q/K are present here — so faceRanksPresent=0,
+ * faceBaseline=round05(4*0)=0, faceScoreValue=max(0, 0.05*1.1*max(0,0-0))=0.
  * lowPool=3 (2♠+2♥) / lowBaseline=round05(4*1)=4 /
  * lowScoreValue=max(0, 0.05*max(0,3-4))=0.
  *
  * (A,S): Tier A (effectiveCount=5). countBonus=0.5*5=2.5.
- *   totalScore = 2.5 + faceScore(0.055) + 0 + 0 = 2.555.
+ *   totalScore = 2.5 + faceScore(0) + 0 + 0 = 2.5.
  * (2,S): Tier B. wildElsewhere=1 (the 2♥ wild card), effectiveCount=3.
  *   mainHit=2.2*3=6.6. convertiblePool=rankTotal(3)-own(2)-wildElsewhere(1)=0 -> offHit=0.
  *   previousRank('2')=='A' -> neighborCount=(A,S).count(5)+0=5, needed=2 -> strengthAdj=0.7*min(2,5,2)=1.4.
@@ -111,7 +112,7 @@ describe('PR527 weight values', () => {
  *   m_wild enhancement weight is zeroed under PR527, so editionContribution=0.
  *   totalScore = 2.2+1.6+0+0+0+0 = 3.8.
  *
- * Final sort: tier desc first, so (A,S) [Tier A, 2.555] outranks BOTH Tier B
+ * Final sort: tier desc first, so (A,S) [Tier A, 2.5] outranks BOTH Tier B
  * entries despite having the lowest raw score of the three — then within
  * Tier B, (2,S) [8.0] outranks (2,H) [3.8]. Order: [A♠, 2♠, 2♥].
  */
@@ -144,8 +145,10 @@ describe('computeIdolSort — hand-verified fixture', () => {
 
     expect(aceSpades.tier).toBe('A')
     expect(aceSpades.effectiveCount).toBe(5)
-    expect(aceSpades.faceScore).toBeCloseTo(0.055, 10)
-    expect(aceSpades.totalScore).toBeCloseTo(2.555, 10)
+    // Ace is not a face rank (see FACE_RANKS) — no bonus even though it's
+    // the only rank in the deck at count 5.
+    expect(aceSpades.faceScore).toBe(0)
+    expect(aceSpades.totalScore).toBeCloseTo(2.5, 10)
 
     expect(twoSpades.tier).toBe('B')
     expect(twoSpades.effectiveCount).toBe(3)
@@ -269,6 +272,70 @@ describe('tier boundary', () => {
   })
 })
 
+describe('computeIdolSort — face-rank bonus only applies to J/Q/K', () => {
+  // Steamodded's core rank registrations (src/game_object.lua) set
+  // `face = true` on Jack/Queen/King only — Ace gets `nominal = 11` and
+  // `face_nominal = 0.4` for sort-order tiebreaking, but no `face` flag, so
+  // TheOrder.lua's `if rank_obj.face then ...` check is false for it. These
+  // guard against 'A' ever creeping back into FACE_RANKS.
+
+  test('a deck skewed toward Aces gets no face-rank bonus at all', () => {
+    // 5x A♠ dominant, 1x 2♦ minor — same shape as the fixture above that
+    // would show a bonus if (and only if) Aces incorrectly counted as face.
+    const result = computeIdolSort([
+      card('A', 'S'),
+      card('A', 'S'),
+      card('A', 'S'),
+      card('A', 'S'),
+      card('A', 'S'),
+      card('2', 'D'),
+    ])
+    expect(result.context?.facePool).toBe(0)
+    expect(result.context?.faceRanksPresent).toBe(0)
+    expect(result.context?.faceScoreValue).toBe(0)
+
+    const aceEntry = result.entries.find((e) => e.rank === 'A')
+    expect(aceEntry?.faceScore).toBe(0)
+  })
+
+  test('the identical shape with Jacks instead of Aces DOES get the face-rank bonus', () => {
+    // Same 5-vs-1 skew, same totals — only the rank changes, isolating that
+    // it's specifically "is this rank a face rank" driving the bonus.
+    const result = computeIdolSort([
+      card('J', 'S'),
+      card('J', 'S'),
+      card('J', 'S'),
+      card('J', 'S'),
+      card('J', 'S'),
+      card('2', 'D'),
+    ])
+    // distinctRanks=2, totalCards=6, rawMeanByNumber=3.
+    // facePool=5, faceRanksPresent=1, faceBaseline=round05(3*1)=3.
+    // faceScoreValue=max(0, 0.05*1.1*max(0,5-3))=0.11.
+    expect(result.context?.facePool).toBe(5)
+    expect(result.context?.faceBaseline).toBe(3)
+    expect(result.context?.faceScoreValue).toBeCloseTo(0.11, 10)
+
+    const jackEntry = result.entries.find((e) => e.rank === 'J')
+    expect(jackEntry?.faceScore).toBeCloseTo(0.11, 10)
+  })
+
+  test('Queens and Kings also get the bonus', () => {
+    for (const rank of ['Q', 'K']) {
+      const result = computeIdolSort([
+        card(rank, 'S'),
+        card(rank, 'S'),
+        card(rank, 'S'),
+        card(rank, 'S'),
+        card(rank, 'S'),
+        card('2', 'D'),
+      ])
+      const entry = result.entries.find((e) => e.rank === rank)
+      expect(entry?.faceScore).toBeCloseTo(0.11, 10)
+    }
+  })
+})
+
 describe('computeIdolSort — custom weights', () => {
   test('omitting weights matches passing DEFAULT_WEIGHTS explicitly', () => {
     const implicit = computeIdolSort(fixtureDeck())
@@ -349,9 +416,12 @@ describe('computeIdolSort — context', () => {
     expect(context.distinctRanks).toBe(2)
     expect(context.totalCards).toBe(8)
     expect(context.rawMeanByNumber).toBe(4)
-    expect(context.facePool).toBe(5)
-    expect(context.faceBaseline).toBe(4)
-    expect(context.faceScoreValue).toBeCloseTo(0.055, 10)
+    // Ace is not a face rank and no J/Q/K are in this fixture, so there's no
+    // face pool at all.
+    expect(context.facePool).toBe(0)
+    expect(context.faceRanksPresent).toBe(0)
+    expect(context.faceBaseline).toBe(0)
+    expect(context.faceScoreValue).toBe(0)
     expect(context.lowPool).toBe(3)
     expect(context.lowBaseline).toBe(4)
     expect(context.lowScoreValue).toBe(0)

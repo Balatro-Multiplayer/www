@@ -90,7 +90,7 @@ function buildDetailRows(
       formula:
         isFaceRank && context
           ? `max(genFloor, wGen × 1.1 × max(0, facePool − faceBaseline)) = max(${fmt(weights.genFloor)}, ${fmt(weights.wGen)} × 1.1 × max(0, ${fmt(context.facePool)} − ${fmt(context.faceBaseline)}))`
-          : 'not a face rank (J/Q/K/A) → 0',
+          : 'not a face rank (J/Q/K) → 0',
       value: entry.faceScore,
     },
     {

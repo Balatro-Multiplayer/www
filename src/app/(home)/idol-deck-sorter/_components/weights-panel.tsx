@@ -137,7 +137,7 @@ const WEIGHT_GROUPS: FieldGroup[] = [
   },
   {
     title: 'Face / low-rank pool bonus',
-    hint: 'Rewards having noticeably more face (J/Q/K/A) or low (2-5) cards than the deck’s average rank count.',
+    hint: 'Rewards having noticeably more face (J/Q/K) or low (2-5) cards than the deck’s average rank count.',
     fields: [
       { kind: 'scalar', key: 'wGen', label: 'Pool bonus weight', step: 0.01 },
       {

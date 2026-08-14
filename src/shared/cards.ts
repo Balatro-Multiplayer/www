@@ -62,8 +62,15 @@ export const SUIT_GLYPH: Record<Suit, string> = {
   D: '♦',
 }
 
-/** Ranks the idol algorithm treats as "face" ranks. */
-export const FACE_RANKS: readonly Rank[] = ['J', 'Q', 'K', 'A']
+/**
+ * Ranks the idol algorithm treats as "face" ranks — J, Q, K only. Ace is
+ * deliberately excluded: in Steamodded's core rank registrations
+ * (`SMODS.Rank` for `Jack`/`Queen`/`King` set `face = true`; `Ace` sets
+ * `nominal = 11` and `face_nominal = 0.4` for sort-order tiebreaking only,
+ * no `face` flag), so `TheOrder.lua`'s `if rank_obj.face then ...` check is
+ * false for Aces. Don't add 'A' back here without re-checking that source.
+ */
+export const FACE_RANKS: readonly Rank[] = ['J', 'Q', 'K']
 
 /** Ranks the idol algorithm treats as "low" (nominal 2-5) ranks. */
 export const LOW_RANKS: readonly Rank[] = ['2', '3', '4', '5']
