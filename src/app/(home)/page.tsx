@@ -435,6 +435,12 @@ export default function Home() {
             >
               Documentation
             </Link>
+            <Link
+              href='/privacy/bot'
+              className='text-muted-foreground text-sm underline-offset-4 hover:underline'
+            >
+              Bot Privacy
+            </Link>
             {/*<Link*/}
             {/*  href='/credits'*/}
             {/*  className='text-muted-foreground text-sm underline-offset-4 hover:underline'*/}
