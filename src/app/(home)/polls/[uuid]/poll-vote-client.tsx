@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Crown, GripVertical, Plus, X } from 'lucide-react'
+import Link from 'next/link'
 import { signIn } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -76,6 +77,26 @@ function initials(name: string | null) {
     .slice(0, 2)
     .join('')
     .toUpperCase()
+}
+
+function UserBadge({
+  ballot,
+}: {
+  ballot: { name: string | null; image: string | null }
+}) {
+  return (
+    <>
+      <Avatar className='h-7 w-7'>
+        {ballot.image ? (
+          <AvatarImage src={ballot.image} alt={ballot.name ?? 'Voter'} />
+        ) : null}
+        <AvatarFallback className='text-xs'>
+          {initials(ballot.name)}
+        </AvatarFallback>
+      </Avatar>
+      <span className='font-medium text-sm'>{ballot.name ?? 'Unknown'}</span>
+    </>
+  )
 }
 
 function SortableRankRow({
@@ -589,22 +610,18 @@ export function PollVoteClient({
                         key={ballot.userId}
                         className='flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center'
                       >
-                        <div className='flex min-w-[160px] items-center gap-2'>
-                          <Avatar className='h-7 w-7'>
-                            {ballot.image ? (
-                              <AvatarImage
-                                src={ballot.image}
-                                alt={ballot.name ?? 'Voter'}
-                              />
-                            ) : null}
-                            <AvatarFallback className='text-xs'>
-                              {initials(ballot.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className='font-medium text-sm'>
-                            {ballot.name ?? 'Unknown'}
-                          </span>
-                        </div>
+                        {ballot.discordId ? (
+                          <Link
+                            href={`/players/${ballot.discordId}`}
+                            className='flex min-w-[160px] items-center gap-2 rounded-md underline-offset-4 hover:underline'
+                          >
+                            <UserBadge ballot={ballot} />
+                          </Link>
+                        ) : (
+                          <div className='flex min-w-[160px] items-center gap-2'>
+                            <UserBadge ballot={ballot} />
+                          </div>
+                        )}
                         <div className='flex flex-wrap gap-1'>
                           {ballot.choices.length === 0 ? (
                             <span className='text-muted-foreground text-xs'>
