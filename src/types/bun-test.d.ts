@@ -10,6 +10,13 @@ declare module 'bun:test' {
     toEqual(expected: unknown): void
     toBe(expected: unknown): void
     toBeNull(): void
+    toBeDefined(): void
+    toBeCloseTo(expected: number, numDigits?: number): void
+    toContain(expected: unknown): void
+    toBeGreaterThan(expected: number): void
+    toBeGreaterThanOrEqual(expected: number): void
+    toBeLessThan(expected: number): void
+    toBeLessThanOrEqual(expected: number): void
     toHaveLength(expected: number): void
     toMatchObject(expected: unknown): void
     toHaveBeenCalled(): void

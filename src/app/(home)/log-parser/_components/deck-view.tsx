@@ -1,6 +1,5 @@
 'use client'
 
-import type { CSSProperties } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,61 +14,15 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import {
+  getCardFaceStyle,
+  SEAL_POSITION,
+  spriteOffset,
+} from '@/shared/card-sprite'
+import {
   type DeckCardSnapshot,
   normalizeDeckCards,
   summarizeDeck,
 } from '../deck-utils'
-
-const CARD_WIDTH = 71
-const CARD_HEIGHT = 95
-
-const SUIT_ROW = {
-  H: 0,
-  C: 1,
-  D: 2,
-  S: 3,
-} as const
-
-const RANK_COLUMN = {
-  '2': 0,
-  '3': 1,
-  '4': 2,
-  '5': 3,
-  '6': 4,
-  '7': 5,
-  '8': 6,
-  '9': 7,
-  T: 8,
-  J: 9,
-  Q: 10,
-  K: 11,
-  A: 12,
-} as const
-
-const ENHANCEMENT_POSITION = {
-  base: { x: 1, y: 0 },
-  m_bonus: { x: 1, y: 1 },
-  m_mult: { x: 2, y: 1 },
-  m_wild: { x: 3, y: 1 },
-  m_lucky: { x: 4, y: 1 },
-  m_glass: { x: 5, y: 1 },
-  m_steel: { x: 6, y: 1 },
-  m_stone: { x: 5, y: 0 },
-  m_gold: { x: 6, y: 0 },
-} as const
-
-const SEAL_POSITION = {
-  Gold: { x: 2, y: 0 },
-  Purple: { x: 4, y: 4 },
-  Red: { x: 5, y: 4 },
-  Blue: { x: 6, y: 4 },
-} as const
-
-const EDITION_POSITION = {
-  foil: { x: 1, y: 0 },
-  holo: { x: 2, y: 0 },
-  polychrome: { x: 3, y: 0 },
-} as const
 
 const SUIT_ORDER = ['S', 'H', 'C', 'D'] as const
 
@@ -88,10 +41,6 @@ const RANK_SORT_VALUE = {
   '3': 1,
   '2': 0,
 } as const
-
-function spriteOffset(x: number, y: number) {
-  return `-${x * CARD_WIDTH}px -${y * CARD_HEIGHT}px`
-}
 
 function compareDeckCards(a: DeckCardSnapshot, b: DeckCardSnapshot) {
   const rankDiff =
@@ -182,45 +131,6 @@ function getSortedDeckSections(cards: DeckCardSnapshot[]) {
   }
 
   return suitSections
-}
-
-function getCardFaceStyle(card: DeckCardSnapshot): CSSProperties {
-  const frontX = RANK_COLUMN[card.rank as keyof typeof RANK_COLUMN]
-  const frontY = SUIT_ROW[card.suit]
-  const enhancementPos = card.enhancement
-    ? (ENHANCEMENT_POSITION[
-        card.enhancement as keyof typeof ENHANCEMENT_POSITION
-      ] ?? ENHANCEMENT_POSITION.base)
-    : ENHANCEMENT_POSITION.base
-
-  const layers = [`url('/atlases/Jokers.png')`]
-  const positions = ['0px -855px']
-
-  if (card.edition && card.edition in EDITION_POSITION) {
-    const editionPos =
-      EDITION_POSITION[card.edition as keyof typeof EDITION_POSITION]
-    layers.push(`url('/atlases/Editions.png')`)
-    positions.push(spriteOffset(editionPos.x, editionPos.y))
-  }
-
-  if (card.enhancement === 'm_stone') {
-    layers.push(`url('/atlases/Enhancers.png')`)
-    positions.push(spriteOffset(enhancementPos.x, enhancementPos.y))
-  } else {
-    layers.push(`url('/atlases/8BitDeck.png')`)
-    positions.push(spriteOffset(frontX, frontY))
-    layers.push(`url('/atlases/Enhancers.png')`)
-    positions.push(spriteOffset(enhancementPos.x, enhancementPos.y))
-  }
-
-  return {
-    backgroundImage: layers.join(', '),
-    backgroundPosition: positions.join(', '),
-    backgroundRepeat: 'no-repeat',
-    imageRendering: 'pixelated',
-    backgroundBlendMode:
-      card.edition === 'polychrome' ? 'normal, color' : undefined,
-  }
 }
 
 function DeckCardVisual({
