@@ -1,10 +1,11 @@
-import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, lt, type SQLWrapper, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import {
   createTRPCRouter,
   permissionProcedure,
   publicProcedure,
 } from '@/server/api/trpc'
+import { cachedSwr, cacheKeyFromInput } from '@/server/cache'
 import { player_games } from '@/server/db/schema'
 import type { SelectGames } from '@/server/db/types'
 import { getSeasonForDate, getSeasonKey, getSeasons } from '@/server/seasons'
@@ -44,6 +45,25 @@ function formatTimeKey(date: Date, groupBy: string): string {
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`
   }
 }
+
+/**
+ * SQL equivalent of `formatTimeKey` for a `timestamp` column. Weeks start on
+ * Sunday to match `Date#getDay()`-based bucketing.
+ */
+function sqlTimeKey(column: SQLWrapper, groupBy: string) {
+  switch (groupBy) {
+    case 'day':
+      return sql<string>`to_char(${column}, 'YYYY-MM-DD')`
+    case 'week':
+      return sql<string>`to_char(date_trunc('week', ${column} + interval '1 day') - interval '1 day', '"Week of "YYYY-MM-DD')`
+    case 'month':
+      return sql<string>`to_char(${column}, 'YYYY-MM')`
+    default:
+      return sql<string>`to_char(${column}, 'YYYY-MM-DD HH24:00')`
+  }
+}
+
+const GAMES_PER_HOUR_CACHE = { freshFor: 10 * 60, ttl: 24 * 60 * 60 }
 
 // Seasons 1-4 are stored in the local `player_games` table; season 5 onward
 // live in the Botlatro API. Keyed off the season number so new seasons route to
@@ -86,83 +106,100 @@ export const history_router = createTRPCRouter({
         })
         .optional()
     )
-    .query(async ({ ctx, input }) => {
-      const groupBy = input?.groupBy || 'hour'
-      const startDate = input?.startDate ? new Date(input.startDate) : undefined
-      const endDate = input?.endDate ? new Date(input.endDate) : undefined
-      const nextDay = endDate ? new Date(endDate) : undefined
-      if (nextDay) nextDay.setDate(nextDay.getDate() + 1)
+    .query(({ ctx, input }) =>
+      cachedSwr(
+        `stats:games_per_hour:v1:${cacheKeyFromInput(input)}`,
+        GAMES_PER_HOUR_CACHE,
+        async () => {
+          const groupBy = input?.groupBy || 'hour'
+          const startDate = input?.startDate
+            ? new Date(input.startDate)
+            : undefined
+          const endDate = input?.endDate ? new Date(input.endDate) : undefined
+          const nextDay = endDate ? new Date(endDate) : undefined
+          if (nextDay) nextDay.setDate(nextDay.getDate() + 1)
 
-      const effectiveEnd = nextDay ?? new Date()
-      const needsDb = !startDate || startDate < SEASON_5_START_DATE
-      const needsApi = !nextDay || effectiveEnd > SEASON_5_START_DATE
+          const effectiveEnd = nextDay ?? new Date()
+          const needsDb = !startDate || startDate < SEASON_5_START_DATE
+          const needsApi = !nextDay || effectiveEnd > SEASON_5_START_DATE
 
-      const gamesByTimeUnit: Record<string, number> = {}
+          const gamesByTimeUnit: Record<string, number> = {}
 
-      // Old data (seasons 1-4) from DB
-      if (needsDb) {
-        const dbEnd =
-          nextDay && nextDay < SEASON_5_START_DATE
-            ? nextDay
-            : SEASON_5_START_DATE
-        const games = await ctx.db
-          .select({
-            gameTime: player_games.gameTime,
-            gameNum: player_games.gameNum,
-          })
-          .from(player_games)
-          .where(
-            and(
-              startDate ? gt(player_games.gameTime, startDate) : undefined,
-              lt(player_games.gameTime, dbEnd)
-            )
-          )
-          .orderBy(player_games.gameTime)
+          // Old data (seasons 1-4) from DB, aggregated in SQL so we never ship the
+          // full player_games table to the app server. Each game is bucketed by
+          // its earliest row, matching the JS dedupe used for the API seasons.
+          if (needsDb) {
+            const dbEnd =
+              nextDay && nextDay < SEASON_5_START_DATE
+                ? nextDay
+                : SEASON_5_START_DATE
+            const gameTimes = ctx.db
+              .select({
+                gameNum: player_games.gameNum,
+                gameTime: sql<Date>`min(${player_games.gameTime})`.as(
+                  'game_time'
+                ),
+              })
+              .from(player_games)
+              .where(
+                and(
+                  startDate ? gt(player_games.gameTime, startDate) : undefined,
+                  lt(player_games.gameTime, dbEnd)
+                )
+              )
+              .groupBy(player_games.gameNum)
+              .as('game_times')
+            const bucket = sqlTimeKey(gameTimes.gameTime, groupBy)
+            const buckets = await ctx.db
+              .select({
+                timeUnit: bucket,
+                count: sql<number>`count(*)::int`,
+              })
+              .from(gameTimes)
+              .groupBy(bucket)
 
-        const seen = new Set<number>()
-        for (const game of games) {
-          if (!game.gameTime || !game.gameNum || seen.has(game.gameNum))
-            continue
-          seen.add(game.gameNum)
-          const key = formatTimeKey(new Date(game.gameTime), groupBy)
-          gamesByTimeUnit[key] = (gamesByTimeUnit[key] || 0) + 1
+            for (const row of buckets) {
+              gamesByTimeUnit[row.timeUnit] =
+                (gamesByTimeUnit[row.timeUnit] || 0) + row.count
+            }
+          }
+
+          // Season 5+ data from Botlatro API
+          if (needsApi) {
+            const apiSeasons = (await getSeasons())
+              .filter((s) => !s.endDate || s.endDate > SEASON_5_START_DATE)
+              .map((s) => getSeasonKey(s.id))
+            const allMatches = (
+              await Promise.all(
+                apiSeasons.flatMap((season) =>
+                  QUEUE_IDS.map((q) => fetchMatches(q, season))
+                )
+              )
+            ).flat()
+
+            const apiStart =
+              startDate && startDate > SEASON_5_START_DATE
+                ? startDate
+                : SEASON_5_START_DATE
+
+            const seen = new Set<number>()
+            for (const m of allMatches) {
+              if (seen.has(m.match_id)) continue
+              seen.add(m.match_id)
+              const date = new Date(m.created_at)
+              if (date < apiStart) continue
+              if (nextDay && date >= nextDay) continue
+              const key = formatTimeKey(date, groupBy)
+              gamesByTimeUnit[key] = (gamesByTimeUnit[key] || 0) + 1
+            }
+          }
+
+          return Object.entries(gamesByTimeUnit)
+            .map(([timeUnit, count]) => ({ timeUnit, count, groupBy }))
+            .sort((a, b) => a.timeUnit.localeCompare(b.timeUnit))
         }
-      }
-
-      // Season 5+ data from Botlatro API
-      if (needsApi) {
-        const apiSeasons = (await getSeasons())
-          .filter((s) => !s.endDate || s.endDate > SEASON_5_START_DATE)
-          .map((s) => getSeasonKey(s.id))
-        const allMatches = (
-          await Promise.all(
-            apiSeasons.flatMap((season) =>
-              QUEUE_IDS.map((q) => fetchMatches(q, season))
-            )
-          )
-        ).flat()
-
-        const apiStart =
-          startDate && startDate > SEASON_5_START_DATE
-            ? startDate
-            : SEASON_5_START_DATE
-
-        const seen = new Set<number>()
-        for (const m of allMatches) {
-          if (seen.has(m.match_id)) continue
-          seen.add(m.match_id)
-          const date = new Date(m.created_at)
-          if (date < apiStart) continue
-          if (nextDay && date >= nextDay) continue
-          const key = formatTimeKey(date, groupBy)
-          gamesByTimeUnit[key] = (gamesByTimeUnit[key] || 0) + 1
-        }
-      }
-
-      return Object.entries(gamesByTimeUnit)
-        .map(([timeUnit, count]) => ({ timeUnit, count, groupBy }))
-        .sort((a, b) => a.timeUnit.localeCompare(b.timeUnit))
-    }),
+      )
+    ),
   user_games: publicProcedure
     .input(
       z.object({

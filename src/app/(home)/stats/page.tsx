@@ -29,71 +29,87 @@ export default async function StatsPage({
   const defaultSeason =
     (statsSeasons.includes(activeSeason) ? activeSeason : statsSeasons[0]) ??
     ('season1' as Season)
-  const defaultSeasonId = Number(defaultSeason.replace('season', ''))
-  const defaultSeasonSnapshots = await api.seasons.list_snapshots({
-    seasonId: defaultSeasonId,
-  })
-  const defaultRankedSnapshot =
-    defaultSeasonSnapshots.find(
-      (snapshot) => snapshot.queueType === 'ranked'
-    ) ?? defaultSeasonSnapshots[0]
   const loadSearchParams = createLoader(
     createStatsSearchParamsParsersServer(defaultSeason)
   )
   const params = await loadSearchParams(searchParams)
-  const deckSeason = resolveStatsSeason(
-    params.deckSeason,
-    statsSeasons,
-    defaultSeason
-  )
-  const stakeSeason = resolveStatsSeason(
-    params.stakeSeason,
-    statsSeasons,
-    defaultSeason
-  )
 
-  const deckPrefetchInput = {
-    mode: params.deckMode,
-    season: params.deckMode === 'season' ? deckSeason : undefined,
-    startDate:
-      params.deckMode === 'dateRange'
-        ? (params.deckStartDate ?? undefined)
-        : undefined,
-    endDate:
-      params.deckMode === 'dateRange'
-        ? (params.deckEndDate ?? undefined)
-        : undefined,
-    queueId: params.deckQueueId === 'all' ? undefined : params.deckQueueId,
-  } as const
-
-  const stakePrefetchInput = {
-    mode: params.stakeMode,
-    season: params.stakeMode === 'season' ? stakeSeason : undefined,
-    startDate:
-      params.stakeMode === 'dateRange'
-        ? (params.stakeStartDate ?? undefined)
-        : undefined,
-    endDate:
-      params.stakeMode === 'dateRange'
-        ? (params.stakeEndDate ?? undefined)
-        : undefined,
-    queueId: params.stakeQueueId === 'all' ? undefined : params.stakeQueueId,
-  } as const
-
-  await Promise.all([
-    api.history.games_per_hour.prefetch({ groupBy: 'hour' }),
-    api.stats.deck_popularity.prefetch(deckPrefetchInput),
-    api.stats.stake_popularity.prefetch(stakePrefetchInput),
-    api.stats.season_overview.prefetch(),
-    ...(defaultRankedSnapshot
-      ? [
-          api.leaderboard.rating_distribution.prefetch({
-            channel_id: defaultRankedSnapshot.queueId,
-            season: defaultSeason,
-          }),
-        ]
-      : []),
-  ])
+  // Only the visible tab's data is prefetched, and it is not awaited: the
+  // pending query is streamed to the client so the page shell renders right
+  // away instead of blocking on every chart's data.
+  switch (params.tab) {
+    case 'rating-distribution': {
+      const defaultSeasonId = Number(defaultSeason.replace('season', ''))
+      // Snapshots are cheap (Redis) and needed to pick the ranked queue id,
+      // so this one is awaited; the leaderboard itself streams.
+      const snapshots = await api.seasons.list_snapshots({
+        seasonId: defaultSeasonId,
+      })
+      void api.seasons.list_snapshots.prefetch({ seasonId: defaultSeasonId })
+      const rankedSnapshot =
+        snapshots.find((snapshot) => snapshot.queueType === 'ranked') ??
+        snapshots[0]
+      if (rankedSnapshot) {
+        void api.leaderboard.rating_distribution.prefetch({
+          channel_id: rankedSnapshot.queueId,
+          season: defaultSeason,
+        })
+      }
+      break
+    }
+    case 'deck-popularity': {
+      const deckSeason = resolveStatsSeason(
+        params.deckSeason,
+        statsSeasons,
+        defaultSeason
+      )
+      void api.stats.deck_popularity.prefetch({
+        mode: params.deckMode,
+        season: params.deckMode === 'season' ? deckSeason : undefined,
+        startDate:
+          params.deckMode === 'dateRange'
+            ? (params.deckStartDate ?? undefined)
+            : undefined,
+        endDate:
+          params.deckMode === 'dateRange'
+            ? (params.deckEndDate ?? undefined)
+            : undefined,
+        queueId: params.deckQueueId === 'all' ? undefined : params.deckQueueId,
+      })
+      break
+    }
+    case 'stake-popularity': {
+      const stakeSeason = resolveStatsSeason(
+        params.stakeSeason,
+        statsSeasons,
+        defaultSeason
+      )
+      void api.stats.stake_popularity.prefetch({
+        mode: params.stakeMode,
+        season: params.stakeMode === 'season' ? stakeSeason : undefined,
+        startDate:
+          params.stakeMode === 'dateRange'
+            ? (params.stakeStartDate ?? undefined)
+            : undefined,
+        endDate:
+          params.stakeMode === 'dateRange'
+            ? (params.stakeEndDate ?? undefined)
+            : undefined,
+        queueId:
+          params.stakeQueueId === 'all' ? undefined : params.stakeQueueId,
+      })
+      break
+    }
+    case 'season-overview':
+      void api.stats.season_overview.prefetch()
+      break
+    case 'game-activity':
+      // Must match the chart's initial client state or the prefetch is wasted.
+      void api.history.games_per_hour.prefetch({ groupBy: 'week' })
+      break
+    default:
+      break
+  }
 
   return (
     <div className='mx-auto flex w-[calc(100%-1rem)] max-w-fd-container flex-1 flex-col py-8'>

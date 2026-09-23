@@ -9,9 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Season } from '@/shared/seasons'
 import { createStatsSearchParamsParsers, STAT_TABS } from '../search-params'
+import { ChartCard, ChartCardContent, ChartCardHeader } from './chart-card'
 import { DeckPopularityChart } from './deck-popularity-chart'
 import { GameActivityChart } from './game-activity-chart'
 import { LiveMatchesTab } from './live-matches-tab'
@@ -36,6 +38,26 @@ const TABS = STAT_TABS.map((value) => ({
                 ? 'Bounties'
                 : 'Game Activity',
 }))
+
+function StatsContentFallback() {
+  return (
+    <ChartCard>
+      <ChartCardHeader className='sm:flex-row sm:items-center sm:justify-between'>
+        <div className='space-y-2'>
+          <Skeleton className='h-4 w-40' />
+          <Skeleton className='h-3 w-56' />
+        </div>
+        <div className='flex flex-wrap gap-2'>
+          <Skeleton className='h-9 w-full sm:w-[180px]' />
+          <Skeleton className='h-9 w-full sm:w-[160px]' />
+        </div>
+      </ChartCardHeader>
+      <ChartCardContent>
+        <Skeleton className='h-[350px] w-full sm:h-[500px]' />
+      </ChartCardContent>
+    </ChartCard>
+  )
+}
 
 type StatsTabsProps = {
   defaultSeason: Season
@@ -124,7 +146,7 @@ export function StatsTabs({ defaultSeason, statsSeasons }: StatsTabsProps) {
         </TabsList>
       </Tabs>
 
-      <Suspense>
+      <Suspense key={tab} fallback={<StatsContentFallback />}>
         <StatsContent
           tab={tab}
           defaultSeason={defaultSeason}
