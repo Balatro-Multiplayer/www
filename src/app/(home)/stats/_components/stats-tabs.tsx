@@ -34,9 +34,7 @@ const TABS = STAT_TABS.map((value) => ({
             ? 'Season Overview'
             : value === 'live-matches'
               ? 'Live Matches'
-              : value === 'bounties'
-                ? 'Bounties'
-                : 'Game Activity',
+              : 'Game Activity',
 }))
 
 function StatsContentFallback() {
