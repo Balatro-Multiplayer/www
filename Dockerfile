@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 imbios/bun-node:latest-current-debian AS deps
+FROM --platform=linux/amd64 imbios/bun-node:1.3.14-24-debian AS deps
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
@@ -9,7 +9,7 @@ RUN bun install --frozen-lockfile;
 
 ##### BUILDER
 
-FROM --platform=linux/amd64 imbios/bun-node:latest-current-debian AS builder
+FROM --platform=linux/amd64 imbios/bun-node:1.3.14-24-debian AS builder
 ARG DATABASE_URL
 ARG NEXT_PUBLIC_CLIENTVAR
 WORKDIR /app
@@ -22,7 +22,8 @@ RUN SKIP_ENV_VALIDATION=1 bun run build
 
 ##### RUNNER
 
-FROM --platform=linux/amd64 imbios/bun-node:latest-current-debian AS runner
+FROM --platform=linux/amd64 node:24.22.1-slim AS runner
+COPY --from=oven/bun:1.3.14 /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /app
 
 ENV NODE_ENV production
