@@ -37,7 +37,10 @@ const RANK_NAMES = {
   A: 'Ace',
 } as const
 
-const ENHANCEMENT_NAMES = {
+// Exported (not just used internally) so other card-editing UI — e.g. the
+// Idol Deck Sorter's deck grid — can render the same display names without a
+// second copy of this table.
+export const ENHANCEMENT_NAMES = {
   m_bonus: 'Bonus Card',
   m_mult: 'Mult Card',
   m_wild: 'Wild Card',
@@ -48,14 +51,14 @@ const ENHANCEMENT_NAMES = {
   m_lucky: 'Lucky Card',
 } as const
 
-const EDITION_NAMES = {
+export const EDITION_NAMES = {
   foil: 'Foil',
   holo: 'Holographic',
   polychrome: 'Polychrome',
   negative: 'Negative',
 } as const
 
-const SEAL_NAMES = {
+export const SEAL_NAMES = {
   Gold: 'Gold Seal',
   Red: 'Red Seal',
   Blue: 'Blue Seal',
